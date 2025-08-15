@@ -82,6 +82,8 @@ async function handleLogin() {
 }
 
 async function handleLogout() {
+    // Limpa o estado local antes de deslogar para garantir uma transição limpa
+    currentUserProfile = null; 
     await auth.signOutUser();
 }
 
@@ -296,13 +298,20 @@ main(); // Registra os event listeners uma vez quando o script carrega
 
 // Ouve as mudanças no estado de autenticação
 supabase.auth.onAuthStateChange(async (event, session) => {
-    // Adiciona um log para vermos o que está acontecendo no console do navegador
+    // **A CORREÇÃO ESTÁ AQUI**
+    // Este "freio" impede que a função execute múltiplas vezes em loop.
+    // Se a sessão for a mesma do usuário já logado, ele ignora o evento.
+    if (session && currentUserProfile && (currentUserProfile.id === session.user.id)) {
+        console.log("Estado da sessão já é válido, ignorando evento redundante para evitar loop.");
+        return;
+    }
+
     console.log(`Evento de autenticação recebido: ${event}`);
 
-    // Lógica para recuperação de senha (continua a mesma)
+    // Lógica para recuperação de senha
     if (event === 'PASSWORD_RECOVERY') {
         ui.showResetPasswordView();
-        return; // Encerra a execução aqui
+        return;
     }
 
     // Se existe uma sessão (usuário logado ou tentando logar)
@@ -313,25 +322,18 @@ supabase.auth.onAuthStateChange(async (event, session) => {
         if (userProfile && userProfile.is_approved) {
             currentUserProfile = userProfile;
             ui.showAppView(currentUserProfile);
-            // Só carrega a lista de projetos no login inicial para evitar múltiplas chamadas
+            // Só carrega a lista de projetos no login inicial
             if (event === 'SIGNED_IN') {
                 handleSearch();
             }
         }
         // CASO DE FALHA: O perfil não foi encontrado ou não está aprovado
         else {
-            // AÇÃO CRÍTICA: Só vamos deslogar o usuário se for a PRIMEIRA TENTATIVA
-            // de login (SIGNED_IN) que falhou.
-            // Isso impede que uma falha de rede aleatória durante a sessão (TOKEN_REFRESHED)
-            // expulse o usuário da aplicação.
+            // Desloga o usuário apenas em uma tentativa inicial de login que falhou
             if (event === 'SIGNED_IN') {
-                console.error("Falha na verificação do perfil no login inicial. Deslogando.");
                 await auth.signOutUser();
                 currentUserProfile = null;
                 ui.showLoginView();
-            } else {
-                // Para outros eventos, apenas registramos o erro sem deslogar
-                console.warn(`Não foi possível verificar o perfil durante o evento '${event}'. Mantendo a sessão atual por segurança.`);
             }
         }
     }
