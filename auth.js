@@ -2,14 +2,34 @@
 
 import { supabase } from './supabaseClient.js';
 
-// ... (as outras funções como signInUser, signUpUser, etc. continuam iguais) ...
-// A única mudança crucial é na função getSession abaixo.
-
+/**
+ * VERSÃO FINAL DA FUNÇÃO signInUser
+ * Agora ela retorna o perfil do usuário se o login e a busca forem bem-sucedidos.
+ */
 export async function signInUser(email, password) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-        alert('Erro no login: ' + error.message);
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (authError) {
+        alert('Erro no login: ' + authError.message);
+        return null;
     }
+
+    if (authData.user) {
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', authData.user.id)
+            .single();
+
+        if (profileError) {
+            alert('Erro ao buscar perfil do usuário: ' + profileError.message);
+            // Mesmo com erro de perfil, deslogamos para garantir um estado limpo.
+            await supabase.auth.signOut();
+            return null;
+        }
+        return profile; // Retorna o perfil completo em caso de sucesso
+    }
+    return null;
 }
 
 export async function signUpUser(email, password, details) {
@@ -31,46 +51,19 @@ export async function signOutUser() {
     await supabase.auth.signOut();
 }
 
-/**
- * VERSÃO DE DEPURAÇÃO DA FUNÇÃO getSession.
- * Ela vai nos mostrar cada passo da verificação de perfil no console.
- */
 export async function getSession() {
-    console.log('[getSession] Iniciando a busca da sessão...');
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-    if (sessionError) {
-        console.error('[getSession] Erro ao obter a sessão do Supabase:', sessionError.message);
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error || !session) {
         return null;
     }
-    if (!session) {
-        console.warn('[getSession] Nenhuma sessão ativa encontrada.');
-        return null;
-    }
-
-    console.log(`[getSession] Sessão encontrada para o usuário: ${session.user.id}`);
-    console.log('[getSession] Buscando perfil correspondente no banco de dados...');
-
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .single();
     
-    if (profileError) {
-        console.error('[getSession] ERRO AO BUSCAR PERFIL NO BANCO DE DADOS:', profileError.message);
-        return null;
-    }
-
-    if (profile) {
-        console.log('[getSession] Perfil encontrado com sucesso:', profile);
-    } else {
-        console.warn('[getSession] Perfil não encontrado para o ID do usuário.');
-    }
-    
     return profile;
 }
-
 
 // --- FUNÇÕES DE REDEFINIÇÃO DE SENHA ---
 export async function sendPasswordResetEmail(email) {

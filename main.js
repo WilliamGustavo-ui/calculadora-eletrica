@@ -9,6 +9,40 @@ import { supabase } from './supabaseClient.js';
 // --- ESTADO DA APLICAÇÃO ---
 let currentUserProfile = null;
 
+// --- HANDLERS (FUNÇÕES DE EVENTO) ---
+
+/**
+ * VERSÃO FINAL DA FUNÇÃO handleLogin
+ * Ela agora controla o fluxo manualmente, evitando o loop de eventos.
+ */
+async function handleLogin() {
+    const email = document.getElementById('emailLogin').value;
+    const password = document.getElementById('password').value;
+    
+    const userProfile = await auth.signInUser(email, password);
+
+    // Se o login e a busca de perfil foram bem-sucedidos
+    if (userProfile) {
+        if (userProfile.is_approved) {
+            currentUserProfile = userProfile;
+            ui.showAppView(currentUserProfile);
+            handleSearch(); // Carrega os projetos iniciais
+        } else {
+            alert('Seu cadastro ainda não foi aprovado por um administrador.');
+            await auth.signOutUser(); // Desloga o usuário não aprovado
+        }
+    }
+    // Se userProfile for nulo, os alertas de erro já foram mostrados dentro de signInUser.
+}
+
+async function handleLogout() {
+    currentUserProfile = null; 
+    await auth.signOutUser();
+}
+
+// ... O restante do arquivo main.js permanece o mesmo ...
+// O código abaixo é idêntico ao que você já tem, apenas a função onAuthStateChange foi ajustada.
+
 // --- FUNÇÃO DE INICIALIZAÇÃO ---
 function main() {
     setupEventListeners();
@@ -17,45 +51,23 @@ function main() {
 
 // --- CONFIGURAÇÃO DOS EVENTOS ---
 function setupEventListeners() {
-    // Autenticação
     document.getElementById('loginBtn').addEventListener('click', handleLogin);
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
     document.getElementById('registerBtn').addEventListener('click', () => ui.openModal('registerModalOverlay'));
     document.getElementById('registerForm').addEventListener('submit', handleRegister);
-
-    // Redefinição de Senha
-    document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
-        e.preventDefault();
-        ui.openModal('forgotPasswordModalOverlay');
-    });
+    document.getElementById('forgotPasswordLink').addEventListener('click', (e) => { e.preventDefault(); ui.openModal('forgotPasswordModalOverlay'); });
     document.getElementById('forgotPasswordForm').addEventListener('submit', handleForgotPassword);
     document.getElementById('resetPasswordForm').addEventListener('submit', handleResetPassword);
-
-    // Modais
-    document.querySelectorAll('.close-modal-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => ui.closeModal(e.target.dataset.modalId));
-    });
-
-    // Ações de Projeto
+    document.querySelectorAll('.close-modal-btn').forEach(btn => { btn.addEventListener('click', (e) => ui.closeModal(e.target.dataset.modalId)); });
     document.getElementById('saveBtn').addEventListener('click', handleSaveProject);
     document.getElementById('loadBtn').addEventListener('click', handleLoadProject);
     document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
     document.getElementById('newBtn').addEventListener('click', handleNewProject);
     document.getElementById('searchInput').addEventListener('input', (e) => handleSearch(e.target.value));
-
-    // Ações de Circuito
     document.getElementById('addCircuitBtn').addEventListener('click', ui.addCircuit);
-    document.getElementById('circuits-container').addEventListener('click', e => {
-        if (e.target.classList.contains('remove-btn')) {
-            ui.removeCircuit(e.target.dataset.circuitId);
-        }
-    });
-
-    // Cálculos e PDF
+    document.getElementById('circuits-container').addEventListener('click', e => { if (e.target.classList.contains('remove-btn')) { ui.removeCircuit(e.target.dataset.circuitId); } });
     document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
     document.getElementById('pdfBtn').addEventListener('click', handleGeneratePdf);
-    
-    // Máscaras
     document.getElementById('regCpf').addEventListener('input', utils.mascaraCPF);
     document.getElementById('regTelefone').addEventListener('input', utils.mascaraCelular);
     document.getElementById('editCpf').addEventListener('input', utils.mascaraCPF);
@@ -64,8 +76,6 @@ function setupEventListeners() {
     document.getElementById('documento').addEventListener('input', utils.aplicarMascara);
     document.getElementById('telefone').addEventListener('input', utils.mascaraTelefone);
     document.getElementById('celular').addEventListener('input', utils.mascaraCelular);
-
-    // Admin
     document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
     document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
     document.getElementById('adminUserList').addEventListener('click', handleAdminUserActions);
@@ -73,31 +83,11 @@ function setupEventListeners() {
     document.getElementById('adminProjectsTableBody').addEventListener('click', handleAdminProjectActions);
 }
 
-// --- HANDLERS (FUNÇÕES DE EVENTO) ---
-
-async function handleLogin() {
-    const email = document.getElementById('emailLogin').value;
-    const password = document.getElementById('password').value;
-    await auth.signInUser(email, password);
-}
-
-async function handleLogout() {
-    // Limpa o estado local antes de deslogar para garantir uma transição limpa
-    currentUserProfile = null; 
-    await auth.signOutUser();
-}
-
 async function handleRegister(event) {
     event.preventDefault();
     const email = document.getElementById('regEmail').value;
     const password = document.getElementById('regPassword').value;
-    const details = {
-        nome: document.getElementById('regNome').value,
-        cpf: document.getElementById('regCpf').value,
-        telefone: document.getElementById('regTelefone').value,
-        crea: document.getElementById('regCrea').value,
-        email: email
-    };
+    const details = { nome: document.getElementById('regNome').value, cpf: document.getElementById('regCpf').value, telefone: document.getElementById('regTelefone').value, crea: document.getElementById('regCrea').value, email: email };
     const { error } = await auth.signUpUser(email, password, details);
     if (!error) {
         alert('Cadastro realizado com sucesso! Aguarde a aprovação de um administrador.');
@@ -110,43 +100,23 @@ async function handleForgotPassword(event) {
     event.preventDefault();
     const email = document.getElementById('forgotEmail').value;
     const { error } = await auth.sendPasswordResetEmail(email);
-    if (error) {
-        alert("Erro ao enviar e-mail: " + error.message);
-    } else {
-        alert("Se o e-mail estiver cadastrado, um link de redefinição foi enviado!");
-        ui.closeModal('forgotPasswordModalOverlay');
-        event.target.reset();
-    }
+    if (error) { alert("Erro ao enviar e-mail: " + error.message); }
+    else { alert("Se o e-mail estiver cadastrado, um link de redefinição foi enviado!"); ui.closeModal('forgotPasswordModalOverlay'); event.target.reset(); }
 }
 
 async function handleResetPassword(event) {
     event.preventDefault();
     const newPassword = document.getElementById('newPassword').value;
-    if (!newPassword || newPassword.length < 6) {
-        alert("A senha precisa ter no mínimo 6 caracteres.");
-        return;
-    }
+    if (!newPassword || newPassword.length < 6) { alert("A senha precisa ter no mínimo 6 caracteres."); return; }
     const { error } = await auth.updatePassword(newPassword);
-
-    if (error) {
-        alert("Erro ao atualizar senha: " + error.message);
-    } else {
-        alert("Senha atualizada com sucesso! A página será recarregada. Por favor, faça o login com sua nova senha.");
-        window.location.hash = ''; // Limpa os tokens da URL
-        window.location.reload(); // Recarrega a página para o estado de login
-    }
+    if (error) { alert("Erro ao atualizar senha: " + error.message); }
+    else { alert("Senha atualizada com sucesso! A página será recarregada. Por favor, faça o login com sua nova senha."); window.location.hash = ''; window.location.reload(); }
 }
 
 async function handleSaveProject() {
-    if (!currentUserProfile) {
-        alert("Você precisa estar logado para salvar um projeto.");
-        return;
-    }
+    if (!currentUserProfile) { alert("Você precisa estar logado para salvar um projeto."); return; }
     const projectName = document.getElementById('obra').value.trim();
-    if (!projectName) {
-        alert("Por favor, insira um 'Nome da Obra' para salvar.");
-        return;
-    }
+    if (!projectName) { alert("Por favor, insira um 'Nome da Obra' para salvar."); return; }
     const mainData = {};
     document.querySelectorAll('#main-form input, #main-form select').forEach(el => mainData[el.id] = el.value);
     const techData = {};
@@ -154,18 +124,10 @@ async function handleSaveProject() {
     const circuitsData = [];
     document.querySelectorAll('.circuit-block').forEach(block => {
         const circuit = { id: block.dataset.id };
-        block.querySelectorAll('input, select').forEach(el => {
-            circuit[el.id] = el.type === 'checkbox' ? el.checked : el.value;
-        });
+        block.querySelectorAll('input, select').forEach(el => { circuit[el.id] = el.type === 'checkbox' ? el.checked : el.value; });
         circuitsData.push(circuit);
     });
-    const projectData = {
-        project_name: projectName,
-        main_data: mainData,
-        tech_data: techData,
-        circuits_data: circuitsData,
-        owner_id: currentUserProfile.id
-    };
+    const projectData = { project_name: projectName, main_data: mainData, tech_data: techData, circuits_data: circuitsData, owner_id: currentUserProfile.id };
     const currentProjectId = document.getElementById('currentProjectId').value;
     try {
         const { data, error } = await api.saveProject(projectData, currentProjectId);
@@ -174,19 +136,14 @@ async function handleSaveProject() {
         document.getElementById('currentProjectId').value = data.id;
         document.getElementById('codigoCliente').value = data.main_data.codigoCliente;
         await handleSearch();
-    } catch (error) {
-        alert('Erro ao salvar obra: ' + error.message);
-    }
+    } catch (error) { alert('Erro ao salvar obra: ' + error.message); }
 }
 
 async function handleLoadProject() {
     const projectId = document.getElementById('savedProjectsSelect').value;
     if (!projectId) return;
     const project = await api.fetchProjectById(projectId);
-    if (project) {
-        ui.populateFormWithProjectData(project);
-        alert(`Obra "${project.project_name}" carregada.`);
-    }
+    if (project) { ui.populateFormWithProjectData(project); alert(`Obra "${project.project_name}" carregada.`); }
 }
 
 async function handleDeleteProject() {
@@ -194,19 +151,12 @@ async function handleDeleteProject() {
     const projectName = document.getElementById('savedProjectsSelect').options[document.getElementById('savedProjectsSelect').selectedIndex].text;
     if (!projectId || !confirm(`Tem certeza que deseja excluir a obra "${projectName}"?`)) return;
     const { error } = await api.deleteProject(projectId);
-    if (error) {
-        alert('Erro ao excluir obra: ' + error.message);
-    } else {
-        alert("Obra excluída.");
-        ui.resetForm(true);
-        await handleSearch();
-    }
+    if (error) { alert('Erro ao excluir obra: ' + error.message); }
+    else { alert("Obra excluída."); ui.resetForm(true); await handleSearch(); }
 }
 
 function handleNewProject() {
-    if (confirm("Deseja limpar todos os campos para iniciar uma nova obra?")) {
-        ui.resetForm(true);
-    }
+    if (confirm("Deseja limpar todos os campos para iniciar uma nova obra?")) { ui.resetForm(true); }
 }
 
 async function handleSearch(term = '') {
@@ -217,16 +167,12 @@ async function handleSearch(term = '') {
 
 function handleCalculate() {
     const results = utils.calcularTodosCircuitos();
-    if (results) {
-        ui.renderReport(results);
-    }
+    if (results) { ui.renderReport(results); }
 }
 
 function handleGeneratePdf() {
     const results = utils.calcularTodosCircuitos();
-    if(results) {
-        ui.generatePdf(results, currentUserProfile);
-    }
+    if(results) { ui.generatePdf(results, currentUserProfile); }
 }
 
 async function showAdminPanel() {
@@ -245,37 +191,18 @@ async function showManageProjectsPanel() {
 async function handleAdminUserActions(event) {
     const target = event.target;
     const userId = target.dataset.userId;
-    if (target.classList.contains('approve-user-btn')) {
-        await api.approveUser(userId);
-        showAdminPanel();
-    }
-    if (target.classList.contains('edit-user-btn')) {
-        const users = await api.fetchAllUsers();
-        const user = users.find(u => u.id === userId);
-        if (user) ui.populateEditUserModal(user);
-    }
-    if (target.classList.contains('remove-user-btn')) {
-        alert("A remoção completa de usuários (auth) deve ser feita no painel do Supabase. Esta ação não é suportada diretamente via API por segurança.");
-    }
+    if (target.classList.contains('approve-user-btn')) { await api.approveUser(userId); showAdminPanel(); }
+    if (target.classList.contains('edit-user-btn')) { const users = await api.fetchAllUsers(); const user = users.find(u => u.id === userId); if (user) ui.populateEditUserModal(user); }
+    if (target.classList.contains('remove-user-btn')) { alert("A remoção completa de usuários (auth) deve ser feita no painel do Supabase. Esta ação não é suportada diretamente via API por segurança."); }
 }
 
 async function handleUpdateUser(event) {
     event.preventDefault();
     const userId = document.getElementById('editUserId').value;
-    const data = {
-        nome: document.getElementById('editNome').value,
-        cpf: document.getElementById('editCpf').value,
-        telefone: document.getElementById('editTelefone').value,
-        crea: document.getElementById('editCrea').value,
-    };
+    const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, };
     const { error } = await api.updateUserProfile(userId, data);
-    if (error) {
-        alert("Erro ao atualizar usuário: " + error.message);
-    } else {
-        alert("Usuário atualizado com sucesso!");
-        ui.closeModal('editUserModalOverlay');
-        showAdminPanel();
-    }
+    if (error) { alert("Erro ao atualizar usuário: " + error.message); }
+    else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); showAdminPanel(); }
 }
 
 async function handleAdminProjectActions(event) {
@@ -284,62 +211,32 @@ async function handleAdminProjectActions(event) {
         const projectId = button.dataset.projectId;
         const newOwnerId = button.previousElementSibling.value;
         const { error } = await api.transferProjectOwner(projectId, newOwnerId);
-        if (error) {
-            alert("Erro ao transferir obra: " + error.message);
-        } else {
-            alert("Obra transferida!");
-            showManageProjectsPanel();
-        }
+        if (error) { alert("Erro ao transferir obra: " + error.message); }
+        else { alert("Obra transferida!"); showManageProjectsPanel(); }
     }
 }
 
-// --- PONTO DE ENTRADA E GERENCIADOR DE ESTADO ---
-main(); // Registra os event listeners uma vez quando o script carrega
+main(); // PONTO DE ENTRADA
 
-// Ouve as mudanças no estado de autenticação
+/**
+ * VERSÃO FINAL do onAuthStateChange
+ * Agora, ele só cuida da restauração da sessão (quando a página é recarregada)
+ * e do logout. O login inicial é tratado manualmente pela função handleLogin.
+ */
 supabase.auth.onAuthStateChange(async (event, session) => {
-    // **A CORREÇÃO ESTÁ AQUI**
-    // Este "freio" impede que a função execute múltiplas vezes em loop.
-    // Se a sessão for a mesma do usuário já logado, ele ignora o evento.
-    if (session && currentUserProfile && (currentUserProfile.id === session.user.id)) {
-        console.log("Estado da sessão já é válido, ignorando evento redundante para evitar loop.");
-        return;
-    }
-
-    console.log(`Evento de autenticação recebido: ${event}`);
-
-    // Lógica para recuperação de senha
-    if (event === 'PASSWORD_RECOVERY') {
-        ui.showResetPasswordView();
-        return;
-    }
-
-    // Se existe uma sessão (usuário logado ou tentando logar)
-    if (session) {
-        const userProfile = await auth.getSession();
-
-        // CASO DE SUCESSO: O perfil foi encontrado e está aprovado
-        if (userProfile && userProfile.is_approved) {
-            currentUserProfile = userProfile;
-            ui.showAppView(currentUserProfile);
-            // Só carrega a lista de projetos no login inicial
-            if (event === 'SIGNED_IN') {
+    if (event === 'INITIAL_SESSION') {
+        if (session) {
+            const userProfile = await auth.getSession();
+            if (userProfile && userProfile.is_approved) {
+                currentUserProfile = userProfile;
+                ui.showAppView(currentUserProfile);
                 handleSearch();
             }
         }
-        // CASO DE FALHA: O perfil não foi encontrado ou não está aprovado
-        else {
-            // Desloga o usuário apenas em uma tentativa inicial de login que falhou
-            if (event === 'SIGNED_IN') {
-                await auth.signOutUser();
-                currentUserProfile = null;
-                ui.showLoginView();
-            }
-        }
-    }
-    // Se NÃO existe sessão (usuário deslogou)
-    else {
+    } else if (event === 'SIGNED_OUT') {
         currentUserProfile = null;
         ui.showLoginView();
+    } else if (event === 'PASSWORD_RECOVERY') {
+        ui.showResetPasswordView();
     }
 });
