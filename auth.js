@@ -2,19 +2,14 @@
 
 import { supabase } from './supabaseClient.js';
 
-/**
- * Função signInUser NOVA E CORRIGIDA.
- * A única responsabilidade dela agora é autenticar o usuário.
- * A busca do perfil e a verificação de 'is_approved' serão feitas
- * exclusivamente pelo 'onAuthStateChange' em main.js, eliminando a condição de corrida.
- */
+// ... (as outras funções como signInUser, signUpUser, etc. continuam iguais) ...
+// A única mudança crucial é na função getSession abaixo.
+
 export async function signInUser(email, password) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-        // O erro 400 (senha incorreta) ainda será mostrado aqui.
         alert('Erro no login: ' + error.message);
     }
-    // Não retornamos nada, pois o onAuthStateChange cuidará do resto.
 }
 
 export async function signUpUser(email, password, details) {
@@ -36,36 +31,55 @@ export async function signOutUser() {
     await supabase.auth.signOut();
 }
 
+/**
+ * VERSÃO DE DEPURAÇÃO DA FUNÇÃO getSession.
+ * Ela vai nos mostrar cada passo da verificação de perfil no console.
+ */
 export async function getSession() {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error || !session) {
+    console.log('[getSession] Iniciando a busca da sessão...');
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+    if (sessionError) {
+        console.error('[getSession] Erro ao obter a sessão do Supabase:', sessionError.message);
         return null;
     }
-    // Esta função agora é a única fonte da verdade para o perfil do usuário logado.
-    const { data: profile } = await supabase
+    if (!session) {
+        console.warn('[getSession] Nenhuma sessão ativa encontrada.');
+        return null;
+    }
+
+    console.log(`[getSession] Sessão encontrada para o usuário: ${session.user.id}`);
+    console.log('[getSession] Buscando perfil correspondente no banco de dados...');
+
+    const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .single();
     
+    if (profileError) {
+        console.error('[getSession] ERRO AO BUSCAR PERFIL NO BANCO DE DADOS:', profileError.message);
+        return null;
+    }
+
+    if (profile) {
+        console.log('[getSession] Perfil encontrado com sucesso:', profile);
+    } else {
+        console.warn('[getSession] Perfil não encontrado para o ID do usuário.');
+    }
+    
     return profile;
 }
 
-// --- FUNÇÕES DE REDEFINIÇÃO DE SENHA ---
 
-/**
- * Envia o e-mail de redefinição de senha para o usuário.
- */
+// --- FUNÇÕES DE REDEFINIÇÃO DE SENHA ---
 export async function sendPasswordResetEmail(email) {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://williamgustavo-ui.github.io/calculadora-eletrica/index.html',
+        redirectTo: 'https://williamguto0911-design.github.io/calculadora-eletrica/index.html',
     });
     return { error };
 }
 
-/**
- * Atualiza a senha do usuário logado (autenticado pelo link de redefinição).
- */
 export async function updatePassword(newPassword) {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     return { error };
