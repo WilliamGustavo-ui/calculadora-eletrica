@@ -80,8 +80,6 @@ function renumberCircuits() {
     });
 }
 
-// ... O restante do arquivo (getCircuitHTML, populate, etc.) continua o mesmo que você me enviou ...
-// Abaixo está o restante do seu arquivo ui.js para garantir que esteja completo
 function initializeCircuitListeners(id) {
     const tipoCircuito = document.getElementById(`tipoCircuito-${id}`);
     const fases = document.getElementById(`fases-${id}`);
@@ -314,19 +312,25 @@ export function generatePdf(allResults, currentUserProfile) {
     addText(formatLine('Gerado em', (new Date).toLocaleString('pt-BR')));
     addText(formatLine('Gerado por', generatingUserName));
     yPos += 5;
-    const head = [['Ckt', 'Nome', 'Pot.(W)', 'Tensao(V)', 'Fases', 'Cabo', 'Disjuntor', 'DR', 'DPS']];
+    
+    // O cabeçalho da tabela foi atualizado.
+    const head = [['Ckt', 'Nome', 'Tensão', 'Ligação', 'Cabo', 'Eletroduto', 'Disjuntor', 'DR', 'DPS']];
+    
+    // O corpo da tabela foi ajustado para corresponder aos novos cabeçalhos.
     const body = allResults.map(r => [
         r.dados.id,
         r.dados.nomeCircuito,
-        r.calculos.potenciaDemandada.toFixed(2),
-        r.dados.tensaoV,
-        r.dados.fases,
+        r.dados.tensaoV + 'V',
+        r.dados.tipoLigacao,
         r.calculos.bitolaRecomendadaMm2 + 'mm2',
+        r.calculos.dutoRecomendado,
         r.calculos.disjuntorRecomendado.nome,
         r.dados.requerDR ? 'Sim' : 'Nao',
         r.dados.classeDPS
     ]);
+
     doc.autoTable({ startY: yPos, head: head, body: body, theme: 'grid', styles: { font: "Roboto", fontSize: 8 } });
+    
     allResults.forEach(result => {
         doc.addPage();
         yPos = 15;
