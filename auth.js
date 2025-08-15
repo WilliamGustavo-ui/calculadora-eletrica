@@ -58,7 +58,7 @@ export async function getSession() {
  */
 export async function sendPasswordResetEmail(email) {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://williamguto0911-design.github.io/calculadora-eletrica/index.html',
+        redirectTo: 'https://williamgustavo-ui.github.io/calculadora-eletrica/index.html',
     });
     return { error };
 }
