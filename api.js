@@ -2,35 +2,18 @@
 
 import { supabase } from './supabaseClient.js';
 
-// --- FUNÇÕES DE PROJETO (OBRAS) ---
-export async function fetchProjects(searchTerm, user) {
-    if (!user) return [];
-    let query;
+// --- FUNÇÕES DE PROJETO ---
 
-    if (user.is_admin) {
-        // Admin vê todos os projetos
-        query = supabase.from('projects').select('*, client:clients(name), profile:profiles(nome)');
-    } else {
-        // Usuário comum vê apenas projetos de clientes aos quais ele tem acesso
-        const { data: permissions, error: permError } = await supabase
-            .from('client_user_permissions')
-            .select('client_id')
-            .eq('user_id', user.id);
-        
-        if (permError) {
-            console.error("Erro ao buscar permissões:", permError);
-            return [];
-        }
-        const accessibleClientIds = permissions.map(p => p.client_id);
-        query = supabase.from('projects').select('*, client:clients(name), profile:profiles(nome)').in('client_id', accessibleClientIds);
-    }
-    
+export async function fetchProjects(searchTerm) {
+    let query = supabase.from('projects').select('id, project_name, owner_id, profile:profiles(nome)');
     if (searchTerm) {
-        query = query.or(`project_name.ilike.%${searchTerm}%,project_code.ilike.%${searchTerm}%`);
+        query = query.ilike('project_name', `%${searchTerm}%`);
     }
     const { data, error } = await query.order('project_name');
-    
-    if (error) console.error('Erro ao buscar projetos:', error);
+    if (error) {
+        console.error('Erro ao buscar projetos:', error.message);
+        alert("Erro ao carregar os projetos: " + error.message);
+    }
     return data || [];
 }
 
@@ -42,15 +25,14 @@ export async function fetchProjectById(projectId) {
 
 export async function saveProject(projectData, projectId) {
     let result;
-    // Lógica para gerar código da obra se for um novo projeto
-    if (!projectId && !projectData.project_code) {
-        const { count } = await supabase.from('projects').select('*', { count: 'exact', head: true });
-        projectData.project_code = `O-${String((count || 0) + 1).padStart(4, '0')}`;
-    }
-
     if (projectId) {
         result = await supabase.from('projects').update(projectData).eq('id', projectId).select().single();
     } else {
+        if (!projectData.main_data.codigoCliente) {
+            const { count, error } = await supabase.from('projects').select('*', { count: 'exact', head: true });
+            if (error) { throw new Error("Erro ao gerar código do cliente"); }
+            projectData.main_data.codigoCliente = 'C-' + String((count || 0) + 1).padStart(3, '0');
+        }
         result = await supabase.from('projects').insert(projectData).select().single();
     }
     return result;
@@ -61,88 +43,8 @@ export async function deleteProject(projectId) {
     return { error };
 }
 
-export async function transferProjectClient(projectId, newClientId) {
-    const { error } = await supabase.from('projects').update({ client_id: newClientId }).eq('id', projectId);
-    return { error };
-}
+// --- FUNÇÕES DE ADMINISTRAÇÃO ---
 
-export async function transferProjectOwner(projectId, newOwnerId) {
-    const { error } = await supabase.from('projects').update({ owner_id: newOwnerId }).eq('id', projectId);
-    return { error };
-}
-
-// --- FUNÇÕES DE CLIENTE ---
-export async function fetchClients(searchTerm, user) {
-    if (!user) return [];
-    let query;
-    if (user.is_admin) {
-        query = supabase.from('clients').select('*');
-    } else {
-        // Junta com a tabela de permissões para pegar apenas os clientes permitidos
-        const { data: permissions, error: permError } = await supabase
-            .from('client_user_permissions')
-            .select('client_id')
-            .eq('user_id', user.id);
-        
-        if (permError) {
-            console.error("Erro ao buscar permissões:", permError);
-            return [];
-        }
-        const accessibleClientIds = permissions.map(p => p.client_id);
-        query = supabase.from('clients').select('*').in('id', accessibleClientIds);
-    }
-
-    if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%,document_number.ilike.%${searchTerm}%,client_code.ilike.%${searchTerm}%`);
-    }
-    const { data, error } = await query.order('name');
-    if (error) console.error('Erro ao buscar clientes:', error);
-    return data || [];
-}
-
-export async function saveClient(clientData, clientId) {
-    let result;
-    // Gera código do cliente apenas se for um novo cliente
-    if (!clientId) {
-        const { count } = await supabase.from('clients').select('*', { count: 'exact', head: true });
-        clientData.client_code = `C-${String((count || 0) + 1).padStart(4, '0')}`;
-    }
-
-    if (clientId) {
-        result = await supabase.from('clients').update(clientData).eq('id', clientId).select().single();
-    } else {
-        result = await supabase.from('clients').insert(clientData).select().single();
-    }
-    return result;
-}
-
-export async function deleteClient(clientId) {
-    const { error } = await supabase.from('clients').delete().eq('id', clientId);
-    return { error };
-}
-
-// --- FUNÇÕES DE PERMISSÃO (ADMIN) ---
-export async function getClientUserPermissions(clientId) {
-    const { data, error } = await supabase.from('client_user_permissions').select('user_id').eq('client_id', clientId);
-    if (error) console.error('Erro ao buscar permissões do cliente:', error);
-    return data?.map(p => p.user_id) || [];
-}
-
-export async function updateClientUserPermissions(clientId, userIds) {
-    // 1. Deleta todas as permissões existentes para este cliente
-    const { error: deleteError } = await supabase.from('client_user_permissions').delete().eq('client_id', clientId);
-    if (deleteError) return { error: deleteError };
-
-    // 2. Insere as novas permissões
-    if (userIds.length > 0) {
-        const newPermissions = userIds.map(userId => ({ client_id: clientId, user_id: userId }));
-        const { error: insertError } = await supabase.from('client_user_permissions').insert(newPermissions);
-        return { error: insertError };
-    }
-    return { error: null };
-}
-
-// --- FUNÇÕES DE USUÁRIO E ADMIN ---
 export async function fetchAllUsers() {
     const { data, error } = await supabase.from('profiles').select('*').order('nome');
     if (error) console.error('Erro ao buscar usuários:', error.message);
@@ -159,20 +61,31 @@ export async function updateUserProfile(userId, profileData) {
     return { error };
 }
 
-export async function toggleUserBlock(userId, isBlocked) {
-    const { error } = await supabase.from('profiles').update({ is_blocked: isBlocked }).eq('id', userId);
+export async function fetchAllApprovedUsers() {
+    const { data, error } = await supabase.from('profiles').select('id, nome').eq('is_approved', true);
+    if (error) console.error('Erro ao buscar usuários aprovados:', error.message);
+    return data || [];
+}
+
+export async function transferProjectOwner(projectId, newOwnerId) {
+    const { error } = await supabase.from('projects').update({ owner_id: newOwnerId }).eq('id', projectId);
     return { error };
 }
 
-export async function deleteUserProfile(userId) {
-    const { error } = await supabase.from('profiles').delete().eq('id', userId);
-    return { error };
-}
-
-// --- FUNÇÃO PARA BUSCAR DADOS TÉCNICOS ---
+/**
+ * NOVA FUNÇÃO
+ * Busca todos os dados técnicos do Supabase de uma só vez.
+ */
 export async function fetchTechnicalData() {
     try {
-        const [disjuntoresRes, cabosRes, eletrodutosRes, k1Res, k2Res, k3Res] = await Promise.all([
+        const [
+            disjuntoresRes,
+            cabosRes,
+            eletrodutosRes,
+            k1Res,
+            k2Res,
+            k3Res
+        ] = await Promise.all([
             supabase.from('disjuntores').select('*'),
             supabase.from('cabos').select('*'),
             supabase.from('eletrodutos').select('*'),
@@ -181,6 +94,7 @@ export async function fetchTechnicalData() {
             supabase.from('fatores_k3_agrupamento').select('*')
         ]);
 
+        // Verifica se houve erro em alguma das consultas
         const errors = [disjuntoresRes, cabosRes, eletrodutosRes, k1Res, k2Res, k3Res].map(res => res.error).filter(Boolean);
         if (errors.length > 0) {
             throw new Error('Falha ao buscar dados técnicos: ' + errors.map(e => e.message).join(', '));

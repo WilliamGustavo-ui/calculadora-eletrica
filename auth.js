@@ -2,6 +2,10 @@
 
 import { supabase } from './supabaseClient.js';
 
+/**
+ * VERSÃO FINAL DA FUNÇÃO signInUser
+ * Agora ela retorna o perfil do usuário se o login e a busca forem bem-sucedidos.
+ */
 export async function signInUser(email, password) {
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -19,18 +23,11 @@ export async function signInUser(email, password) {
 
         if (profileError) {
             alert('Erro ao buscar perfil do usuário: ' + profileError.message);
+            // Mesmo com erro de perfil, deslogamos para garantir um estado limpo.
             await supabase.auth.signOut();
             return null;
         }
-
-        // VERIFICAÇÃO DE BLOQUEIO
-        if (profile.is_blocked) {
-            alert('Este usuário está bloqueado. Entre em contato com o administrador.');
-            await supabase.auth.signOut();
-            return null;
-        }
-        
-        return profile;
+        return profile; // Retorna o perfil completo em caso de sucesso
     }
     return null;
 }
@@ -68,9 +65,10 @@ export async function getSession() {
     return profile;
 }
 
+// --- FUNÇÕES DE REDEFINIÇÃO DE SENHA ---
 export async function sendPasswordResetEmail(email) {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://williamgustavo-ui.github.io/calculadora-eletrica/index.html',
+        redirectTo: 'https://williamguto0911-design.github.io/calculadora-eletrica/index.html',
     });
     return { error };
 }

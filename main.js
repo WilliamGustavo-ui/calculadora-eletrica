@@ -6,277 +6,238 @@ import * as api from './api.js';
 import * as utils from './utils.js';
 import { supabase } from './supabaseClient.js';
 
+// --- ESTADO DA APLICAÇÃO ---
 let currentUserProfile = null;
-let technicalData = null;
-let clients = [];
-let currentClient = null;
+let technicalData = null; // Nova variável para armazenar os dados técnicos
 
-function main() {
-    setupEventListeners();
-    utils.atualizarMascaraDocumento();
-}
-
-function setupEventListeners() {
-    // Autenticação
-    document.getElementById('loginBtn').addEventListener('click', handleLogin);
-    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-    document.getElementById('registerForm').addEventListener('submit', handleRegister);
-    document.getElementById('forgotPasswordForm').addEventListener('submit', handleForgotPassword);
-    document.getElementById('resetPasswordForm').addEventListener('submit', handleResetPassword);
-    
-    // Modais
-    document.querySelectorAll('.close-modal-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => ui.closeModal(e.target.dataset.modalId));
-    });
-
-    // Ações de Projeto (Obras)
-    document.getElementById('saveBtn').addEventListener('click', handleSaveProject);
-    document.getElementById('loadBtn').addEventListener('click', handleLoadProject);
-    document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
-    document.getElementById('newBtn').addEventListener('click', handleNewProject);
-    document.getElementById('searchInput').addEventListener('input', (e) => handleSearch(e.target.value));
-
-    // Ações de Cliente
-    document.getElementById('clientManagementBtn').addEventListener('click', handleShowClientManagement);
-    document.getElementById('clientForm').addEventListener('submit', handleSaveClient);
-    document.getElementById('newClientBtn').addEventListener('click', handleNewClient);
-    document.getElementById('deleteClientBtn').addEventListener('click', handleDeleteClient);
-    document.getElementById('clientList').addEventListener('click', handleLoadClient);
-    document.getElementById('clientSearchInput').addEventListener('input', (e) => handleSearchClients(e.target.value));
-    document.getElementById('clientDocumentType').addEventListener('change', ui.toggleLegalRepSection);
-    document.getElementById('clientSearch').addEventListener('blur', handleLinkClientToProject);
-    
-    // Ações de Circuito
-    document.getElementById('addCircuitBtn').addEventListener('click', ui.addCircuit);
-    document.getElementById('circuits-container').addEventListener('click', e => {
-        if (e.target.classList.contains('remove-btn')) {
-            ui.removeCircuit(e.target.dataset.circuitId);
-        }
-    });
-    
-    // Cálculos e PDF
-    document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
-    document.getElementById('pdfBtn').addEventListener('click', handleGeneratePdf);
-    
-    // Admin
-    document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
-    document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
-    document.getElementById('adminUserList').addEventListener('click', handleAdminUserActions);
-    document.getElementById('editUserForm').addEventListener('submit', handleUpdateUser);
-    document.getElementById('adminProjectsTableBody').addEventListener('click', handleAdminProjectActions);
-    document.getElementById('saveUserPermissionsBtn').addEventListener('click', handleUpdatePermissions);
-}
+// --- HANDLERS (FUNÇÕES DE EVENTO) ---
 
 async function handleLogin() {
     const email = document.getElementById('emailLogin').value;
     const password = document.getElementById('password').value;
+    
     const userProfile = await auth.signInUser(email, password);
 
-    if (userProfile && userProfile.is_approved) {
-        currentUserProfile = userProfile;
-        ui.showAppView(currentUserProfile);
-        await loadInitialData();
+    if (userProfile) {
+        if (userProfile.is_approved) {
+            currentUserProfile = userProfile;
+            ui.showAppView(currentUserProfile);
+            
+            // Após mostrar a App, busca os dados técnicos e os de projetos
+            technicalData = await api.fetchTechnicalData();
+            handleSearch();
+        } else {
+            alert('Seu cadastro ainda não foi aprovado por um administrador.');
+            await auth.signOutUser();
+        }
     }
 }
 
 async function handleLogout() {
+    currentUserProfile = null; 
+    technicalData = null; // Limpa os dados técnicos ao sair
     await auth.signOutUser();
-    currentUserProfile = null;
-    technicalData = null;
-    clients = [];
-    currentClient = null;
-    ui.showLoginView();
 }
 
-supabase.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'INITIAL_SESSION' && session) {
-        const userProfile = await auth.getSession();
-        if (userProfile && !userProfile.is_blocked && userProfile.is_approved) {
-            currentUserProfile = userProfile;
-            ui.showAppView(currentUserProfile);
-            await loadInitialData();
-        } else {
-            ui.showLoginView();
-        }
-    } else if (event === 'SIGNED_OUT') {
-        ui.showLoginView();
-    }
-});
-
-async function loadInitialData() {
-    technicalData = await api.fetchTechnicalData();
-    await handleSearch();
-}
-
-async function handleSearch(term = '') {
-    if (!currentUserProfile) return;
-    const projects = await api.fetchProjects(term, currentUserProfile);
-    ui.populateProjectList(projects);
-}
-
-// --- LÓGICA DE CLIENTES ---
-
-async function handleShowClientManagement() {
-    ui.openModal('clientManagementModalOverlay');
-    handleNewClient();
-    await handleSearchClients();
-}
-
-async function handleSearchClients(searchTerm = '') {
-    clients = await api.fetchClients(searchTerm, currentUserProfile);
-    ui.populateClientList(clients, currentClient);
-}
-
-function handleNewClient() {
-    currentClient = null;
-    ui.resetClientForm();
-    ui.populateClientList(clients, null);
-}
-
-async function handleLoadClient(event) {
-    const target = event.target.closest('li');
-    if (!target) return;
-
-    const clientId = target.dataset.clientId;
-    currentClient = clients.find(c => c.id == clientId);
-    
-    if (currentClient) {
-        ui.populateClientList(clients, currentClient);
-        ui.populateClientForm(currentClient);
-        
-        const projects = await api.fetchProjects(null, currentUserProfile);
-        const clientProjects = projects.filter(p => p.client_id === currentClient.id);
-        ui.populateClientProjectsList(clientProjects);
-
-        if (currentUserProfile.is_admin) {
-            const allUsers = await api.fetchAllUsers();
-            const permittedUserIds = await api.getClientUserPermissions(currentClient.id);
-            ui.populateUserPermissions(allUsers, permittedUserIds);
-        }
-    }
-}
-
-async function handleSaveClient(event) {
+async function handleRegister(event) {
     event.preventDefault();
-    const clientId = document.getElementById('currentClientId').value;
-    const clientData = {
-        name: document.getElementById('clientName').value,
-        document_type: document.getElementById('clientDocumentType').value,
-        document_number: document.getElementById('clientDocumentNumber').value,
-        address: document.getElementById('clientAddress').value,
-        phone: document.getElementById('clientPhone').value,
-        mobile_phone: document.getElementById('clientMobile').value,
-        email: document.getElementById('clientEmail').value,
-        billing_email: document.getElementById('clientBillingEmail').value
-    };
-
-    if (clientData.document_type === 'CNPJ') {
-        clientData.legal_rep_name = document.getElementById('legalRepName').value;
-        clientData.legal_rep_cpf = document.getElementById('legalRepCpf').value;
-        clientData.legal_rep_phone = document.getElementById('legalRepPhone').value;
-        clientData.legal_rep_mobile = document.getElementById('legalRepMobile').value;
-        clientData.legal_rep_email = document.getElementById('legalRepEmail').value;
-    }
-    
-    const { error } = await api.saveClient(clientData, clientId);
-    if (error) {
-        alert("Erro ao salvar cliente: " + error.message);
-    } else {
-        alert("Cliente salvo com sucesso!");
-        handleNewClient();
-        await handleSearchClients();
+    const email = document.getElementById('regEmail').value;
+    const password = document.getElementById('regPassword').value;
+    const details = { nome: document.getElementById('regNome').value, cpf: document.getElementById('regCpf').value, telefone: document.getElementById('regTelefone').value, crea: document.getElementById('regCrea').value, email: email };
+    const { error } = await auth.signUpUser(email, password, details);
+    if (!error) {
+        alert('Cadastro realizado com sucesso! Aguarde a aprovação de um administrador.');
+        ui.closeModal('registerModalOverlay');
+        event.target.reset();
     }
 }
 
-async function handleDeleteClient() {
-    const clientId = document.getElementById('currentClientId').value;
-    if (!clientId) return alert("Nenhum cliente selecionado.");
-    
-    if (confirm(`Tem certeza que deseja excluir o cliente "${currentClient.name}"?`)) {
-        const { error } = await api.deleteClient(clientId);
-        if (error) {
-            alert("Erro ao excluir cliente: " + error.message);
-        } else {
-            alert("Cliente excluído com sucesso.");
-            handleNewClient();
-            await handleSearchClients();
-        }
-    }
+async function handleForgotPassword(event) {
+    event.preventDefault();
+    const email = document.getElementById('forgotEmail').value;
+    const { error } = await auth.sendPasswordResetEmail(email);
+    if (error) { alert("Erro ao enviar e-mail: " + error.message); }
+    else { alert("Se o e-mail estiver cadastrado, um link de redefinição foi enviado!"); ui.closeModal('forgotPasswordModalOverlay'); event.target.reset(); }
 }
 
-// --- LÓGICA DE OBRAS ---
+async function handleResetPassword(event) {
+    event.preventDefault();
+    const newPassword = document.getElementById('newPassword').value;
+    if (!newPassword || newPassword.length < 6) { alert("A senha precisa ter no mínimo 6 caracteres."); return; }
+    const { error } = await auth.updatePassword(newPassword);
+    if (error) { alert("Erro ao atualizar senha: " + error.message); }
+    else { alert("Senha atualizada com sucesso! A página será recarregada. Por favor, faça o login com sua nova senha."); window.location.hash = ''; window.location.reload(); }
+}
 
 async function handleSaveProject() {
-    const clientSearchValue = document.getElementById('clientSearch').value.trim();
-    const linkedClient = clients.find(c => c.client_code === clientSearchValue);
-    
-    const projectData = {
-        // ... coletar outros dados da obra
-        client_id: linkedClient ? linkedClient.id : null,
-        project_code: document.getElementById('projectCode').value.trim() || null
-    };
+    if (!currentUserProfile) { alert("Você precisa estar logado para salvar um projeto."); return; }
+    const projectName = document.getElementById('obra').value.trim();
+    if (!projectName) { alert("Por favor, insira um 'Nome da Obra' para salvar."); return; }
+    const mainData = {};
+    document.querySelectorAll('#main-form input, #main-form select').forEach(el => mainData[el.id] = el.value);
+    const techData = {};
+    document.querySelectorAll('#tech-form input').forEach(el => techData[el.id] = el.value);
+    const circuitsData = [];
+    document.querySelectorAll('.circuit-block').forEach(block => {
+        const circuit = { id: block.dataset.id };
+        block.querySelectorAll('input, select').forEach(el => { circuit[el.id] = el.type === 'checkbox' ? el.checked : el.value; });
+        circuitsData.push(circuit);
+    });
+    const projectData = { project_name: projectName, main_data: mainData, tech_data: techData, circuits_data: circuitsData, owner_id: currentUserProfile.id };
     const currentProjectId = document.getElementById('currentProjectId').value;
     try {
-        const { data } = await api.saveProject(projectData, currentProjectId);
-        alert(`Obra "${data.project_name}" salva com sucesso!`);
+        const { data, error } = await api.saveProject(projectData, currentProjectId);
+        if (error) throw error;
+        alert(`Obra "${projectName}" salva com sucesso!`);
         document.getElementById('currentProjectId').value = data.id;
-        document.getElementById('projectCode').value = data.project_code;
+        document.getElementById('codigoCliente').value = data.main_data.codigoCliente;
         await handleSearch();
-    } catch (error) {
-        alert('Erro ao salvar obra: ' + error.message);
-    }
+    } catch (error) { alert('Erro ao salvar obra: ' + error.message); }
 }
 
 async function handleLoadProject() {
     const projectId = document.getElementById('savedProjectsSelect').value;
     if (!projectId) return;
-
     const project = await api.fetchProjectById(projectId);
-    if (project) {
-        ui.populateFormWithProjectData(project);
-        if (project.client_id) {
-            const allClients = await api.fetchClients('', { is_admin: true });
-            const client = allClients.find(c => c.id === project.client_id);
-            if(client) ui.linkClientToProjectForm(client);
-        } else {
-            ui.clearProjectClientInfo();
-        }
-        alert(`Obra "${project.project_name}" carregada.`);
+    if (project) { ui.populateFormWithProjectData(project); alert(`Obra "${project.project_name}" carregada.`); }
+}
+
+async function handleDeleteProject() {
+    const projectId = document.getElementById('savedProjectsSelect').value;
+    const projectName = document.getElementById('savedProjectsSelect').options[document.getElementById('savedProjectsSelect').selectedIndex].text;
+    if (!projectId || !confirm(`Tem certeza que deseja excluir a obra "${projectName}"?`)) return;
+    const { error } = await api.deleteProject(projectId);
+    if (error) { alert('Erro ao excluir obra: ' + error.message); }
+    else { alert("Obra excluída."); ui.resetForm(true); await handleSearch(); }
+}
+
+function handleNewProject() {
+    if (confirm("Deseja limpar todos os campos para iniciar uma nova obra?")) { ui.resetForm(true); }
+}
+
+async function handleSearch(term = '') {
+    if (!currentUserProfile) return;
+    const projects = await api.fetchProjects(term);
+    ui.populateProjectList(projects, currentUserProfile.is_admin);
+}
+
+function handleCalculate() {
+    // Passa os dados técnicos para a função de cálculo
+    const results = utils.calcularTodosCircuitos(technicalData);
+    if (results) {
+        ui.renderReport(results);
     }
 }
 
-async function handleLinkClientToProject(event) {
-    const searchTerm = event.target.value.trim();
-    if (!searchTerm) return ui.clearProjectClientInfo();
-    
-    const foundClients = await api.fetchClients(searchTerm, currentUserProfile);
-    if (foundClients.length === 1) {
-        ui.linkClientToProjectForm(foundClients[0]);
-    } else {
-        ui.clearProjectClientInfo();
-        if (searchTerm) {
-            alert(foundClients.length > 1 ? "Múltiplos clientes encontrados. Por favor, seja mais específico." : "Nenhum cliente encontrado.");
-        }
-    }
+function handleGeneratePdf() {
+    const results = utils.calcularTodosCircuitos(technicalData);
+    if(results) { ui.generatePdf(results, currentUserProfile); }
 }
 
-// ... Outras funções handle...
-async function handleRegister(event) { /* ...código de cadastro... */ }
-async function handleForgotPassword(event) { /* ...código de redefinição de senha... */ }
-async function handleResetPassword(event) { /* ...código de nova senha... */ }
-function handleNewProject() { /* ...código para novo projeto... */ }
-async function handleDeleteProject() { /* ...código para deletar projeto... */ }
-function handleCalculate() { /* ...código para calcular... */ }
-function handleGeneratePdf() { /* ...código para gerar PDF... */ }
-async function showAdminPanel() { /* ...código do painel de admin... */ }
-async function showManageProjectsPanel() { /* ...código do painel de obras... */ }
+async function showAdminPanel() {
+    const users = await api.fetchAllUsers();
+    ui.populateUsersPanel(users);
+    ui.openModal('adminPanelModalOverlay');
+}
+
+async function showManageProjectsPanel() {
+    const projects = await api.fetchProjects();
+    const users = await api.fetchAllApprovedUsers();
+    ui.populateProjectsPanel_Admin(projects, users);
+    ui.openModal('manageProjectsModalOverlay');
+}
+
 async function handleAdminUserActions(event) {
-    // ... lógica para aprovar, bloquear, excluir usuário ...
+    const target = event.target;
+    const userId = target.dataset.userId;
+    if (target.classList.contains('approve-user-btn')) { await api.approveUser(userId); showAdminPanel(); }
+    if (target.classList.contains('edit-user-btn')) { const users = await api.fetchAllUsers(); const user = users.find(u => u.id === userId); if (user) ui.populateEditUserModal(user); }
+    if (target.classList.contains('remove-user-btn')) { alert("A remoção completa de usuários (auth) deve ser feita no painel do Supabase. Esta ação não é suportada diretamente via API por segurança."); }
 }
-async function handleUpdateUser(event) { /* ...código para atualizar usuário... */ }
-async function handleAdminProjectActions(event) { /* ...código para transferir obras... */ }
-async function handleUpdatePermissions() { /* ...código para atualizar permissões... */ }
 
+async function handleUpdateUser(event) {
+    event.preventDefault();
+    const userId = document.getElementById('editUserId').value;
+    const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, };
+    const { error } = await api.updateUserProfile(userId, data);
+    if (error) { alert("Erro ao atualizar usuário: " + error.message); }
+    else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); showAdminPanel(); }
+}
 
-// --- PONTO DE ENTRADA DA APLICAÇÃO ---
-document.addEventListener('DOMContentLoaded', main);
+async function handleAdminProjectActions(event) {
+    if (event.target.classList.contains('transfer-btn')) {
+        const button = event.target;
+        const projectId = button.dataset.projectId;
+        const newOwnerId = button.previousElementSibling.value;
+        const { error } = await api.transferProjectOwner(projectId, newOwnerId);
+        if (error) { alert("Erro ao transferir obra: " + error.message); }
+        else { alert("Obra transferida!"); showManageProjectsPanel(); }
+    }
+}
+
+// --- FUNÇÃO DE INICIALIZAÇÃO ---
+function main() {
+    setupEventListeners();
+    utils.atualizarMascaraDocumento();
+}
+
+// --- CONFIGURAÇÃO DOS EVENTOS ---
+function setupEventListeners() {
+    document.getElementById('loginBtn').addEventListener('click', handleLogin);
+    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+    document.getElementById('registerBtn').addEventListener('click', () => ui.openModal('registerModalOverlay'));
+    document.getElementById('registerForm').addEventListener('submit', handleRegister);
+    document.getElementById('forgotPasswordLink').addEventListener('click', (e) => { e.preventDefault(); ui.openModal('forgotPasswordModalOverlay'); });
+    document.getElementById('forgotPasswordForm').addEventListener('submit', handleForgotPassword);
+    document.getElementById('resetPasswordForm').addEventListener('submit', handleResetPassword);
+    document.querySelectorAll('.close-modal-btn').forEach(btn => { btn.addEventListener('click', (e) => ui.closeModal(e.target.dataset.modalId)); });
+    document.getElementById('saveBtn').addEventListener('click', handleSaveProject);
+    document.getElementById('loadBtn').addEventListener('click', handleLoadProject);
+    document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
+    document.getElementById('newBtn').addEventListener('click', handleNewProject);
+    document.getElementById('searchInput').addEventListener('input', (e) => handleSearch(e.target.value));
+    document.getElementById('addCircuitBtn').addEventListener('click', ui.addCircuit);
+    document.getElementById('circuits-container').addEventListener('click', e => { if (e.target.classList.contains('remove-btn')) { ui.removeCircuit(e.target.dataset.circuitId); } });
+    document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
+    document.getElementById('pdfBtn').addEventListener('click', handleGeneratePdf);
+    document.getElementById('regCpf').addEventListener('input', utils.mascaraCPF);
+    document.getElementById('regTelefone').addEventListener('input', utils.mascaraCelular);
+    document.getElementById('editCpf').addEventListener('input', utils.mascaraCPF);
+    document.getElementById('editTelefone').addEventListener('input', utils.mascaraCelular);
+    document.getElementById('tipoDocumento').addEventListener('change', utils.atualizarMascaraDocumento);
+    document.getElementById('documento').addEventListener('input', utils.aplicarMascara);
+    document.getElementById('telefone').addEventListener('input', utils.mascaraTelefone);
+    document.getElementById('celular').addEventListener('input', utils.mascaraCelular);
+    document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
+    document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
+    document.getElementById('adminUserList').addEventListener('click', handleAdminUserActions);
+    document.getElementById('editUserForm').addEventListener('submit', handleUpdateUser);
+    document.getElementById('adminProjectsTableBody').addEventListener('click', handleAdminProjectActions);
+}
+
+main(); // PONTO DE ENTRADA
+
+/**
+ * onAuthStateChange agora cuida da restauração da sessão (quando a página é recarregada).
+ */
+supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'INITIAL_SESSION') {
+        if (session) {
+            const userProfile = await auth.getSession();
+            if (userProfile && userProfile.is_approved) {
+                currentUserProfile = userProfile;
+                ui.showAppView(currentUserProfile);
+                
+                // Também busca os dados técnicos ao restaurar a sessão
+                technicalData = await api.fetchTechnicalData();
+                handleSearch();
+            }
+        }
+    } else if (event === 'SIGNED_OUT') {
+        currentUserProfile = null;
+        technicalData = null; // Limpa os dados técnicos
+        ui.showLoginView();
+    } else if (event === 'PASSWORD_RECOVERY') {
+        ui.showResetPasswordView();
+    }
+});
