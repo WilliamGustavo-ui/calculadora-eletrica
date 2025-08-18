@@ -270,3 +270,13 @@ button:active {
     gap: 10px;
     padding: 5px;
 }
+
+#adminProjectsTable .actions {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+#adminProjectsTable .actions > div {
+    display: flex;
+}
