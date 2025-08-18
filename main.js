@@ -8,79 +8,35 @@ import { supabase } from './supabaseClient.js';
 
 // --- ESTADO DA APLICAÇÃO ---
 let currentUserProfile = null;
+let technicalData = null; // Nova variável para armazenar os dados técnicos
 
 // --- HANDLERS (FUNÇÕES DE EVENTO) ---
 
-/**
- * VERSÃO FINAL DA FUNÇÃO handleLogin
- * Ela agora controla o fluxo manualmente, evitando o loop de eventos.
- */
 async function handleLogin() {
     const email = document.getElementById('emailLogin').value;
     const password = document.getElementById('password').value;
     
     const userProfile = await auth.signInUser(email, password);
 
-    // Se o login e a busca de perfil foram bem-sucedidos
     if (userProfile) {
         if (userProfile.is_approved) {
             currentUserProfile = userProfile;
             ui.showAppView(currentUserProfile);
-            handleSearch(); // Carrega os projetos iniciais
+            
+            // Após mostrar a App, busca os dados técnicos e os de projetos
+            technicalData = await api.fetchTechnicalData();
+            handleSearch();
         } else {
             alert('Seu cadastro ainda não foi aprovado por um administrador.');
-            await auth.signOutUser(); // Desloga o usuário não aprovado
+            await auth.signOutUser();
         }
     }
-    // Se userProfile for nulo, os alertas de erro já foram mostrados dentro de signInUser.
 }
 
 async function handleLogout() {
     currentUserProfile = null; 
+    technicalData = null; // Limpa os dados técnicos ao sair
     await auth.signOutUser();
-}
-
-// ... O restante do arquivo main.js permanece o mesmo ...
-// O código abaixo é idêntico ao que você já tem, apenas a função onAuthStateChange foi ajustada.
-
-// --- FUNÇÃO DE INICIALIZAÇÃO ---
-function main() {
-    setupEventListeners();
-    utils.atualizarMascaraDocumento();
-}
-
-// --- CONFIGURAÇÃO DOS EVENTOS ---
-function setupEventListeners() {
-    document.getElementById('loginBtn').addEventListener('click', handleLogin);
-    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-    document.getElementById('registerBtn').addEventListener('click', () => ui.openModal('registerModalOverlay'));
-    document.getElementById('registerForm').addEventListener('submit', handleRegister);
-    document.getElementById('forgotPasswordLink').addEventListener('click', (e) => { e.preventDefault(); ui.openModal('forgotPasswordModalOverlay'); });
-    document.getElementById('forgotPasswordForm').addEventListener('submit', handleForgotPassword);
-    document.getElementById('resetPasswordForm').addEventListener('submit', handleResetPassword);
-    document.querySelectorAll('.close-modal-btn').forEach(btn => { btn.addEventListener('click', (e) => ui.closeModal(e.target.dataset.modalId)); });
-    document.getElementById('saveBtn').addEventListener('click', handleSaveProject);
-    document.getElementById('loadBtn').addEventListener('click', handleLoadProject);
-    document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
-    document.getElementById('newBtn').addEventListener('click', handleNewProject);
-    document.getElementById('searchInput').addEventListener('input', (e) => handleSearch(e.target.value));
-    document.getElementById('addCircuitBtn').addEventListener('click', ui.addCircuit);
-    document.getElementById('circuits-container').addEventListener('click', e => { if (e.target.classList.contains('remove-btn')) { ui.removeCircuit(e.target.dataset.circuitId); } });
-    document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
-    document.getElementById('pdfBtn').addEventListener('click', handleGeneratePdf);
-    document.getElementById('regCpf').addEventListener('input', utils.mascaraCPF);
-    document.getElementById('regTelefone').addEventListener('input', utils.mascaraCelular);
-    document.getElementById('editCpf').addEventListener('input', utils.mascaraCPF);
-    document.getElementById('editTelefone').addEventListener('input', utils.mascaraCelular);
-    document.getElementById('tipoDocumento').addEventListener('change', utils.atualizarMascaraDocumento);
-    document.getElementById('documento').addEventListener('input', utils.aplicarMascara);
-    document.getElementById('telefone').addEventListener('input', utils.mascaraTelefone);
-    document.getElementById('celular').addEventListener('input', utils.mascaraCelular);
-    document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
-    document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
-    document.getElementById('adminUserList').addEventListener('click', handleAdminUserActions);
-    document.getElementById('editUserForm').addEventListener('submit', handleUpdateUser);
-    document.getElementById('adminProjectsTableBody').addEventListener('click', handleAdminProjectActions);
 }
 
 async function handleRegister(event) {
@@ -166,12 +122,15 @@ async function handleSearch(term = '') {
 }
 
 function handleCalculate() {
-    const results = utils.calcularTodosCircuitos();
-    if (results) { ui.renderReport(results); }
+    // Passa os dados técnicos para a função de cálculo
+    const results = utils.calcularTodosCircuitos(technicalData);
+    if (results) {
+        ui.renderReport(results);
+    }
 }
 
 function handleGeneratePdf() {
-    const results = utils.calcularTodosCircuitos();
+    const results = utils.calcularTodosCircuitos(technicalData);
     if(results) { ui.generatePdf(results, currentUserProfile); }
 }
 
@@ -216,12 +175,50 @@ async function handleAdminProjectActions(event) {
     }
 }
 
+// --- FUNÇÃO DE INICIALIZAÇÃO ---
+function main() {
+    setupEventListeners();
+    utils.atualizarMascaraDocumento();
+}
+
+// --- CONFIGURAÇÃO DOS EVENTOS ---
+function setupEventListeners() {
+    document.getElementById('loginBtn').addEventListener('click', handleLogin);
+    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+    document.getElementById('registerBtn').addEventListener('click', () => ui.openModal('registerModalOverlay'));
+    document.getElementById('registerForm').addEventListener('submit', handleRegister);
+    document.getElementById('forgotPasswordLink').addEventListener('click', (e) => { e.preventDefault(); ui.openModal('forgotPasswordModalOverlay'); });
+    document.getElementById('forgotPasswordForm').addEventListener('submit', handleForgotPassword);
+    document.getElementById('resetPasswordForm').addEventListener('submit', handleResetPassword);
+    document.querySelectorAll('.close-modal-btn').forEach(btn => { btn.addEventListener('click', (e) => ui.closeModal(e.target.dataset.modalId)); });
+    document.getElementById('saveBtn').addEventListener('click', handleSaveProject);
+    document.getElementById('loadBtn').addEventListener('click', handleLoadProject);
+    document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
+    document.getElementById('newBtn').addEventListener('click', handleNewProject);
+    document.getElementById('searchInput').addEventListener('input', (e) => handleSearch(e.target.value));
+    document.getElementById('addCircuitBtn').addEventListener('click', ui.addCircuit);
+    document.getElementById('circuits-container').addEventListener('click', e => { if (e.target.classList.contains('remove-btn')) { ui.removeCircuit(e.target.dataset.circuitId); } });
+    document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
+    document.getElementById('pdfBtn').addEventListener('click', handleGeneratePdf);
+    document.getElementById('regCpf').addEventListener('input', utils.mascaraCPF);
+    document.getElementById('regTelefone').addEventListener('input', utils.mascaraCelular);
+    document.getElementById('editCpf').addEventListener('input', utils.mascaraCPF);
+    document.getElementById('editTelefone').addEventListener('input', utils.mascaraCelular);
+    document.getElementById('tipoDocumento').addEventListener('change', utils.atualizarMascaraDocumento);
+    document.getElementById('documento').addEventListener('input', utils.aplicarMascara);
+    document.getElementById('telefone').addEventListener('input', utils.mascaraTelefone);
+    document.getElementById('celular').addEventListener('input', utils.mascaraCelular);
+    document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
+    document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
+    document.getElementById('adminUserList').addEventListener('click', handleAdminUserActions);
+    document.getElementById('editUserForm').addEventListener('submit', handleUpdateUser);
+    document.getElementById('adminProjectsTableBody').addEventListener('click', handleAdminProjectActions);
+}
+
 main(); // PONTO DE ENTRADA
 
 /**
- * VERSÃO FINAL do onAuthStateChange
- * Agora, ele só cuida da restauração da sessão (quando a página é recarregada)
- * e do logout. O login inicial é tratado manualmente pela função handleLogin.
+ * onAuthStateChange agora cuida da restauração da sessão (quando a página é recarregada).
  */
 supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'INITIAL_SESSION') {
@@ -230,11 +227,15 @@ supabase.auth.onAuthStateChange(async (event, session) => {
             if (userProfile && userProfile.is_approved) {
                 currentUserProfile = userProfile;
                 ui.showAppView(currentUserProfile);
+                
+                // Também busca os dados técnicos ao restaurar a sessão
+                technicalData = await api.fetchTechnicalData();
                 handleSearch();
             }
         }
     } else if (event === 'SIGNED_OUT') {
         currentUserProfile = null;
+        technicalData = null; // Limpa os dados técnicos
         ui.showLoginView();
     } else if (event === 'PASSWORD_RECOVERY') {
         ui.showResetPasswordView();
