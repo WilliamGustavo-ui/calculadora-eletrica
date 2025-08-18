@@ -287,7 +287,7 @@ async function handleLoadProject() {
         } else {
             ui.clearProjectClientInfo();
         }
-        alert(`Obra "${project.project_name}" carregada.`);
+        alert(`Obra "${project.name}" carregada.`);
     }
 }
 
