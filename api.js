@@ -1,3 +1,5 @@
+// Arquivo: api.js
+
 import { supabase } from './supabaseClient.js';
 
 // --- FUNÇÕES DE PROJETO (OBRAS) ---
@@ -6,10 +8,8 @@ export async function fetchProjects(searchTerm, user) {
     let query;
 
     if (user.is_admin) {
-        // Admin vê todos os projetos
         query = supabase.from('projects').select('*, client:clients(name), profile:profiles(nome)');
     } else {
-        // Usuário comum vê apenas projetos de clientes aos quais ele tem acesso
         const { data: permissions, error: permError } = await supabase
             .from('client_user_permissions')
             .select('client_id')
@@ -31,16 +31,28 @@ export async function fetchProjects(searchTerm, user) {
     if (error) console.error('Erro ao buscar projetos:', error);
     return data || [];
 }
-export async function fetchProjectById(projectId) { /* ...código existente... */ }
+export async function fetchProjectById(projectId) {
+    const { data, error } = await supabase.from('projects').select('*').eq('id', projectId).single();
+    if (error) console.error('Erro ao buscar projeto por ID:', error.message);
+    return data;
+}
 export async function saveProject(projectData, projectId) {
-    // Lógica para gerar código da obra se for um novo projeto
+    let result;
     if (!projectId && !projectData.project_code) {
         const { count } = await supabase.from('projects').select('*', { count: 'exact', head: true });
         projectData.project_code = `OBRA-${String((count || 0) + 1).padStart(4, '0')}`;
     }
-    // ...resto da função saveProject existente...
+    if (projectId) {
+        result = await supabase.from('projects').update(projectData).eq('id', projectId).select().single();
+    } else {
+        result = await supabase.from('projects').insert(projectData).select().single();
+    }
+    return result;
 }
-export async function deleteProject(projectId) { /* ...código existente... */ }
+export async function deleteProject(projectId) {
+    const { error } = await supabase.from('projects').delete().eq('id', projectId);
+    return { error };
+}
 export async function transferProjectClient(projectId, newClientId) {
     const { error } = await supabase.from('projects').update({ client_id: newClientId }).eq('id', projectId);
     return { error };
@@ -54,7 +66,6 @@ export async function fetchClients(searchTerm, user) {
     if (user.is_admin) {
         query = supabase.from('clients').select('*');
     } else {
-        // Junta com a tabela de permissões para pegar apenas os clientes permitidos
         const { data: permissions, error: permError } = await supabase
             .from('client_user_permissions')
             .select('client_id')
@@ -78,12 +89,13 @@ export async function fetchClients(searchTerm, user) {
 
 export async function saveClient(clientData, clientId) {
     let result;
+    if (!clientId && !clientData.client_code) {
+        const { count } = await supabase.from('clients').select('*', { count: 'exact', head: true });
+        clientData.client_code = `CLI-${String((count || 0) + 1).padStart(4, '0')}`;
+    }
     if (clientId) {
         result = await supabase.from('clients').update(clientData).eq('id', clientId).select().single();
     } else {
-        // Gera código do cliente
-        const { count } = await supabase.from('clients').select('*', { count: 'exact', head: true });
-        clientData.client_code = `CLI-${String((count || 0) + 1).padStart(4, '0')}`;
         result = await supabase.from('clients').insert(clientData).select().single();
     }
     return result;
@@ -102,11 +114,9 @@ export async function getClientUserPermissions(clientId) {
 }
 
 export async function updateClientUserPermissions(clientId, userIds) {
-    // 1. Deleta todas as permissões existentes para este cliente
     const { error: deleteError } = await supabase.from('client_user_permissions').delete().eq('client_id', clientId);
     if (deleteError) return { error: deleteError };
 
-    // 2. Insere as novas permissões
     if (userIds.length > 0) {
         const newPermissions = userIds.map(userId => ({ client_id: clientId, user_id: userId }));
         const { error: insertError } = await supabase.from('client_user_permissions').insert(newPermissions);
@@ -115,8 +125,50 @@ export async function updateClientUserPermissions(clientId, userIds) {
     return { error: null };
 }
 
-// --- FUNÇÕES DE USUÁRIO (Existentes) ---
-export async function fetchAllUsers() { /* ...código existente... */ }
-export async function approveUser(userId) { /* ...código existente... */ }
-export async function updateUserProfile(userId, data) { /* ...código existente... */ }
-// ... e o resto das suas funções de API ...
+// --- FUNÇÕES DE USUÁRIO ---
+export async function fetchAllUsers() {
+    const { data, error } = await supabase.from('profiles').select('*').order('nome');
+    if (error) console.error('Erro ao buscar usuários:', error.message);
+    return data || [];
+}
+export async function approveUser(userId) {
+    const { error } = await supabase.from('profiles').update({ is_approved: true }).eq('id', userId);
+    return { error };
+}
+export async function updateUserProfile(userId, profileData) {
+    const { error } = await supabase.from('profiles').update(profileData).eq('id', userId);
+    return { error };
+}
+
+
+// --- FUNÇÃO PARA BUSCAR DADOS TÉCNICOS ---
+export async function fetchTechnicalData() {
+    try {
+        const [disjuntoresRes, cabosRes, eletrodutosRes, k1Res, k2Res, k3Res] = await Promise.all([
+            supabase.from('disjuntores').select('*'),
+            supabase.from('cabos').select('*'),
+            supabase.from('eletrodutos').select('*'),
+            supabase.from('fatores_k1_temperatura').select('*'),
+            supabase.from('fatores_k2_solo').select('*'),
+            supabase.from('fatores_k3_agrupamento').select('*')
+        ]);
+
+        const errors = [disjuntoresRes, cabosRes, eletrodutosRes, k1Res, k2Res, k3Res].map(res => res.error).filter(Boolean);
+        if (errors.length > 0) {
+            throw new Error('Falha ao buscar dados técnicos: ' + errors.map(e => e.message).join(', '));
+        }
+
+        return {
+            disjuntores: disjuntoresRes.data,
+            cabos: cabosRes.data,
+            eletrodutos: eletrodutosRes.data,
+            fatores_k1: k1Res.data,
+            fatores_k2: k2Res.data,
+            fatores_k3: k3Res.data,
+        };
+    } catch (error) {
+        console.error(error.message);
+        alert(error.message);
+        return null;
+    }
+}

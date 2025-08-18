@@ -263,8 +263,7 @@ async function handleLinkClientToProject(event) {
     
     const foundClients = await api.fetchClients(searchTerm, currentUserProfile);
     if (foundClients.length === 1) {
-        const client = foundClients[0];
-        ui.linkClientToProjectForm(client);
+        ui.linkClientToProjectForm(foundClients[0]);
     } else {
         ui.clearProjectClientInfo();
         if (searchTerm) {
@@ -280,7 +279,7 @@ async function handleSaveProject() {
     
     const clientSearchValue = document.getElementById('clientSearch').value.trim();
     const allClients = await api.fetchClients('', { is_admin: true });
-    const linkedClient = allClients.find(c => c.client_code === clientSearchValue || c.name === clientSearchValue || c.document_number === clientSearchValue);
+    const linkedClient = allClients.find(c => c.client_code === clientSearchValue);
 
     const mainData = {};
     document.querySelectorAll('#main-form input, #main-form select').forEach(el => mainData[el.id] = el.value);
@@ -317,7 +316,6 @@ async function handleSaveProject() {
 async function handleLoadProject() {
     const projectId = document.getElementById('savedProjectsSelect').value;
     if (!projectId) return;
-    
     const project = await api.fetchProjectById(projectId);
     if (project) {
         ui.populateFormWithProjectData(project);
@@ -356,6 +354,7 @@ async function handleSearch(term = '') {
     ui.populateProjectList(projects);
 }
 
+
 // --- DEMAIS HANDLERS ---
 function handleCalculate() {
     const results = utils.calcularTodosCircuitos(technicalData);
@@ -392,7 +391,6 @@ async function handleUpdateUser(event) {
     if (error) { alert("Erro ao atualizar usuário: " + error.message); }
     else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); showAdminPanel(); }
 }
-
 async function handleAdminProjectActions(event) {
     const target = event.target;
     if (!target.classList.contains('transfer-btn')) return;
@@ -401,7 +399,13 @@ async function handleAdminProjectActions(event) {
 
     if (target.classList.contains('transfer-user-btn')) {
         const newOwnerId = target.previousElementSibling.value;
-        // Lógica para transferir usuário...
+        const { error } = await api.transferProjectOwner(projectId, newOwnerId); // Supondo que esta função exista em api.js
+        if(error) {
+            alert("Erro ao transferir proprietário da obra: " + error.message);
+        } else {
+            alert("Proprietário da obra alterado com sucesso!");
+            showManageProjectsPanel();
+        }
     }
     
     if (target.classList.contains('transfer-client-btn')) {
@@ -420,5 +424,58 @@ async function handleAdminProjectActions(event) {
     }
 }
 
-// PONTO DE ENTRADA
-main();
+
+// --- HANDLERS DE CADASTRO (EXISTENTES) ---
+async function handleRegister(event) {
+    event.preventDefault();
+    const email = document.getElementById('regEmail').value;
+    const password = document.getElementById('regPassword').value;
+    const details = {
+        nome: document.getElementById('regNome').value,
+        cpf: document.getElementById('regCpf').value,
+        telefone: document.getElementById('regTelefone').value,
+        crea: document.getElementById('regCrea').value,
+        email: email
+    };
+    const { error } = await auth.signUpUser(email, password, details);
+    if (!error) {
+        alert('Cadastro realizado com sucesso! Aguarde a aprovação de um administrador.');
+        ui.closeModal('registerModalOverlay');
+        event.target.reset();
+    }
+}
+async function handleForgotPassword(event) {
+    event.preventDefault();
+    const email = document.getElementById('forgotEmail').value;
+    const { error } = await auth.sendPasswordResetEmail(email);
+    if (error) {
+        alert("Erro ao enviar e-mail: " + error.message);
+    } else {
+        alert("Se o e-mail estiver cadastrado, um link de redefinição foi enviado!");
+        ui.closeModal('forgotPasswordModalOverlay');
+        event.target.reset();
+    }
+}
+async function handleResetPassword(event) {
+    event.preventDefault();
+    const newPassword = document.getElementById('newPassword').value;
+    if (!newPassword || newPassword.length < 6) {
+        alert("A senha precisa ter no mínimo 6 caracteres.");
+        return;
+    }
+    const { error } = await auth.updatePassword(newPassword);
+    if (error) {
+        alert("Erro ao atualizar senha: " + error.message);
+    } else {
+        alert("Senha atualizada com sucesso! A página será recarregada. Por favor, faça o login com sua nova senha.");
+        window.location.hash = '';
+        window.location.reload();
+    }
+}
+
+
+/**
+ * PONTO DE ENTRADA E GARANTIA DE EXECUÇÃO
+ * A função main() só será chamada após o DOM estar completamente carregado.
+ */
+document.addEventListener('DOMContentLoaded', main);
