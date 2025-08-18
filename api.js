@@ -28,11 +28,6 @@ export async function saveProject(projectData, projectId) {
     if (projectId) {
         result = await supabase.from('projects').update(projectData).eq('id', projectId).select().single();
     } else {
-        if (!projectData.main_data.codigoCliente) {
-            const { count, error } = await supabase.from('projects').select('*', { count: 'exact', head: true });
-            if (error) { throw new Error("Erro ao gerar código do cliente"); }
-            projectData.main_data.codigoCliente = 'C-' + String((count || 0) + 1).padStart(3, '0');
-        }
         result = await supabase.from('projects').insert(projectData).select().single();
     }
     return result;

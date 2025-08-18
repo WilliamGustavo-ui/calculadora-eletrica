@@ -90,7 +90,6 @@ async function handleSaveProject() {
         if (error) throw error;
         alert(`Obra "${projectName}" salva com sucesso!`);
         document.getElementById('currentProjectId').value = data.id;
-        document.getElementById('codigoCliente').value = data.main_data.codigoCliente;
         await handleSearch();
     } catch (error) { alert('Erro ao salvar obra: ' + error.message); }
 }
