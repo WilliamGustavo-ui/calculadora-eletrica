@@ -141,7 +141,7 @@ async function loadInitialData() {
 
 async function handleShowClientManagement() {
     ui.openModal('clientManagementModalOverlay');
-    handleNewClient(); // Garante que o form comece limpo
+    handleNewClient(); 
     await handleSearchClients();
 }
 
@@ -153,7 +153,7 @@ async function handleSearchClients(searchTerm = '') {
 function handleNewClient() {
     currentClient = null;
     ui.resetClientForm();
-    ui.populateClientList(clients, null); // Desmarca a seleção na lista
+    ui.populateClientList(clients, null);
 }
 
 async function handleLoadClient(event) {
@@ -164,7 +164,7 @@ async function handleLoadClient(event) {
     currentClient = clients.find(c => c.id == clientId);
     
     if (currentClient) {
-        ui.populateClientList(clients, currentClient); // Atualiza a lista para mostrar a seleção
+        ui.populateClientList(clients, currentClient);
         ui.populateClientForm(currentClient);
         
         const projects = await api.fetchProjects(null, currentUserProfile);
@@ -279,7 +279,8 @@ async function handleSaveProject() {
     if (!projectName) { alert("Por favor, insira um 'Nome da Obra' para salvar."); return; }
     
     const clientSearchValue = document.getElementById('clientSearch').value.trim();
-    const linkedClient = clients.find(c => c.client_code === clientSearchValue || c.name === clientSearchValue || c.document_number === clientSearchValue);
+    const allClients = await api.fetchClients('', { is_admin: true });
+    const linkedClient = allClients.find(c => c.client_code === clientSearchValue || c.name === clientSearchValue || c.document_number === clientSearchValue);
 
     const mainData = {};
     document.querySelectorAll('#main-form input, #main-form select').forEach(el => mainData[el.id] = el.value);
@@ -321,7 +322,7 @@ async function handleLoadProject() {
     if (project) {
         ui.populateFormWithProjectData(project);
         if (project.client_id) {
-            const allClients = await api.fetchClients('', { is_admin: true }); // Busca todos para garantir que encontre
+            const allClients = await api.fetchClients('', { is_admin: true });
             const client = allClients.find(c => c.id === project.client_id);
             if(client) ui.linkClientToProjectForm(client);
         } else {
@@ -372,4 +373,52 @@ async function showAdminPanel() {
 async function showManageProjectsPanel() {
     const projects = await api.fetchProjects(null, { is_admin: true });
     const allUsers = await api.fetchAllUsers();
-    const allClients = await api.fetc
+    const allClients = await api.fetchClients('', { is_admin: true });
+    ui.populateProjectsPanel_Admin(projects, allUsers, allClients);
+    ui.openModal('manageProjectsModalOverlay');
+}
+async function handleAdminUserActions(event) {
+    const target = event.target;
+    const userId = target.dataset.userId;
+    if (target.classList.contains('approve-user-btn')) { await api.approveUser(userId); showAdminPanel(); }
+    if (target.classList.contains('edit-user-btn')) { const users = await api.fetchAllUsers(); const user = users.find(u => u.id === userId); if (user) ui.populateEditUserModal(user); }
+    if (target.classList.contains('remove-user-btn')) { alert("A remoção completa de usuários (auth) deve ser feita no painel do Supabase. Esta ação não é suportada diretamente via API por segurança."); }
+}
+async function handleUpdateUser(event) {
+    event.preventDefault();
+    const userId = document.getElementById('editUserId').value;
+    const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, };
+    const { error } = await api.updateUserProfile(userId, data);
+    if (error) { alert("Erro ao atualizar usuário: " + error.message); }
+    else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); showAdminPanel(); }
+}
+
+async function handleAdminProjectActions(event) {
+    const target = event.target;
+    if (!target.classList.contains('transfer-btn')) return;
+
+    const projectId = target.dataset.projectId;
+
+    if (target.classList.contains('transfer-user-btn')) {
+        const newOwnerId = target.previousElementSibling.value;
+        // Lógica para transferir usuário...
+    }
+    
+    if (target.classList.contains('transfer-client-btn')) {
+        const newClientId = target.previousElementSibling.value;
+        if (!newClientId) {
+            alert("Selecione um cliente de destino.");
+            return;
+        }
+        const { error } = await api.transferProjectClient(projectId, newClientId);
+        if (error) {
+            alert("Erro ao transferir obra de cliente: " + error.message);
+        } else {
+            alert("Obra transferida para o novo cliente!");
+            showManageProjectsPanel();
+        }
+    }
+}
+
+// PONTO DE ENTRADA
+main();
