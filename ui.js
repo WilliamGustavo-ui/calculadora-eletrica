@@ -80,8 +80,6 @@ function renumberCircuits() {
     });
 }
 
-// ... O restante do arquivo (getCircuitHTML, populate, etc.) continua o mesmo que você me enviou ...
-// Abaixo está o restante do seu arquivo ui.js para garantir que esteja completo
 function initializeCircuitListeners(id) {
     const tipoCircuito = document.getElementById(`tipoCircuito-${id}`);
     const fases = document.getElementById(`fases-${id}`);
@@ -269,84 +267,140 @@ export function renderReport(allResults){
     document.getElementById('report').textContent = reportText.trim();
 }
 
+/**
+ * VERSÃO FINAL DA FUNÇÃO generatePdf
+ * Contém todos os ajustes de layout e a nova tabela de resumo.
+ */
 export function generatePdf(allResults, currentUserProfile) {
     if (!allResults) return;
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    let yPos = 15;
-    doc.setFont('Roboto', 'normal');
-    const addText = (text, indent = 10) => {
-        if (yPos > 280) { doc.addPage(); yPos = 15; }
-        doc.text(text, indent, yPos);
-        yPos += 5;
+    const doc = new jsPDF('p', 'mm', 'a4');
+    let yPos = 20;
+    const leftMargin = 15;
+    const valueMargin = 50; // Alinhamento para os valores da primeira coluna
+    const rightMargin = 110;
+    const rightValueMargin = 135; // Alinhamento para os valores da segunda coluna
+
+    doc.setFont('helvetica', 'normal');
+    
+    // --- FUNÇÕES AUXILIARES PARA DESENHAR O LAYOUT ---
+    const addTitle = (title) => {
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title, 105, yPos, { align: 'center' });
+        yPos += 12;
     };
-    doc.setFontSize(10);
-    const formatLine = (label, value) => (label + ':').padEnd(20, ' ') + (value || 'Nao informado');
-    doc.setFont('Roboto', 'bold');
-    doc.setFontSize(16);
-    doc.text("Relatorio de Projeto Eletrico", 105, yPos, { align: 'center' });
-    yPos += 10;
+
+    const addSection = (title) => {
+        if (yPos > 260) { doc.addPage(); yPos = 20; }
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title, leftMargin, yPos);
+        yPos += 7;
+    };
+
+    const addLineItem = (label, value) => {
+        if (yPos > 270) { doc.addPage(); yPos = 20; }
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(label, leftMargin, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(value || 'Nao informado'), valueMargin, yPos);
+        yPos += 6;
+    };
+    
+    const addTwoColumnLine = (label1, value1, label2, value2) => {
+        if (yPos > 270) { doc.addPage(); yPos = 20; }
+        doc.setFontSize(10);
+        // Coluna 1
+        doc.setFont('helvetica', 'bold');
+        doc.text(label1, leftMargin, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(value1 || 'Nao informado'), valueMargin, yPos);
+        // Coluna 2
+        doc.setFont('helvetica', 'bold');
+        doc.text(label2, rightMargin, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(value2 || 'Nao informado'), rightValueMargin, yPos);
+        yPos += 6;
+    };
+
+    // --- PÁGINA 1: RESUMO ---
+    addTitle("RELATORIO DE PROJETO ELETRICO");
+
     const dadosCliente = allResults[0].dados;
-    doc.setFont('Roboto', 'bold'); addText("-- DADOS DA OBRA E CLIENTE --");
-    doc.setFont('Roboto', 'normal');
-    addText(formatLine('Cliente', dadosCliente.cliente));
-    addText(formatLine(`Documento`, `${dadosCliente.tipoDocumento} - ${dadosCliente.documento}`));
-    addText(formatLine('Contato', dadosCliente.celular || dadosCliente.telefone));
-    addText(formatLine('E-mail', dadosCliente.email));
-    addText(formatLine('Obra', dadosCliente.obra));
-    addText(formatLine('Endereco', dadosCliente.endereco));
-    addText(formatLine('Area da Obra', `${dadosCliente.areaObra || 'N/A'} m2`));
+    
+    addSection("DADOS DA OBRA E CLIENTE");
+    addTwoColumnLine("Cliente:", dadosCliente.cliente, "Obra:", dadosCliente.obra);
+    addTwoColumnLine("Documento:", dadosCliente.documento, "Endereco:", dadosCliente.endereco);
+    addTwoColumnLine("Contato (Celular):", dadosCliente.celular, "Area da Obra:", `${dadosCliente.areaObra || 'N/A'} m²`);
+    addLineItem("Telefone:", dadosCliente.telefone); // Telefone em linha separada
+    addLineItem("E-mail:", dadosCliente.email); // E-mail alinhado
     yPos += 5;
-    const respTecnico = document.getElementById('respTecnico').value;
-    const titulo = document.getElementById('titulo').value;
-    const crea = document.getElementById('crea').value;
-    if (respTecnico || titulo || crea) {
-        doc.setFont('Roboto', 'bold'); addText("-- RESPONSAVEL TECNICO --");
-        doc.setFont('Roboto', 'normal');
-        addText(formatLine('Nome', respTecnico));
-        addText(formatLine('Titulo', titulo));
-        addText(formatLine('CREA', crea));
-        yPos += 5;
-    }
-    const generatingUserName = currentUserProfile?.nome || 'Usuário';
-    doc.setFont('Roboto', 'bold'); addText("-- INFORMACOES DO RELATORIO --");
-    doc.setFont('Roboto', 'normal');
-    addText(formatLine('Gerado em', (new Date).toLocaleString('pt-BR')));
-    addText(formatLine('Gerado por', generatingUserName));
+
+    addSection("INFORMACOES DO RESPONSÁVEL TÉCNICO");
+    addTwoColumnLine("Nome:", document.getElementById('respTecnico').value, "CREA:", document.getElementById('crea').value);
+    addLineItem("Título:", document.getElementById('titulo').value); // Título alinhado
     yPos += 5;
-    const head = [['Ckt', 'Nome', 'Pot.(W)', 'Tensao(V)', 'Fases', 'Cabo', 'Disjuntor', 'DR', 'DPS']];
+
+    addSection("INFORMACOES DO RELATORIO");
+    const dataFormatada = new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(' ', ' - hora: ').replace(',', '');
+    addTwoColumnLine("Gerado em:", dataFormatada, "Gerado por:", currentUserProfile?.nome || 'Administrador');
+    yPos += 5;
+
+    // --- AJUSTE DA TABELA DE RESUMO ---
+    addSection("RESUMO DO MEMORIAL");
+    
+    const head = [['Ckt', 'Nome', 'Tensão/Fases', 'Disjuntor', 'DR', 'DPS', 'Cabo', 'Eletroduto']];
     const body = allResults.map(r => [
         r.dados.id,
         r.dados.nomeCircuito,
-        r.calculos.potenciaDemandada.toFixed(2),
-        r.dados.tensaoV,
-        r.dados.fases,
-        r.calculos.bitolaRecomendadaMm2 + 'mm2',
+        `${r.dados.tensaoV}V - ${r.dados.fases}`,
         r.calculos.disjuntorRecomendado.nome,
         r.dados.requerDR ? 'Sim' : 'Nao',
-        r.dados.classeDPS
+        r.dados.classeDPS,
+        `${r.calculos.bitolaRecomendadaMm2} mm²`,
+        r.calculos.dutoRecomendado
     ]);
-    doc.autoTable({ startY: yPos, head: head, body: body, theme: 'grid', styles: { font: "Roboto", fontSize: 8 } });
+    
+    doc.autoTable({
+        startY: yPos,
+        head: head,
+        body: body,
+        theme: 'grid',
+        headStyles: { fillColor: [44, 62, 80] },
+        styles: { font: "helvetica", fontSize: 8 }
+    });
+    yPos = doc.lastAutoTable.finalY + 10;
+    
+    // --- PÁGINAS DE DETALHES: MEMORIAL DE CÁLCULO ---
     allResults.forEach(result => {
         doc.addPage();
-        yPos = 15;
+        yPos = 20;
         const { dados, calculos } = result;
-        doc.setFont('Roboto', 'bold');
-        doc.setFontSize(12);
-        doc.text(`MEMORIAL DE CALCULO - CIRCUITO ${dados.id}: ${dados.nomeCircuito}`, 10, yPos);
-        yPos += 10;
-        const addSection = (title, lines) => {
-            doc.setFont('Roboto', 'bold');
-            doc.setFontSize(10);
-            addText(title);
-            doc.setFont('Roboto', 'normal');
-            lines.forEach(line => addText(line, 15));
-        };
-        addSection("-- CARGA E DEMANDA --", [`Potencia Instalada: ${calculos.potenciaInstalada.toFixed(2)} W`, `Corrente Instalada: ${calculos.correnteInstalada.toFixed(2)} A`, `Fator de Demanda: ${dados.fatorDemanda}`, `Potencia Demandada: ${calculos.potenciaDemandada.toFixed(2)} W`, `Corrente Demandada (Ib): ${calculos.correnteDemandada.toFixed(2)} A`]);
-        yPos += 3;
-        addSection("-- DIMENSIONAMENTO DO CABO --", [`Material / Isolacao: ${dados.materialCabo} / ${dados.tipoIsolacao}`, `Metodo de Instalacao: ${dados.metodoInstalacao}`, `Fatores de Correcao (K): K1=${calculos.fatorK1.toFixed(2)}, K2=${calculos.fatorK2.toFixed(2)}, K3=${calculos.fatorK3.toFixed(2)}`, `Corrente Corrigida (I'): ${calculos.correnteCorrigidaA.toFixed(2)} A`, `Bitola Recomendada: ${calculos.bitolaRecomendadaMm2} mm2`, `Queda de Tensao (DV): ${calculos.quedaTensaoCalculada.toFixed(2)} % (Limite: ${dados.limiteQuedaTensao.toFixed(2)} %)`]);
-        yPos += 3;
-        addSection("-- PROTECOES RECOMENDADAS --", [`Disjuntor (${dados.tipoDisjuntor}): ${calculos.disjuntorRecomendado.nome} (Icc: ${calculos.disjuntorRecomendado.icc} kA)`, `Corrente Max. Cabo (Iz): ${calculos.correnteMaximaCabo.toFixed(2)} A`, `Protecao DR 30mA: ${dados.requerDR ? 'Sim' : 'Nao'}`, `Protecao DPS: ${dados.classeDPS !== 'Nenhum' ? 'Sim, ' + dados.classeDPS : 'Nao'}`, `Eletroduto (aprox.): ${calculos.dutoRecomendado} (${calculos.numCondutores} condutores)`]);
+
+        addTitle(`MEMORIAL DE CÁLCULO - CIRCUITO ${dados.id}: ${dados.nomeCircuito}`);
+
+        addSection("-- CARGA E DEMANDA --");
+        addTwoColumnLine("Potência Instalada:", `${calculos.potenciaInstalada.toFixed(2)} W`, "Fator de Demanda:", dados.fatorDemanda);
+        addTwoColumnLine("Corrente Instalada:", `${calculos.correnteInstalada.toFixed(2)} A`, "Fator de Potência:", dados.fatorPotencia);
+        addTwoColumnLine("Potência Demandada:", `${calculos.potenciaDemandada.toFixed(2)} W`, "Corrente Demandada:", `${calculos.correnteDemandada.toFixed(2)} A`);
+        addTwoColumnLine("Corrente Corrigida (I'):", `${calculos.correnteCorrigidaA.toFixed(2)} A`, "Fatores de Correção:", `K1=${calculos.fatorK1.toFixed(2)}, K2=${calculos.fatorK2.toFixed(2)}, K3=${calculos.fatorK3.toFixed(2)}`);
+        addTwoColumnLine("Queda de Tensão:", `${calculos.quedaTensaoCalculada.toFixed(2)}% (Limite: ${dados.limiteQuedaTensao}%)`, "Tensão na carga:", `${(dados.tensaoV * (1 - calculos.quedaTensaoCalculada / 100)).toFixed(2)} V`);
+        yPos += 5;
+
+        addSection("-- DIMENSIONAMENTO DE INFRA --");
+        addTwoColumnLine("Material / Isolação:", `${dados.materialCabo} / ${dados.tipoIsolacao}`, "Método de Instalação:", dados.metodoInstalacao);
+        addTwoColumnLine("Bitola Recomendada:", `${calculos.bitolaRecomendadaMm2} mm²`, "Corrente Max. Cabo:", `${calculos.correnteMaximaCabo.toFixed(2)} A`);
+        // --- AJUSTE DE ALINHAMENTO E ADIÇÃO DA DISTÂNCIA ---
+        addTwoColumnLine("Eletroduto (aprox.):", `${calculos.dutoRecomendado} (${calculos.numCondutores} condutores)`, "Distância:", `${dados.comprimentoM} m`);
+        yPos += 5;
+
+        addSection("-- PROTECOES RECOMENDADAS --");
+        addLineItem("Disjuntor:", `${dados.tipoDisjuntor}: ${calculos.disjuntorRecomendado.nome} (Icc: ${calculos.disjuntorRecomendado.icc} kA)`);
+        addLineItem("Proteção DR:", dados.requerDR ? `Sim (${calculos.disjuntorRecomendado.nome} / 30mA)` : 'Não');
+        addLineItem("Proteção DPS:", dados.classeDPS !== 'Nenhum' ? `Sim, ${dados.classeDPS}` : 'Não');
     });
+
     doc.save(`Relatorio_${document.getElementById('obra').value || 'Projeto'}.pdf`);
 }
