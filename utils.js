@@ -14,7 +14,7 @@ export function atualizarMascaraDocumento(){const tipoDoc=document.getElementByI
 // FUNÇÕES DE CÁLCULO ATUALIZADAS
 /**
  * A função agora recebe os dados técnicos (technicalData) como um parâmetro,
- * em vez de usar as constantes que foram removidas.
+ * e valida o fator de demanda para circuitos de aquecimento.
  */
 export function calcularTodosCircuitos(technicalData){
     if (!technicalData) {
@@ -29,9 +29,16 @@ export function calcularTodosCircuitos(technicalData){
         return null;
     }
     
-    circuitBlocks.forEach(block=>{
+    // Usando um loop 'for...of' para permitir a interrupção em caso de erro.
+    for (const block of circuitBlocks) {
         const id=block.dataset.id;
         const dados={id:id,cliente:document.getElementById('cliente').value,tipoDocumento:document.getElementById('tipoDocumento').value,documento:document.getElementById('documento').value,telefone:document.getElementById('telefone').value,celular:document.getElementById('celular').value,email:document.getElementById('email').value,obra:document.getElementById('obra').value,endereco:document.getElementById('endereco').value,areaObra:document.getElementById('areaObra').value,nomeCircuito:document.getElementById(`nomeCircuito-${id}`).value,tipoCircuito:document.getElementById(`tipoCircuito-${id}`).value,potenciaW:parseFloat(document.getElementById(`potenciaW-${id}`).value),potenciaCV:parseFloat(document.getElementById(`potenciaCV-${id}`).value),fatorDemanda:parseFloat(document.getElementById(`fatorDemanda-${id}`).value),fases:document.getElementById(`fases-${id}`).value,tipoLigacao:document.getElementById(`tipoLigacao-${id}`).value,tensaoV:parseFloat(document.getElementById(`tensaoV-${id}`).value),fatorPotencia:parseFloat(document.getElementById(`fatorPotencia-${id}`).value),comprimentoM:parseFloat(document.getElementById(`comprimentoM-${id}`).value),tipoIsolacao:document.getElementById(`tipoIsolacao-${id}`).value,materialCabo:document.getElementById(`materialCabo-${id}`).value,metodoInstalacao:document.getElementById(`metodoInstalacao-${id}`).value,temperaturaAmbienteC:parseInt(document.getElementById(`temperaturaAmbienteC-${id}`).value),resistividadeSolo:parseFloat(document.getElementById(`resistividadeSolo-${id}`).value),numCircuitosAgrupados:parseInt(document.getElementById(`numCircuitosAgrupados-${id}`).value),limiteQuedaTensao:parseFloat(document.getElementById(`limiteQuedaTensao-${id}`).value),tipoDisjuntor:document.getElementById(`tipoDisjuntor-${id}`).value,requerDR:document.getElementById(`requerDR-${id}`).checked,classeDPS:document.getElementById(`classeDPS-${id}`).value,};
+        
+        // --- NOVA REGRA DE VALIDAÇÃO ---
+        if (dados.tipoCircuito === 'aquecimento' && dados.fatorDemanda > 1) {
+            alert(`Erro no Circuito ${dados.id} (${dados.nomeCircuito}): O fator de demanda para circuitos de aquecimento não pode ser maior que 1.`);
+            return null; // Interrompe o cálculo
+        }
         
         if(dados.tipoCircuito==='motores')dados.potenciaW=dados.potenciaCV*735.5;
 
@@ -60,7 +67,7 @@ export function calcularTodosCircuitos(technicalData){
         const correnteCorrigidaA=correnteDemandada/(fatorK1*fatorK2*fatorK3);
         let bitolaRecomendadaMm2="Nao encontrada",quedaTensaoCalculada=0,resistenciaCabo=0,correnteMaximaCabo=0,disjuntorRecomendado={nome:"Coord. Inadequada",icc:0};
         
-        const listaDisjuntores = technicalData.disjuntores.filter(d => d.tipo === dados.tipoDisjuntor);
+        const listaDisjuntores = technicalData.disjuntores.filter(d => d.tipo === dados.tipoDisjuntor).sort((a, b) => a.corrente_a - b.corrente_a);
         const disjuntorCandidato = listaDisjuntores.find(d => d.corrente_a >= correnteDemandada);
 
         if(disjuntorCandidato){
@@ -68,7 +75,9 @@ export function calcularTodosCircuitos(technicalData){
             if(dados.tipoCircuito==='iluminacao')bitolaMinima=1.5;
             if(dados.tipoCircuito==='tug'||dados.tipoCircuito==='tue'||dados.tipoCircuito==='ar_condicionado')bitolaMinima=2.5;
 
-            const tabelaCaboSelecionada = technicalData.cabos.filter(c => c.material === dados.materialCabo && c.isolacao === dados.tipoIsolacao && c.secao_mm2 >= bitolaMinima);
+            const tabelaCaboSelecionada = technicalData.cabos
+                .filter(c => c.material === dados.materialCabo && c.isolacao === dados.tipoIsolacao && c.secao_mm2 >= bitolaMinima)
+                .sort((a, b) => a.secao_mm2 - b.secao_mm2);
             
             for(const cabo of tabelaCaboSelecionada){
                 const capacidadeConducao = cabo[`capacidade_${dados.metodoInstalacao.toLowerCase()}`] || 0;
@@ -103,8 +112,8 @@ export function calcularTodosCircuitos(technicalData){
                 dutoRecomendado = duto_obj.tamanho_nominal;
             }
         }
-
         allResults.push({dados,calculos:{potenciaInstalada,correnteInstalada,potenciaDemandada,correnteDemandada,fatorK1,fatorK2,fatorK3,correnteCorrigidaA,bitolaRecomendadaMm2,resistenciaCabo,quedaTensaoCalculada,correnteMaximaCabo,potenciaMaximaCabo,disjuntorRecomendado,numCondutores,dutoRecomendado}});
-    });
+    }
+    
     return allResults;
 }

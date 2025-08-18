@@ -100,7 +100,7 @@ function initializeCircuitListeners(id) {
     };
 
     tipoCircuito.addEventListener('change', () => {
-        potenciaWGroup.classList.toggle('hidden', tipoCircuito.value === 'motoores');
+        potenciaWGroup.classList.toggle('hidden', tipoCircuito.value === 'motores');
         potenciaCVGroup.classList.toggle('hidden', tipoCircuito.value !== 'motores');
     });
 
@@ -267,13 +267,18 @@ export function renderReport(allResults){
     document.getElementById('report').textContent = reportText.trim();
 }
 
+/**
+ * VERSÃO FINAL DA FUNÇÃO generatePdf
+ * Contém todos os ajustes de layout e a nova tabela de resumo.
+ */
 export function generatePdf(allResults, currentUserProfile) {
     if (!allResults) return;
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('p', 'mm', 'a4'); // Usando milímetros para precisão
-    let yPos = 20; // Posição vertical inicial
+    const doc = new jsPDF('p', 'mm', 'a4');
+    let yPos = 20;
     const leftMargin = 15;
-    const rightMargin = 110; // Início da segunda coluna
+    const valueMargin = 50;
+    const rightMargin = 110;
 
     doc.setFont('helvetica', 'normal');
     
@@ -293,13 +298,13 @@ export function generatePdf(allResults, currentUserProfile) {
         yPos += 7;
     };
 
-    const addLineItem = (label, value, valueX = leftMargin + 35) => {
+    const addLineItem = (label, value) => {
         if (yPos > 270) { doc.addPage(); yPos = 20; }
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.text(label, leftMargin, yPos);
         doc.setFont('helvetica', 'normal');
-        doc.text(String(value || 'Nao informado'), valueX, yPos);
+        doc.text(String(value || 'Nao informado'), valueMargin, yPos);
         yPos += 6;
     };
     
@@ -310,12 +315,12 @@ export function generatePdf(allResults, currentUserProfile) {
         doc.setFont('helvetica', 'bold');
         doc.text(label1, leftMargin, yPos);
         doc.setFont('helvetica', 'normal');
-        doc.text(String(value1 || 'Nao informado'), leftMargin + 45, yPos);
+        doc.text(String(value1 || 'Nao informado'), valueMargin, yPos);
         // Coluna 2
         doc.setFont('helvetica', 'bold');
         doc.text(label2, rightMargin, yPos);
         doc.setFont('helvetica', 'normal');
-        doc.text(String(value2 || 'Nao informado'), rightMargin + 45, yPos);
+        doc.text(String(value2 || 'Nao informado'), rightMargin + 25, yPos);
         yPos += 6;
     };
 
@@ -327,32 +332,34 @@ export function generatePdf(allResults, currentUserProfile) {
     addSection("DADOS DA OBRA E CLIENTE");
     addTwoColumnLine("Cliente:", dadosCliente.cliente, "Obra:", dadosCliente.obra);
     addTwoColumnLine("Documento:", dadosCliente.documento, "Endereco:", dadosCliente.endereco);
-    addTwoColumnLine("Contato:", `${dadosCliente.celular || ''} - ${dadosCliente.telefone || ''}`, "Area da Obra:", `${dadosCliente.areaObra || 'N/A'} m²`);
-    addLineItem("E-mail:", dadosCliente.email);
+    addTwoColumnLine("Contato (Celular):", dadosCliente.celular, "Area da Obra:", `${dadosCliente.areaObra || 'N/A'} m²`);
+    addLineItem("Telefone:", dadosCliente.telefone); // Telefone em linha separada
+    addLineItem("E-mail:", dadosCliente.email); // E-mail alinhado
     yPos += 5;
 
     addSection("INFORMACOES DO RESPONSÁVEL TÉCNICO");
     addTwoColumnLine("Nome:", document.getElementById('respTecnico').value, "CREA:", document.getElementById('crea').value);
-    addLineItem("Título:", document.getElementById('titulo').value);
+    addLineItem("Título:", document.getElementById('titulo').value); // Título alinhado
     yPos += 5;
 
     addSection("INFORMACOES DO RELATORIO");
-    const dataFormatada = new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(' ', ' - hora: ').replace(',', '');
-    addTwoColumnLine("Gerado em:", dataFormatada, "Gerado por:", currentUserProfile?.nome || 'Usuário');
+    const dataFormatada = new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(' ', ' - hora: ').replace(',', '');
+    addTwoColumnLine("Gerado em:", dataFormatada, "Gerado por:", currentUserProfile?.nome || 'Administrador');
     yPos += 5;
 
+    // --- AJUSTE DA TABELA DE RESUMO ---
     addSection("RESUMO DO MEMORIAL");
     
-    const head = [['Ckt', 'Nome', 'Pot.(W)', 'Tensao(V) Fases', 'Cabo', 'Disjuntor', 'DR', 'DPS']];
+    const head = [['Ckt', 'Nome', 'Tensão/Fases', 'Disjuntor', 'DR', 'DPS', 'Cabo', 'Eletroduto']];
     const body = allResults.map(r => [
         r.dados.id,
         r.dados.nomeCircuito,
-        r.calculos.potenciaDemandada.toFixed(2),
         `${r.dados.tensaoV}V - ${r.dados.fases}`,
-        r.calculos.bitolaRecomendadaMm2 + 'mm²',
         r.calculos.disjuntorRecomendado.nome,
         r.dados.requerDR ? 'Sim' : 'Nao',
-        r.dados.classeDPS
+        r.dados.classeDPS,
+        `${r.calculos.bitolaRecomendadaMm2} mm²`,
+        r.calculos.dutoRecomendado
     ]);
     
     doc.autoTable({
@@ -360,9 +367,10 @@ export function generatePdf(allResults, currentUserProfile) {
         head: head,
         body: body,
         theme: 'grid',
-        headStyles: { fillColor: [44, 62, 80] }, // Cor do cabeçalho
+        headStyles: { fillColor: [44, 62, 80] },
         styles: { font: "helvetica", fontSize: 8 }
     });
+    yPos = doc.lastAutoTable.finalY + 10;
     
     // --- PÁGINAS DE DETALHES: MEMORIAL DE CÁLCULO ---
     allResults.forEach(result => {
@@ -383,7 +391,8 @@ export function generatePdf(allResults, currentUserProfile) {
         addSection("-- DIMENSIONAMENTO DE INFRA --");
         addTwoColumnLine("Material / Isolação:", `${dados.materialCabo} / ${dados.tipoIsolacao}`, "Método de Instalação:", dados.metodoInstalacao);
         addTwoColumnLine("Bitola Recomendada:", `${calculos.bitolaRecomendadaMm2} mm²`, "Corrente Max. Cabo:", `${calculos.correnteMaximaCabo.toFixed(2)} A`);
-        addLineItem("Eletroduto (aprox.):", `${calculos.dutoRecomendado} (${calculos.numCondutores} condutores)`);
+        // --- AJUSTE DE ALINHAMENTO E ADIÇÃO DA DISTÂNCIA ---
+        addTwoColumnLine("Eletroduto (aprox.):", `${calculos.dutoRecomendado} (${calculos.numCondutores} condutores)`, "Distância:", `${dados.comprimentoM} m`);
         yPos += 5;
 
         addSection("-- PROTECOES RECOMENDADAS --");
