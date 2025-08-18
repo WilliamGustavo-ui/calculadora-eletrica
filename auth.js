@@ -2,34 +2,25 @@
 
 import { supabase } from './supabaseClient.js';
 
-/**
- * VERSÃO FINAL DA FUNÇÃO signInUser
- * Agora ela retorna o perfil do usuário se o login e a busca forem bem-sucedidos.
- */
 export async function signInUser(email, password) {
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (authError) {
-        alert('Erro no login: ' + authError.message);
-        return null;
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+        alert('Erro no login: ' + error.message);
+        return { user: null, profile: null };
     }
-
-    if (authData.user) {
+    if (data.user) {
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', authData.user.id)
+            .eq('id', data.user.id)
             .single();
-
         if (profileError) {
-            alert('Erro ao buscar perfil do usuário: ' + profileError.message);
-            // Mesmo com erro de perfil, deslogamos para garantir um estado limpo.
-            await supabase.auth.signOut();
-            return null;
+            alert('Erro ao buscar perfil: ' + profileError.message);
+            return { user: data.user, profile: null };
         }
-        return profile; // Retorna o perfil completo em caso de sucesso
+        return { user: data.user, profile };
     }
-    return null;
+    return { user: null, profile: null };
 }
 
 export async function signUpUser(email, password, details) {
@@ -65,14 +56,21 @@ export async function getSession() {
     return profile;
 }
 
-// --- FUNÇÕES DE REDEFINIÇÃO DE SENHA ---
+// --- NOVAS FUNÇÕES ---
+
+/**
+ * Envia o e-mail de redefinição de senha para o usuário.
+ */
 export async function sendPasswordResetEmail(email) {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://williamguto0911-design.github.io/calculadora-eletrica/index.html',
+        redirectTo: 'https://williamguto0911-design.github.io/calculadora-eletrica/',
     });
     return { error };
 }
 
+/**
+ * Atualiza a senha do usuário logado (autenticado pelo link de redefinição).
+ */
 export async function updatePassword(newPassword) {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     return { error };
