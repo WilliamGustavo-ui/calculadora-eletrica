@@ -6,21 +6,17 @@ import * as api from './api.js';
 import * as utils from './utils.js';
 import { supabase } from './supabaseClient.js';
 
-// --- ESTADO DA APLICAÇÃO ---
 let currentUserProfile = null;
 let technicalData = null;
-let clients = []; // Armazena a lista de clientes carregada
-let currentClient = null; // Armazena o cliente atualmente selecionado no modal
+let clients = [];
+let currentClient = null;
 
-// --- FUNÇÃO DE INICIALIZAÇÃO ---
 function main() {
     setupEventListeners();
     utils.atualizarMascaraDocumento();
 }
 
-// --- CONFIGURAÇÃO DOS EVENTOS ---
 function setupEventListeners() {
-    // Autenticação
     document.getElementById('loginBtn').addEventListener('click', handleLogin);
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
     document.getElementById('registerBtn').addEventListener('click', () => ui.openModal('registerModalOverlay'));
@@ -28,18 +24,12 @@ function setupEventListeners() {
     document.getElementById('forgotPasswordLink').addEventListener('click', (e) => { e.preventDefault(); ui.openModal('forgotPasswordModalOverlay'); });
     document.getElementById('forgotPasswordForm').addEventListener('submit', handleForgotPassword);
     document.getElementById('resetPasswordForm').addEventListener('submit', handleResetPassword);
-    
-    // Modais
     document.querySelectorAll('.close-modal-btn').forEach(btn => { btn.addEventListener('click', (e) => ui.closeModal(e.target.dataset.modalId)); });
-
-    // Ações de Projeto (Obras)
     document.getElementById('saveBtn').addEventListener('click', handleSaveProject);
     document.getElementById('loadBtn').addEventListener('click', handleLoadProject);
     document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
     document.getElementById('newBtn').addEventListener('click', handleNewProject);
     document.getElementById('searchInput').addEventListener('input', (e) => handleSearch(e.target.value));
-
-    // Ações de Cliente (Novo)
     document.getElementById('clientManagementBtn').addEventListener('click', handleShowClientManagement);
     document.getElementById('clientForm').addEventListener('submit', handleSaveClient);
     document.getElementById('newClientBtn').addEventListener('click', handleNewClient);
@@ -48,16 +38,10 @@ function setupEventListeners() {
     document.getElementById('clientSearchInput').addEventListener('input', (e) => handleSearchClients(e.target.value));
     document.getElementById('clientDocumentType').addEventListener('change', ui.toggleLegalRepSection);
     document.getElementById('clientSearch').addEventListener('blur', handleLinkClientToProject);
-    
-    // Ações de Circuito
     document.getElementById('addCircuitBtn').addEventListener('click', ui.addCircuit);
     document.getElementById('circuits-container').addEventListener('click', e => { if (e.target.classList.contains('remove-btn')) { ui.removeCircuit(e.target.dataset.circuitId); } });
-    
-    // Cálculos e PDF
     document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
     document.getElementById('pdfBtn').addEventListener('click', handleGeneratePdf);
-    
-    // Máscaras de Input
     document.getElementById('regCpf').addEventListener('input', utils.mascaraCPF);
     document.getElementById('regTelefone').addEventListener('input', utils.mascaraCelular);
     document.getElementById('editCpf').addEventListener('input', utils.mascaraCPF);
@@ -75,8 +59,6 @@ function setupEventListeners() {
         const type = document.getElementById('clientDocumentType').value;
         utils.aplicarMascara(e, type);
     });
-
-    // Admin
     document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
     document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
     document.getElementById('adminUserList').addEventListener('click', handleAdminUserActions);
@@ -85,23 +67,17 @@ function setupEventListeners() {
     document.getElementById('saveUserPermissionsBtn').addEventListener('click', handleUpdatePermissions);
 }
 
-
-// --- HANDLERS DE AUTENTICAÇÃO E SESSÃO ---
-
 async function handleLogin() {
     const email = document.getElementById('emailLogin').value;
     const password = document.getElementById('password').value;
     const userProfile = await auth.signInUser(email, password);
-
-    if (userProfile) {
-        if (userProfile.is_approved) {
-            currentUserProfile = userProfile;
-            ui.showAppView(currentUserProfile);
-            await loadInitialData();
-        } else {
-            alert('Seu cadastro ainda não foi aprovado por um administrador.');
-            await auth.signOutUser();
-        }
+    if (userProfile && userProfile.is_approved) {
+        currentUserProfile = userProfile;
+        ui.showAppView(currentUserProfile);
+        await loadInitialData();
+    } else if (userProfile && !userProfile.is_approved) {
+        alert('Seu cadastro ainda não foi aprovado por um administrador.');
+        await auth.signOutUser();
     }
 }
 
@@ -136,9 +112,6 @@ async function loadInitialData() {
     await handleSearch();
 }
 
-
-// --- HANDLERS DE CLIENTES ---
-
 async function handleShowClientManagement() {
     ui.openModal('clientManagementModalOverlay');
     handleNewClient(); 
@@ -159,18 +132,14 @@ function handleNewClient() {
 async function handleLoadClient(event) {
     const target = event.target.closest('li');
     if (!target) return;
-
     const clientId = target.dataset.clientId;
     currentClient = clients.find(c => c.id == clientId);
-    
     if (currentClient) {
         ui.populateClientList(clients, currentClient);
         ui.populateClientForm(currentClient);
-        
         const projects = await api.fetchProjects(null, currentUserProfile);
         const clientProjects = projects.filter(p => p.client_id === currentClient.id);
         ui.populateClientProjectsList(clientProjects);
-
         if (currentUserProfile.is_admin) {
             const allUsers = await api.fetchAllUsers();
             const permittedUserIds = await api.getClientUserPermissions(currentClient.id);
@@ -192,7 +161,6 @@ async function handleSaveClient(event) {
         email: document.getElementById('clientEmail').value,
         billing_email: document.getElementById('clientBillingEmail').value
     };
-
     if (clientData.document_type === 'CNPJ') {
         clientData.legal_rep_name = document.getElementById('legalRepName').value;
         clientData.legal_rep_cpf = document.getElementById('legalRepCpf').value;
@@ -206,7 +174,6 @@ async function handleSaveClient(event) {
         clientData.legal_rep_mobile = null;
         clientData.legal_rep_email = null;
     }
-    
     const { data, error } = await api.saveClient(clientData, clientId);
     if (error) {
         alert("Erro ao salvar cliente: " + error.message);
@@ -237,12 +204,10 @@ async function handleDeleteClient() {
 
 async function handleUpdatePermissions() {
     if (!currentUserProfile.is_admin || !currentClient) return;
-    
     const selectedUserIds = [];
     document.querySelectorAll('#userAccessList input[type="checkbox"]:checked').forEach(checkbox => {
         selectedUserIds.push(checkbox.value);
     });
-
     const { error } = await api.updateClientUserPermissions(currentClient.id, selectedUserIds);
     if (error) {
         alert("Erro ao salvar permissões: " + error.message);
@@ -251,16 +216,12 @@ async function handleUpdatePermissions() {
     }
 }
 
-
-// --- HANDLERS DE OBRAS E VÍNCULOS ---
-
 async function handleLinkClientToProject(event) {
     const searchTerm = event.target.value.trim();
     if (!searchTerm) {
         ui.clearProjectClientInfo();
         return;
     }
-    
     const foundClients = await api.fetchClients(searchTerm, currentUserProfile);
     if (foundClients.length === 1) {
         ui.linkClientToProjectForm(foundClients[0]);
@@ -354,8 +315,6 @@ async function handleSearch(term = '') {
     ui.populateProjectList(projects);
 }
 
-
-// --- DEMAIS HANDLERS ---
 function handleCalculate() {
     const results = utils.calcularTodosCircuitos(technicalData);
     if (results) { ui.renderReport(results); }
@@ -391,6 +350,7 @@ async function handleUpdateUser(event) {
     if (error) { alert("Erro ao atualizar usuário: " + error.message); }
     else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); showAdminPanel(); }
 }
+
 async function handleAdminProjectActions(event) {
     const target = event.target;
     if (!target.classList.contains('transfer-btn')) return;
@@ -399,7 +359,7 @@ async function handleAdminProjectActions(event) {
 
     if (target.classList.contains('transfer-user-btn')) {
         const newOwnerId = target.previousElementSibling.value;
-        const { error } = await api.transferProjectOwner(projectId, newOwnerId); // Supondo que esta função exista em api.js
+        const { error } = await api.transferProjectOwner(projectId, newOwnerId);
         if(error) {
             alert("Erro ao transferir proprietário da obra: " + error.message);
         } else {
@@ -424,8 +384,6 @@ async function handleAdminProjectActions(event) {
     }
 }
 
-
-// --- HANDLERS DE CADASTRO (EXISTENTES) ---
 async function handleRegister(event) {
     event.preventDefault();
     const email = document.getElementById('regEmail').value;
@@ -473,9 +431,9 @@ async function handleResetPassword(event) {
     }
 }
 
-
 /**
  * PONTO DE ENTRADA E GARANTIA DE EXECUÇÃO
- * A função main() só será chamada após o DOM estar completamente carregado.
+ * A função main() só será chamada após o DOM estar completamente carregado,
+ * evitando o erro 'addEventListener of null'.
  */
 document.addEventListener('DOMContentLoaded', main);

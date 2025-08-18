@@ -57,6 +57,10 @@ export async function transferProjectClient(projectId, newClientId) {
     const { error } = await supabase.from('projects').update({ client_id: newClientId }).eq('id', projectId);
     return { error };
 }
+export async function transferProjectOwner(projectId, newOwnerId) {
+    const { error } = await supabase.from('projects').update({ owner_id: newOwnerId }).eq('id', projectId);
+    return { error };
+}
 
 
 // --- FUNÇÕES DE CLIENTE ---
