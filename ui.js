@@ -249,6 +249,8 @@ export function renderReport(allResults){
         reportText += `\n-- ESPECIFICACOES DO CABO E CORRECOES --\n`;
         reportText += `${formatLine('Material / Isolacao', `${dados.materialCabo} / ${dados.tipoIsolacao}`)}\n`;
         reportText += `${formatLine('Metodo de Instalacao', dados.metodoInstalacao)}\n`;
+        // ***** LINHA ADICIONADA *****
+        reportText += `${formatLine('Comprimento (m)', `${dados.comprimentoM} m`)}\n`;
         reportText += `${formatLine('Fatores de Correcao', `K1=${calculos.fatorK1.toFixed(2)}, K2=${calculos.fatorK2.toFixed(2)}, K3=${calculos.fatorK3.toFixed(2)}`)}\n`;
         reportText += `${formatLine('Corrente p/ Dimensionar', `${calculos.correnteCorrigidaA.toFixed(2)} A`)}\n`;
         reportText += `\n-- RESULTADOS DE DIMENSIONAMENTO --\n`;
@@ -277,9 +279,7 @@ export function generatePdf(allResults, currentUserProfile) {
     const doc = new jsPDF('p', 'mm', 'a4');
     let yPos = 20;
     const leftMargin = 15;
-    const valueMargin = 50; // Alinhamento para os valores da primeira coluna
-    const rightMargin = 110;
-    const rightValueMargin = 135; // Alinhamento para os valores da segunda coluna
+    const valueMargin = 65; // Aumentado para dar mais espaço
 
     doc.setFont('helvetica', 'normal');
     
@@ -296,7 +296,7 @@ export function generatePdf(allResults, currentUserProfile) {
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
         doc.text(title, leftMargin, yPos);
-        yPos += 7;
+        yPos += 8;
     };
 
     const addLineItem = (label, value) => {
@@ -306,46 +306,35 @@ export function generatePdf(allResults, currentUserProfile) {
         doc.text(label, leftMargin, yPos);
         doc.setFont('helvetica', 'normal');
         doc.text(String(value || 'Nao informado'), valueMargin, yPos);
-        yPos += 6;
+        yPos += 7;
     };
     
-    const addTwoColumnLine = (label1, value1, label2, value2) => {
-        if (yPos > 270) { doc.addPage(); yPos = 20; }
-        doc.setFontSize(10);
-        // Coluna 1
-        doc.setFont('helvetica', 'bold');
-        doc.text(label1, leftMargin, yPos);
-        doc.setFont('helvetica', 'normal');
-        doc.text(String(value1 || 'Nao informado'), valueMargin, yPos);
-        // Coluna 2
-        doc.setFont('helvetica', 'bold');
-        doc.text(label2, rightMargin, yPos);
-        doc.setFont('helvetica', 'normal');
-        doc.text(String(value2 || 'Nao informado'), rightValueMargin, yPos);
-        yPos += 6;
-    };
-
     // --- PÁGINA 1: RESUMO ---
     addTitle("RELATORIO DE PROJETO ELETRICO");
 
     const dadosCliente = allResults[0].dados;
     
     addSection("DADOS DA OBRA E CLIENTE");
-    addTwoColumnLine("Cliente:", dadosCliente.cliente, "Obra:", dadosCliente.obra);
-    addTwoColumnLine("Documento:", dadosCliente.documento, "Endereco:", dadosCliente.endereco);
-    addTwoColumnLine("Contato (Celular):", dadosCliente.celular, "Area da Obra:", `${dadosCliente.areaObra || 'N/A'} m²`);
-    addLineItem("Telefone:", dadosCliente.telefone); // Telefone em linha separada
-    addLineItem("E-mail:", dadosCliente.email); // E-mail alinhado
+    addLineItem("Cliente:", dadosCliente.cliente);
+    addLineItem("Obra:", dadosCliente.obra);
+    addLineItem("Documento:", dadosCliente.documento);
+    addLineItem("Endereco:", dadosCliente.endereco);
+    addLineItem("Contato (Celular):", dadosCliente.celular);
+    addLineItem("Area da Obra:", `${dadosCliente.areaObra || 'N/A'} m²`);
+    addLineItem("Telefone:", dadosCliente.telefone);
+    addLineItem("E-mail:", dadosCliente.email);
     yPos += 5;
 
     addSection("INFORMACOES DO RESPONSÁVEL TÉCNICO");
-    addTwoColumnLine("Nome:", document.getElementById('respTecnico').value, "CREA:", document.getElementById('crea').value);
-    addLineItem("Título:", document.getElementById('titulo').value); // Título alinhado
+    addLineItem("Nome:", document.getElementById('respTecnico').value);
+    addLineItem("CREA:", document.getElementById('crea').value);
+    addLineItem("Título:", document.getElementById('titulo').value);
     yPos += 5;
 
     addSection("INFORMACOES DO RELATORIO");
     const dataFormatada = new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(' ', ' - hora: ').replace(',', '');
-    addTwoColumnLine("Gerado em:", dataFormatada, "Gerado por:", currentUserProfile?.nome || 'Administrador');
+    addLineItem("Gerado em:", dataFormatada);
+    addLineItem("Gerado por:", currentUserProfile?.nome || 'Administrador');
     yPos += 5;
 
     // --- AJUSTE DA TABELA DE RESUMO ---
@@ -382,25 +371,33 @@ export function generatePdf(allResults, currentUserProfile) {
         addTitle(`MEMORIAL DE CÁLCULO - CIRCUITO ${dados.id}: ${dados.nomeCircuito}`);
 
         addSection("-- CARGA E DEMANDA --");
-        addTwoColumnLine("Potência Instalada:", `${calculos.potenciaInstalada.toFixed(2)} W`, "Fator de Demanda:", dados.fatorDemanda);
-        addTwoColumnLine("Corrente Instalada:", `${calculos.correnteInstalada.toFixed(2)} A`, "Fator de Potência:", dados.fatorPotencia);
-        addTwoColumnLine("Potência Demandada:", `${calculos.potenciaDemandada.toFixed(2)} W`, "Corrente Demandada:", `${calculos.correnteDemandada.toFixed(2)} A`);
-        addTwoColumnLine("Corrente Corrigida (I'):", `${calculos.correnteCorrigidaA.toFixed(2)} A`, "Fatores de Correção:", `K1=${calculos.fatorK1.toFixed(2)}, K2=${calculos.fatorK2.toFixed(2)}, K3=${calculos.fatorK3.toFixed(2)}`);
-        addTwoColumnLine("Queda de Tensão:", `${calculos.quedaTensaoCalculada.toFixed(2)}% (Limite: ${dados.limiteQuedaTensao}%)`, "Tensão na carga:", `${(dados.tensaoV * (1 - calculos.quedaTensaoCalculada / 100)).toFixed(2)} V`);
+        addLineItem("Potência Instalada:", `${calculos.potenciaInstalada.toFixed(2)} W`);
+        addLineItem("Fator de Demanda:", dados.fatorDemanda);
+        addLineItem("Corrente Instalada:", `${calculos.correnteInstalada.toFixed(2)} A`);
+        addLineItem("Fator de Potência:", dados.fatorPotencia);
+        addLineItem("Potência Demandada:", `${calculos.potenciaDemandada.toFixed(2)} W`);
+        addLineItem("Corrente Demandada:", `${calculos.correnteDemandada.toFixed(2)} A`);
+        addLineItem("Corrente Corrigida (I'):", `${calculos.correnteCorrigidaA.toFixed(2)} A`);
+        addLineItem("Fatores de Correção:", `K1=${calculos.fatorK1.toFixed(2)}, K2=${calculos.fatorK2.toFixed(2)}, K3=${calculos.fatorK3.toFixed(2)}`);
+        addLineItem("Queda de Tensão:", `${calculos.quedaTensaoCalculada.toFixed(2)}% (Limite: ${dados.limiteQuedaTensao}%)`);
+        addLineItem("Tensão na carga:", `${(dados.tensaoV * (1 - calculos.quedaTensaoCalculada / 100)).toFixed(2)} V`);
         yPos += 5;
 
         addSection("-- DIMENSIONAMENTO DE INFRA --");
-        addTwoColumnLine("Material / Isolação:", `${dados.materialCabo} / ${dados.tipoIsolacao}`, "Método de Instalação:", dados.metodoInstalacao);
-        addTwoColumnLine("Bitola Recomendada:", `${calculos.bitolaRecomendadaMm2} mm²`, "Corrente Max. Cabo:", `${calculos.correnteMaximaCabo.toFixed(2)} A`);
-        // --- AJUSTE DE ALINHAMENTO E ADIÇÃO DA DISTÂNCIA ---
-        addTwoColumnLine("Eletroduto (aprox.):", `${calculos.dutoRecomendado} (${calculos.numCondutores} condutores)`, "Distância:", `${dados.comprimentoM} m`);
+        addLineItem("Material / Isolação:", `${dados.materialCabo} / ${dados.tipoIsolacao}`);
+        addLineItem("Método de Instalação:", dados.metodoInstalacao);
+        addLineItem("Distância:", `${dados.comprimentoM} m`);
+        addLineItem("Bitola Recomendada:", `${calculos.bitolaRecomendadaMm2} mm²`);
+        addLineItem("Corrente Max. Cabo:", `${calculos.correnteMaximaCabo.toFixed(2)} A`);
+        addLineItem("Eletroduto (aprox.):", `${calculos.dutoRecomendado} (${calculos.numCondutores} condutores)`);
         yPos += 5;
 
         addSection("-- PROTECOES RECOMENDADAS --");
         addLineItem("Disjuntor:", `${dados.tipoDisjuntor}: ${calculos.disjuntorRecomendado.nome} (Icc: ${calculos.disjuntorRecomendado.icc} kA)`);
-        addLineItem("Proteção DR:", dados.requerDR ? `Sim (${calculos.disjuntorRecomendado.nome} / 30mA)` : 'Não');
+        addLineItem("Proteção DR:", dados.requerDR ? `Sim (${calculos.disjuntorRecomendado.nome.replace('A','')}A / 30mA)` : 'Não');
         addLineItem("Proteção DPS:", dados.classeDPS !== 'Nenhum' ? `Sim, ${dados.classeDPS}` : 'Não');
     });
 
     doc.save(`Relatorio_${document.getElementById('obra').value || 'Projeto'}.pdf`);
+}
 }
