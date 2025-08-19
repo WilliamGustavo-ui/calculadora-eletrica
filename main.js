@@ -24,7 +24,6 @@ async function handleLogin() {
             ui.showAppView(currentUserProfile);
             
             technicalData = await api.fetchTechnicalData();
-            // Popula o primeiro circuito com as opções de DPS
             ui.resetForm(true, technicalData.dps);
             handleSearch();
         } else {
@@ -132,7 +131,9 @@ function handleCalculate() {
 
 function handleGeneratePdf() {
     const results = utils.calcularTodosCircuitos(technicalData);
-    if(results) { ui.generatePdf(results, currentUserProfile); }
+    if(results) {
+        ui.generatePdf(results, currentUserProfile);
+    }
 }
 
 async function showAdminPanel() {
@@ -230,7 +231,6 @@ supabase.auth.onAuthStateChange(async (event, session) => {
                 ui.showAppView(currentUserProfile);
                 
                 technicalData = await api.fetchTechnicalData();
-                 // Popula o primeiro circuito com as opções de DPS
                 ui.resetForm(true, technicalData.dps);
                 handleSearch();
             }

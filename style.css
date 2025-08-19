@@ -34,15 +34,19 @@ button { padding: 15px; color: white; border: none; border-radius: 5px; cursor: 
 #manageProjectsBtn { background-color: #8e44ad; }
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; }
 .modal-content { background: var(--white); padding: 30px; border-radius: 8px; max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+.modal-content.large { max-width: 950px; }
 .modal-content h2, .modal-content h3 { margin-top: 0; padding-top: 0; border: none; }
 .modal-footer { text-align: right; margin-top: 20px; }
 .modal-footer button { font-size: 1rem; padding: 10px 20px; }
 #adminUserList { list-style-type: none; padding: 0; }
 #adminUserList li { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
 .admin-user-actions button { font-size: 0.8rem; padding: 5px 10px; margin-left: 5px; }
-#adminProjectsTable { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-#adminProjectsTable th, #adminProjectsTable td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+#adminProjectsTable { width: 100%; border-collapse: collapse; margin-top: 20px; }
+#adminProjectsTable th, #adminProjectsTable td { text-align: left; padding: 12px; border-bottom: 1px solid #ddd; }
+#adminProjectsTable th { background-color: #f2f2f2; }
 #adminProjectsTable select { padding: 4px; font-size: 0.9rem; max-width: 150px; }
 #adminProjectsTable button { font-size: 0.8rem; padding: 5px 10px; margin-left: 5px; background-color: var(--secondary-color);}
 .approve-user-btn { background-color: var(--success-color); }
 .remove-user-btn { background-color: var(--danger-color); }
+.checkbox-group { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
+.checkbox-group input { flex-shrink: 0; }
