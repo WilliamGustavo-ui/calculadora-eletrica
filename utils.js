@@ -1,12 +1,20 @@
 // Arquivo: utils.js
 
+// A constante 'ligacoes' permanece pois está mais ligada à UI do que a dados técnicos.
 export const ligacoes = { Monofasico: [{value:'FN', text:'Fase-Neutro (FN)'}, {value:'FF', text:'Fase-Fase (FF)'}], Bifasico: [{value:'FF', text:'Fase-Fase (FF)'}, {value:'FFN', text:'Fase-Fase-Neutro (FFN)'}], Trifasico: [{value:'FFF', text:'Fase-Fase-Fase (FFF)'}, {value:'FFFN', text:'Fase-Fase-Fase-Neutro (FFFN)'}] };
 
-// ... (funções de máscara, sem alteração) ...
+// FUNÇÕES DE MÁSCARA (permanecem as mesmas)
+export function mascaraCPF(event){event.target.value=event.target.value.replace(/\D/g,"").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2")}
+export function mascaraCelular(event){event.target.value=event.target.value.replace(/\D/g,'').replace(/^(\d{2})(\d)/g,'($1) $2').replace(/(\d{5})(\d{4})$/,'$1-$2')}
+export function mascaraTelefone(event){event.target.value=event.target.value.replace(/\D/g,'').replace(/^(\d{2})(\d)/g,'($1) $2').replace(/(\d{4})(\d)/,'$1-$2')}
+export function aplicarMascara(event){const tipoDoc=document.getElementById('tipoDocumento').value;let value=event.target.value.replace(/\D/g,"");if(tipoDoc==='CPF'){value=value.slice(0,11).replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2")}else{value=value.slice(0,14).replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2')}
+event.target.value=value}
+export function atualizarMascaraDocumento(){const tipoDoc=document.getElementById('tipoDocumento').value;const inputDoc=document.getElementById('documento');inputDoc.value='';if(tipoDoc==='CPF'){inputDoc.placeholder='000.000.000-00';inputDoc.maxLength=14}else{inputDoc.placeholder='00.000.000/0000-00';inputDoc.maxLength=18}}
 
+// FUNÇÕES DE CÁLCULO ATUALIZADAS
 export function calcularTodosCircuitos(technicalData){
-    if (!technicalData || !technicalData.disjuntores) {
-        alert("Os dados técnicos não foram carregados. Verifique a conexão e as políticas de segurança (RLS) das tabelas.");
+    if (!technicalData) {
+        alert("Os dados técnicos não foram carregados. Verifique a conexão com o banco de dados.");
         return null;
     }
 
@@ -17,12 +25,13 @@ export function calcularTodosCircuitos(technicalData){
         return null;
     }
     
-    let potenciaTotalDemandadaW = 0;
-
     circuitBlocks.forEach(block=>{
         const id=block.dataset.id;
+        
+        // Busca a informação completa do DPS selecionado
         const dpsId = parseInt(document.getElementById(`dps-${id}`).value) || null;
         const selectedDps = dpsId ? technicalData.dps.find(d => d.id === dpsId) : null;
+
         const dados={
             id:id,
             cliente:document.getElementById('cliente').value,
@@ -53,22 +62,22 @@ export function calcularTodosCircuitos(technicalData){
             limiteQuedaTensao:parseFloat(document.getElementById(`limiteQuedaTensao-${id}`).value),
             tipoDisjuntor:document.getElementById(`tipoDisjuntor-${id}`).value,
             requerDR:document.getElementById(`requerDR-${id}`).checked,
-            dpsInfo: selectedDps
+            dpsInfo: selectedDps // Armazena o objeto completo do DPS
         };
         
         if(dados.tipoCircuito==='motores')dados.potenciaW=dados.potenciaCV*735.5;
 
         const potenciaInstalada=dados.potenciaW;
         const potenciaDemandada=potenciaInstalada*dados.fatorDemanda;
-        potenciaTotalDemandadaW += potenciaDemandada;
-        
         const correnteInstalada=(dados.fases==='Trifasico')?(potenciaInstalada/(dados.tensaoV*1.732*dados.fatorPotencia)):(potenciaInstalada/(dados.tensaoV*dados.fatorPotencia));
         const correnteDemandada=(dados.fases==='Trifasico')?(potenciaDemandada/(dados.tensaoV*1.732*dados.fatorPotencia)):(potenciaDemandada/(dados.tensaoV*dados.fatorPotencia));
 
         const fatorK1_obj = technicalData.fatores_k1.find(f => f.temperatura_c === dados.temperaturaAmbienteC);
         const fatorK1 = fatorK1_obj ? fatorK1_obj.fator : 1.0;
+
         const fatorK2_obj = technicalData.fatores_k2.find(f => f.resistividade === dados.resistividadeSolo);
         const fatorK2 = (dados.resistividadeSolo > 0 && fatorK2_obj) ? fatorK2_obj.fator : 1.0;
+        
         const fatorK3_obj = technicalData.fatores_k3.find(f => f.num_circuitos === dados.numCircuitosAgrupados);
         let fatorK3 = 1.0;
         if (fatorK3_obj) {
@@ -129,66 +138,5 @@ export function calcularTodosCircuitos(technicalData){
 
         allResults.push({dados,calculos:{potenciaInstalada,correnteInstalada,potenciaDemandada,correnteDemandada,fatorK1,fatorK2,fatorK3,correnteCorrigidaA,bitolaRecomendadaMm2,resistenciaCabo,quedaTensaoCalculada,correnteMaximaCabo,potenciaMaximaCabo,disjuntorRecomendado,numCondutores,dutoRecomendado}});
     });
-
-    const dadosGeral = {
-        fases: document.getElementById('fases-geral').value,
-        tensaoV: parseFloat(document.getElementById('tensaoV-geral').value),
-        fatorPotencia: parseFloat(document.getElementById('fatorPotencia-geral').value),
-        comprimentoM: parseFloat(document.getElementById('comprimentoM-geral').value),
-        limiteQuedaTensao: parseFloat(document.getElementById('limiteQuedaTensao-geral').value),
-        materialCabo: document.getElementById('materialCabo-geral').value,
-        tipoIsolacao: document.getElementById('tipoIsolacao-geral').value,
-        metodoInstalacao: document.getElementById('metodoInstalacao-geral').value,
-        temperaturaAmbienteC: parseInt(document.getElementById('temperaturaAmbienteC-geral').value),
-    };
-
-    const correnteTotalDemandada = (dadosGeral.fases === 'Trifasico') 
-        ? (potenciaTotalDemandadaW / (dadosGeral.tensaoV * 1.732 * dadosGeral.fatorPotencia)) 
-        : (potenciaTotalDemandadaW / (dadosGeral.tensaoV * dadosGeral.fatorPotencia));
-
-    document.getElementById('potenciaTotalDemandada').value = potenciaTotalDemandadaW.toFixed(2);
-    document.getElementById('correnteTotalDemandada').value = correnteTotalDemandada.toFixed(2);
-
-    const fatorK1Geral_obj = technicalData.fatores_k1.find(f => f.temperatura_c === dadosGeral.temperaturaAmbienteC);
-    const fatorK1Geral = fatorK1Geral_obj ? fatorK1Geral_obj.fator : 1.0;
-    
-    let bitolaRecomendadaGeral = "Nao encontrada", quedaTensaoGeral = 0, disjuntorGeral = {nome: "Nao encontrado", icc: 0};
-    const disjuntorCandidatoGeral = technicalData.disjuntores.find(d => d.corrente_a >= correnteTotalDemandada);
-
-    if (disjuntorCandidatoGeral) {
-        disjuntorGeral = { nome: disjuntorCandidatoGeral.nome, icc: disjuntorCandidatoGeral.icc_ka };
-        const tabelaCaboGeral = technicalData.cabos.filter(c => c.material === dadosGeral.materialCabo && c.isolacao === dadosGeral.tipoIsolacao);
-        
-        for (const cabo of tabelaCaboGeral) {
-            const capacidadeConducao = cabo[`capacidade_${dadosGeral.metodoInstalacao.toLowerCase()}`] || 0;
-            const Iz = capacidadeConducao * fatorK1Geral;
-            if (Iz >= disjuntorCandidatoGeral.corrente_a) {
-                const resistividade = (dadosGeral.materialCabo === 'Cobre') ? 0.0172 : 0.0282;
-                const quedaVolts = (dadosGeral.fases === 'Trifasico') ? ((1.732 * resistividade * dadosGeral.comprimentoM * correnteTotalDemandada) / cabo.secao_mm2) : ((2 * resistividade * dadosGeral.comprimentoM * correnteTotalDemandada) / cabo.secao_mm2);
-                const quedaPercentual = (quedaVolts / dadosGeral.tensaoV) * 100.0;
-                
-                if (quedaPercentual <= dadosGeral.limiteQuedaTensao) {
-                    bitolaRecomendadaGeral = `${cabo.secao_mm2.toString()} mm²`;
-                    quedaTensaoGeral = quedaPercentual;
-                    break;
-                }
-            }
-        }
-    }
-
-    const alimentacaoGeralResult = {
-        dados: dadosGeral,
-        calculos: {
-            potenciaTotalDemandadaW,
-            correnteTotalDemandada,
-            disjuntorRecomendado: disjuntorGeral,
-            bitolaRecomendada: bitolaRecomendadaGeral,
-            quedaTensaoCalculada: quedaTensaoGeral
-        }
-    };
-
-    return {
-        circuitos: allResults,
-        alimentacaoGeral: alimentacaoGeralResult
-    };
+    return allResults;
 }

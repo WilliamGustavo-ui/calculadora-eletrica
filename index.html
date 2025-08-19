@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Projetos Elétricos</title>
+    <title>Calculadora de Projetos Eletricos v16.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-customfonts/1.0.4/roboto-normal.js"></script>
@@ -174,83 +174,6 @@
 
         <div id="circuits-container"></div>
         <button id="addCircuitBtn" style="background-color: var(--primary-color); width: 100%; margin-top: 20px;">Adicionar Circuito</button>
-        
-        <div id="alimentacao-geral-block" class="circuit-block">
-            <div class="circuit-header">
-                <h2>Alimentação Geral do Quadro</h2>
-            </div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="potenciaTotalDemandada">Potência Total Demandada (W)</label>
-                    <input type="text" id="potenciaTotalDemandada" readonly>
-                </div>
-                <div class="form-group">
-                    <label for="correnteTotalDemandada">Corrente Total Demandada (A)</label>
-                    <input type="text" id="correnteTotalDemandada" readonly>
-                </div>
-                <div class="form-group">
-                    <label for="fases-geral">Sistema de Fases</label>
-                    <select id="fases-geral">
-                        <option value="Monofasico">Monofasico</option>
-                        <option value="Bifasico">Bifasico</option>
-                        <option value="Trifasico" selected>Trifasico</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="tensaoV-geral">Tensão (V)</label>
-                    <select id="tensaoV-geral">
-                        <option value="127">127 V</option>
-                        <option value="220" selected>220 V</option>
-                        <option value="380">380 V</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="fatorPotencia-geral">Fator de Potência Geral</label>
-                    <input type="number" id="fatorPotencia-geral" step="0.01" value="0.92">
-                </div>
-                <div class="form-group">
-                    <label for="comprimentoM-geral">Distância do Padrão ao Quadro (m)</label>
-                    <input type="number" id="comprimentoM-geral" value="10">
-                </div>
-                 <div class="form-group">
-                    <label for="limiteQuedaTensao-geral">Limite Queda de Tensão (%)</label>
-                    <input type="number" id="limiteQuedaTensao-geral" step="0.1" value="5.0">
-                </div>
-                <div class="form-group">
-                    <label for="materialCabo-geral">Material do Condutor</label>
-                    <select id="materialCabo-geral">
-                        <option value="Cobre" selected>Cobre</option>
-                        <option value="Aluminio">Aluminio</option>
-                    </select>
-                </div>
-                 <div class="form-group">
-                    <label for="tipoIsolacao-geral">Tipo de Isolação</label>
-                    <select id="tipoIsolacao-geral">
-                        <option value="PVC" selected>PVC 70 C</option>
-                        <option value="EPR">EPR/XLPE 90 C</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="metodoInstalacao-geral">Método de Instalação</label>
-                    <select id="metodoInstalacao-geral">
-                        <option value="A1">A1</option>
-                        <option value="A2">A2</option>
-                        <option value="B1" selected>B1</option>
-                        <option value="B2">B2</option>
-                        <option value="C">C</option>
-                        <option value="D">D</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="temperaturaAmbienteC-geral">Temperatura Ambiente (°C)</label>
-                    <select id="temperaturaAmbienteC-geral">
-                         <option value="30" selected>30</option>
-                         <option value="40">40</option>
-                         <option value="50">50</option>
-                    </select>
-                </div>
-            </div>
-        </div>
         
         <form id="tech-form" autocomplete="off">
             <h2>Responsável Técnico</h2>
