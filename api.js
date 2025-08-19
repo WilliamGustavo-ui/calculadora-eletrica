@@ -68,8 +68,8 @@ export async function transferProjectOwner(projectId, newOwnerId) {
 }
 
 /**
- * NOVA FUNÇÃO
- * Busca todos os dados técnicos do Supabase de uma só vez.
+ * ATUALIZADO
+ * Busca todos os dados técnicos, incluindo os modelos de DPS, do Supabase de uma só vez.
  */
 export async function fetchTechnicalData() {
     try {
@@ -79,18 +79,19 @@ export async function fetchTechnicalData() {
             eletrodutosRes,
             k1Res,
             k2Res,
-            k3Res
+            k3Res,
+            dpsRes // <-- Adicionado
         ] = await Promise.all([
             supabase.from('disjuntores').select('*'),
             supabase.from('cabos').select('*'),
             supabase.from('eletrodutos').select('*'),
             supabase.from('fatores_k1_temperatura').select('*'),
             supabase.from('fatores_k2_solo').select('*'),
-            supabase.from('fatores_k3_agrupamento').select('*')
+            supabase.from('fatores_k3_agrupamento').select('*'),
+            supabase.from('dps').select('*').order('classe').order('corrente_ka') // <-- Adicionado
         ]);
 
-        // Verifica se houve erro em alguma das consultas
-        const errors = [disjuntoresRes, cabosRes, eletrodutosRes, k1Res, k2Res, k3Res].map(res => res.error).filter(Boolean);
+        const errors = [disjuntoresRes, cabosRes, eletrodutosRes, k1Res, k2Res, k3Res, dpsRes].map(res => res.error).filter(Boolean);
         if (errors.length > 0) {
             throw new Error('Falha ao buscar dados técnicos: ' + errors.map(e => e.message).join(', '));
         }
@@ -102,6 +103,7 @@ export async function fetchTechnicalData() {
             fatores_k1: k1Res.data,
             fatores_k2: k2Res.data,
             fatores_k3: k3Res.data,
+            dps: dpsRes.data, // <-- Adicionado
         };
     } catch (error) {
         console.error(error.message);

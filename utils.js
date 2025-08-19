@@ -12,10 +12,6 @@ event.target.value=value}
 export function atualizarMascaraDocumento(){const tipoDoc=document.getElementById('tipoDocumento').value;const inputDoc=document.getElementById('documento');inputDoc.value='';if(tipoDoc==='CPF'){inputDoc.placeholder='000.000.000-00';inputDoc.maxLength=14}else{inputDoc.placeholder='00.000.000/0000-00';inputDoc.maxLength=18}}
 
 // FUNÇÕES DE CÁLCULO ATUALIZADAS
-/**
- * A função agora recebe os dados técnicos (technicalData) como um parâmetro,
- * em vez de usar as constantes que foram removidas.
- */
 export function calcularTodosCircuitos(technicalData){
     if (!technicalData) {
         alert("Os dados técnicos não foram carregados. Verifique a conexão com o banco de dados.");
@@ -31,6 +27,11 @@ export function calcularTodosCircuitos(technicalData){
     
     circuitBlocks.forEach(block=>{
         const id=block.dataset.id;
+        
+        // Busca a informação completa do DPS selecionado
+        const dpsId = parseInt(document.getElementById(`dps-${id}`).value) || null;
+        const selectedDps = dpsId ? technicalData.dps.find(d => d.id === dpsId) : null;
+
         const dados={
             id:id,
             cliente:document.getElementById('cliente').value,
@@ -61,9 +62,7 @@ export function calcularTodosCircuitos(technicalData){
             limiteQuedaTensao:parseFloat(document.getElementById(`limiteQuedaTensao-${id}`).value),
             tipoDisjuntor:document.getElementById(`tipoDisjuntor-${id}`).value,
             requerDR:document.getElementById(`requerDR-${id}`).checked,
-            classeDPS:document.getElementById(`classeDPS-${id}`).value,
-            // ***** LINHA ADICIONADA *****
-            dpsRatingKa: parseInt(document.getElementById(`dpsRatingKa-${id}`).value) || 0
+            dpsInfo: selectedDps // Armazena o objeto completo do DPS
         };
         
         if(dados.tipoCircuito==='motores')dados.potenciaW=dados.potenciaCV*735.5;

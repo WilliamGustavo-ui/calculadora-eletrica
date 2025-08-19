@@ -8,7 +8,7 @@ import { supabase } from './supabaseClient.js';
 
 // --- ESTADO DA APLICAÇÃO ---
 let currentUserProfile = null;
-let technicalData = null; // Nova variável para armazenar os dados técnicos
+let technicalData = null; 
 
 // --- HANDLERS (FUNÇÕES DE EVENTO) ---
 
@@ -23,8 +23,9 @@ async function handleLogin() {
             currentUserProfile = userProfile;
             ui.showAppView(currentUserProfile);
             
-            // Após mostrar a App, busca os dados técnicos e os de projetos
             technicalData = await api.fetchTechnicalData();
+            // Popula o primeiro circuito com as opções de DPS
+            ui.resetForm(true, technicalData.dps);
             handleSearch();
         } else {
             alert('Seu cadastro ainda não foi aprovado por um administrador.');
@@ -35,7 +36,7 @@ async function handleLogin() {
 
 async function handleLogout() {
     currentUserProfile = null; 
-    technicalData = null; // Limpa os dados técnicos ao sair
+    technicalData = null; 
     await auth.signOutUser();
 }
 
@@ -75,7 +76,6 @@ async function handleSaveProject() {
     if (!projectName) { alert("Por favor, insira um 'Nome da Obra' para salvar."); return; }
     
     const mainData = {};
-    // A query agora ignora o campo #currentProjectId para não salvá-lo nos dados JSON
     document.querySelectorAll('#main-form input:not(#currentProjectId), #main-form select').forEach(el => mainData[el.id] = el.value);
 
     const techData = {};
@@ -101,7 +101,7 @@ async function handleLoadProject() {
     const projectId = document.getElementById('savedProjectsSelect').value;
     if (!projectId) return;
     const project = await api.fetchProjectById(projectId);
-    if (project) { ui.populateFormWithProjectData(project); alert(`Obra "${project.project_name}" carregada.`); }
+    if (project) { ui.populateFormWithProjectData(project, technicalData.dps); alert(`Obra "${project.project_name}" carregada.`); }
 }
 
 async function handleDeleteProject() {
@@ -110,11 +110,11 @@ async function handleDeleteProject() {
     if (!projectId || !confirm(`Tem certeza que deseja excluir a obra "${projectName}"?`)) return;
     const { error } = await api.deleteProject(projectId);
     if (error) { alert('Erro ao excluir obra: ' + error.message); }
-    else { alert("Obra excluída."); ui.resetForm(true); await handleSearch(); }
+    else { alert("Obra excluída."); ui.resetForm(true, technicalData.dps); await handleSearch(); }
 }
 
 function handleNewProject() {
-    if (confirm("Deseja limpar todos os campos para iniciar uma nova obra?")) { ui.resetForm(true); }
+    if (confirm("Deseja limpar todos os campos para iniciar uma nova obra?")) { ui.resetForm(true, technicalData.dps); }
 }
 
 async function handleSearch(term = '') {
@@ -124,7 +124,6 @@ async function handleSearch(term = '') {
 }
 
 function handleCalculate() {
-    // Passa os dados técnicos para a função de cálculo
     const results = utils.calcularTodosCircuitos(technicalData);
     if (results) {
         ui.renderReport(results);
@@ -198,7 +197,7 @@ function setupEventListeners() {
     document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
     document.getElementById('newBtn').addEventListener('click', handleNewProject);
     document.getElementById('searchInput').addEventListener('input', (e) => handleSearch(e.target.value));
-    document.getElementById('addCircuitBtn').addEventListener('click', ui.addCircuit);
+    document.getElementById('addCircuitBtn').addEventListener('click', () => ui.addCircuit(technicalData.dps));
     document.getElementById('circuits-container').addEventListener('click', e => { if (e.target.classList.contains('remove-btn')) { ui.removeCircuit(e.target.dataset.circuitId); } });
     document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
     document.getElementById('pdfBtn').addEventListener('click', handleGeneratePdf);
@@ -230,14 +229,15 @@ supabase.auth.onAuthStateChange(async (event, session) => {
                 currentUserProfile = userProfile;
                 ui.showAppView(currentUserProfile);
                 
-                // Também busca os dados técnicos ao restaurar a sessão
                 technicalData = await api.fetchTechnicalData();
+                 // Popula o primeiro circuito com as opções de DPS
+                ui.resetForm(true, technicalData.dps);
                 handleSearch();
             }
         }
     } else if (event === 'SIGNED_OUT') {
         currentUserProfile = null;
-        technicalData = null; // Limpa os dados técnicos
+        technicalData = null; 
         ui.showLoginView();
     } else if (event === 'PASSWORD_RECOVERY') {
         ui.showResetPasswordView();
