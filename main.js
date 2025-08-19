@@ -75,7 +75,6 @@ async function handleSaveProject() {
     if (!projectName) { alert("Por favor, insira um 'Nome da Obra' para salvar."); return; }
     
     const mainData = {};
-    // ***** LINHA CORRIGIDA ABAIXO *****
     // A query agora ignora o campo #currentProjectId para não salvá-lo nos dados JSON
     document.querySelectorAll('#main-form input:not(#currentProjectId), #main-form select').forEach(el => mainData[el.id] = el.value);
 
@@ -146,7 +145,7 @@ async function showAdminPanel() {
 async function showManageProjectsPanel() {
     const projects = await api.fetchProjects();
     const users = await api.fetchAllApprovedUsers();
-    ui.populateProjectsPanel__Admin(projects, users);
+    ui.populateProjectsPanel_Admin(projects, users);
     ui.openModal('manageProjectsModalOverlay');
 }
 
