@@ -12,9 +12,40 @@
 <body>
 
     <div id="registerModalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Registrar Novo Usuário</h2>
+            <form id="registerForm">
+                <div class="form-grid">
+                    <div class="form-group"><label for="regNome">Nome Completo</label><input type="text" id="regNome" required></div>
+                    <div class="form-group"><label for="regEmail">E-mail</label><input type="email" id="regEmail" required></div>
+                    <div class="form-group"><label for="regPassword">Senha (mín. 6 caracteres)</label><input type="password" id="regPassword" required></div>
+                    <div class="form-group"><label for="regCpf">CPF</label><input type="text" id="regCpf"></div>
+                    <div class="form-group"><label for="regTelefone">Celular</label><input type="text" id="regTelefone"></div>
+                    <div class="form-group"><label for="regCrea">CREA</label><input type="text" id="regCrea"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit">Registrar</button>
+                    <button type="button" class="close-modal-btn" data-modal-id="registerModalOverlay">Cancelar</button>
+                </div>
+            </form>
         </div>
+    </div>
+
     <div id="forgotPasswordModalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Redefinir Senha</h2>
+            <form id="forgotPasswordForm">
+                <div class="form-group">
+                    <label for="forgotEmail">Digite seu e-mail para receber o link de redefinição:</label>
+                    <input type="email" id="forgotEmail" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit">Enviar Link</button>
+                    <button type="button" class="close-modal-btn" data-modal-id="forgotPasswordModalOverlay">Cancelar</button>
+                </div>
+            </form>
         </div>
+    </div>
 
     <div id="adminPanelModalOverlay" class="modal-overlay">
         <div class="modal-content">
@@ -25,8 +56,27 @@
             </div>
         </div>
     </div>
+    
     <div id="editUserModalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Editar Usuário</h3>
+            <form id="editUserForm">
+                <input type="hidden" id="editUserId">
+                <div class="form-grid">
+                    <div class="form-group"><label for="editNome">Nome</label><input type="text" id="editNome"></div>
+                    <div class="form-group"><label for="editEmail">Email</label><input type="email" id="editEmail" readonly></div>
+                    <div class="form-group"><label for="editCpf">CPF</label><input type="text" id="editCpf"></div>
+                    <div class="form-group"><label for="editTelefone">Telefone</label><input type="text" id="editTelefone"></div>
+                    <div class="form-group"><label for="editCrea">CREA</label><input type="text" id="editCrea"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit">Salvar Alterações</button>
+                    <button type="button" class="close-modal-btn" data-modal-id="editUserModalOverlay">Cancelar</button>
+                </div>
+            </form>
         </div>
+    </div>
+
     <div id="manageProjectsModalOverlay" class="modal-overlay">
         <div class="modal-content large">
             <h3>Painel de Administrador - Gerenciar Obras</h3>
@@ -47,10 +97,32 @@
     </div>
     
     <div id="loginContainer" class="container">
-         </div>
+        <h2>Login</h2>
+        <div class="form-group">
+            <label for="emailLogin">Email</label>
+            <input type="email" id="emailLogin" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Senha</label>
+            <input type="password" id="password" required>
+        </div>
+        <button id="loginBtn" style="width:100%; margin-top: 10px; background-color: var(--success-color);">Entrar</button>
+        <button id="registerBtn" style="width:100%; margin-top: 10px; background-color: var(--secondary-color);">Registrar-se</button>
+        <p style="text-align: center; margin-top: 15px;">
+            <a href="#" id="forgotPasswordLink">Esqueceu a senha?</a>
+        </p>
+    </div>
     
     <div id="resetPasswordContainer" class="container" style="display: none; max-width: 450px;">
-         </div>
+        <h2>Crie sua Nova Senha</h2>
+        <form id="resetPasswordForm">
+            <div class="form-group">
+                <label for="newPassword">Nova Senha (mínimo 6 caracteres)</label>
+                <input type="password" id="newPassword" required>
+            </div>
+            <button type="submit">Salvar Nova Senha</button>
+        </form>
+    </div>
 
     <div id="appContainer" class="container" style="display: none;">
         <div class="top-right-buttons">
@@ -59,8 +131,31 @@
             <button id="logoutBtn">Sair</button>
         </div>
         <h1>Calculadora de Projetos Elétricos</h1>
+        
         <div id="project-controls">
-             </div>
+            <h2>Gerenciamento de Obras</h2>
+            <div class="controls-grid">
+                <div class="form-group">
+                    <label for="searchInput">Buscar Obra por Nome</label>
+                    <input type="text" id="searchInput" placeholder="Digite para buscar...">
+                </div>
+                <div class="button-wrapper">
+                    <div class="form-group" style="flex-grow: 1;">
+                        <label for="savedProjectsSelect">Carregar Obra Salva</label>
+                        <select id="savedProjectsSelect">
+                            <option value="">-- Nenhuma obra encontrada --</option>
+                        </select>
+                    </div>
+                    <button id="loadBtn" style="background-color: var(--secondary-color);">Carregar</button>
+                </div>
+                <div class="button-wrapper">
+                    <button id="newBtn" style="background-color: var(--primary-color);">Nova Obra</button>
+                    <button id="saveBtn" style="background-color: var(--success-color);">Salvar / Atualizar Obra</button>
+                    <button id="deleteBtn" style="background-color: var(--danger-color);">Excluir Obra</button>
+                </div>
+            </div>
+        </div>
+
         <form id="main-form">
             <input type="hidden" id="currentProjectId">
             <h2>Informações da Obra/Cliente</h2>
@@ -76,12 +171,23 @@
                 <div class="form-group"><label for="areaObra">Área da Obra (m²)</label><input type="number" id="areaObra"></div>
             </div>
         </form>
+
         <div id="circuits-container"></div>
-        <button id="addCircuitBtn">Adicionar Circuito</button>
+        <button id="addCircuitBtn" style="background-color: var(--primary-color); width: 100%; margin-top: 20px;">Adicionar Circuito</button>
+        
         <form id="tech-form">
-             </form>
+            <h2>Responsável Técnico</h2>
+            <div class="form-grid">
+                <div class="form-group"><label for="respTecnico">Nome</label><input type="text" id="respTecnico"></div>
+                <div class="form-group"><label for="titulo">Título</label><input type="text" id="titulo"></div>
+                <div class="form-group"><label for="crea">CREA</label><input type="text" id="crea"></div>
+            </div>
+        </form>
+
         <div class="button-container">
-             </div>
+             <button id="calculateBtn" style="background-color: var(--secondary-color);">Gerar Memorial Descritivo</button>
+             <button id="pdfBtn" style="background-color: var(--success-color);">Gerar PDF</button>
+        </div>
         <pre id="report">O relatório aparecerá aqui.</pre>
     </div>
 
