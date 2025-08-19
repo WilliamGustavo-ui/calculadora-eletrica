@@ -14,7 +14,7 @@
     <div id="registerModalOverlay" class="modal-overlay">
         <div class="modal-content">
             <h2>Registrar Novo Usuário</h2>
-            <form id="registerForm">
+            <form id="registerForm" autocomplete="off">
                 <div class="form-grid">
                     <div class="form-group"><label for="regNome">Nome Completo</label><input type="text" id="regNome" required></div>
                     <div class="form-group"><label for="regEmail">E-mail</label><input type="email" id="regEmail" required></div>
@@ -34,7 +34,7 @@
     <div id="forgotPasswordModalOverlay" class="modal-overlay">
         <div class="modal-content">
             <h2>Redefinir Senha</h2>
-            <form id="forgotPasswordForm">
+            <form id="forgotPasswordForm" autocomplete="off">
                 <div class="form-group">
                     <label for="forgotEmail">Digite seu e-mail para receber o link de redefinição:</label>
                     <input type="email" id="forgotEmail" required>
@@ -60,7 +60,7 @@
     <div id="editUserModalOverlay" class="modal-overlay">
         <div class="modal-content">
             <h3>Editar Usuário</h3>
-            <form id="editUserForm">
+            <form id="editUserForm" autocomplete="off">
                 <input type="hidden" id="editUserId">
                 <div class="form-grid">
                     <div class="form-group"><label for="editNome">Nome</label><input type="text" id="editNome"></div>
@@ -115,7 +115,7 @@
     
     <div id="resetPasswordContainer" class="container" style="display: none; max-width: 450px;">
         <h2>Crie sua Nova Senha</h2>
-        <form id="resetPasswordForm">
+        <form id="resetPasswordForm" autocomplete="off">
             <div class="form-group">
                 <label for="newPassword">Nova Senha (mínimo 6 caracteres)</label>
                 <input type="password" id="newPassword" required>
@@ -156,7 +156,7 @@
             </div>
         </div>
 
-        <form id="main-form">
+        <form id="main-form" autocomplete="off">
             <input type="hidden" id="currentProjectId">
             <h2>Informações da Obra/Cliente</h2>
             <div class="form-grid">
@@ -175,7 +175,7 @@
         <div id="circuits-container"></div>
         <button id="addCircuitBtn" style="background-color: var(--primary-color); width: 100%; margin-top: 20px;">Adicionar Circuito</button>
         
-        <form id="tech-form">
+        <form id="tech-form" autocomplete="off">
             <h2>Responsável Técnico</h2>
             <div class="form-grid">
                 <div class="form-group"><label for="respTecnico">Nome</label><input type="text" id="respTecnico"></div>

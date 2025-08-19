@@ -73,8 +73,12 @@ async function handleSaveProject() {
     if (!currentUserProfile) { alert("Você precisa estar logado para salvar um projeto."); return; }
     const projectName = document.getElementById('obra').value.trim();
     if (!projectName) { alert("Por favor, insira um 'Nome da Obra' para salvar."); return; }
+    
     const mainData = {};
-    document.querySelectorAll('#main-form input, #main-form select').forEach(el => mainData[el.id] = el.value);
+    // ***** LINHA CORRIGIDA ABAIXO *****
+    // A query agora ignora o campo #currentProjectId para não salvá-lo nos dados JSON
+    document.querySelectorAll('#main-form input:not(#currentProjectId), #main-form select').forEach(el => mainData[el.id] = el.value);
+
     const techData = {};
     document.querySelectorAll('#tech-form input').forEach(el => techData[el.id] = el.value);
     const circuitsData = [];
@@ -142,7 +146,7 @@ async function showAdminPanel() {
 async function showManageProjectsPanel() {
     const projects = await api.fetchProjects();
     const users = await api.fetchAllApprovedUsers();
-    ui.populateProjectsPanel_Admin(projects, users);
+    ui.populateProjectsPanel__Admin(projects, users);
     ui.openModal('manageProjectsModalOverlay');
 }
 
