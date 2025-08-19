@@ -31,7 +31,40 @@ export function calcularTodosCircuitos(technicalData){
     
     circuitBlocks.forEach(block=>{
         const id=block.dataset.id;
-        const dados={id:id,cliente:document.getElementById('cliente').value,tipoDocumento:document.getElementById('tipoDocumento').value,documento:document.getElementById('documento').value,telefone:document.getElementById('telefone').value,celular:document.getElementById('celular').value,email:document.getElementById('email').value,obra:document.getElementById('obra').value,endereco:document.getElementById('endereco').value,areaObra:document.getElementById('areaObra').value,nomeCircuito:document.getElementById(`nomeCircuito-${id}`).value,tipoCircuito:document.getElementById(`tipoCircuito-${id}`).value,potenciaW:parseFloat(document.getElementById(`potenciaW-${id}`).value),potenciaCV:parseFloat(document.getElementById(`potenciaCV-${id}`).value),fatorDemanda:parseFloat(document.getElementById(`fatorDemanda-${id}`).value),fases:document.getElementById(`fases-${id}`).value,tipoLigacao:document.getElementById(`tipoLigacao-${id}`).value,tensaoV:parseFloat(document.getElementById(`tensaoV-${id}`).value),fatorPotencia:parseFloat(document.getElementById(`fatorPotencia-${id}`).value),comprimentoM:parseFloat(document.getElementById(`comprimentoM-${id}`).value),tipoIsolacao:document.getElementById(`tipoIsolacao-${id}`).value,materialCabo:document.getElementById(`materialCabo-${id}`).value,metodoInstalacao:document.getElementById(`metodoInstalacao-${id}`).value,temperaturaAmbienteC:parseInt(document.getElementById(`temperaturaAmbienteC-${id}`).value),resistividadeSolo:parseFloat(document.getElementById(`resistividadeSolo-${id}`).value),numCircuitosAgrupados:parseInt(document.getElementById(`numCircuitosAgrupados-${id}`).value),limiteQuedaTensao:parseFloat(document.getElementById(`limiteQuedaTensao-${id}`).value),tipoDisjuntor:document.getElementById(`tipoDisjuntor-${id}`).value,requerDR:document.getElementById(`requerDR-${id}`).checked,classeDPS:document.getElementById(`classeDPS-${id}`).value,};
+        const dados={
+            id:id,
+            cliente:document.getElementById('cliente').value,
+            tipoDocumento:document.getElementById('tipoDocumento').value,
+            documento:document.getElementById('documento').value,
+            telefone:document.getElementById('telefone').value,
+            celular:document.getElementById('celular').value,
+            email:document.getElementById('email').value,
+            obra:document.getElementById('obra').value,
+            endereco:document.getElementById('endereco').value,
+            areaObra:document.getElementById('areaObra').value,
+            nomeCircuito:document.getElementById(`nomeCircuito-${id}`).value,
+            tipoCircuito:document.getElementById(`tipoCircuito-${id}`).value,
+            potenciaW:parseFloat(document.getElementById(`potenciaW-${id}`).value),
+            potenciaCV:parseFloat(document.getElementById(`potenciaCV-${id}`).value),
+            fatorDemanda:parseFloat(document.getElementById(`fatorDemanda-${id}`).value),
+            fases:document.getElementById(`fases-${id}`).value,
+            tipoLigacao:document.getElementById(`tipoLigacao-${id}`).value,
+            tensaoV:parseFloat(document.getElementById(`tensaoV-${id}`).value),
+            fatorPotencia:parseFloat(document.getElementById(`fatorPotencia-${id}`).value),
+            comprimentoM:parseFloat(document.getElementById(`comprimentoM-${id}`).value),
+            tipoIsolacao:document.getElementById(`tipoIsolacao-${id}`).value,
+            materialCabo:document.getElementById(`materialCabo-${id}`).value,
+            metodoInstalacao:document.getElementById(`metodoInstalacao-${id}`).value,
+            temperaturaAmbienteC:parseInt(document.getElementById(`temperaturaAmbienteC-${id}`).value),
+            resistividadeSolo:parseFloat(document.getElementById(`resistividadeSolo-${id}`).value),
+            numCircuitosAgrupados:parseInt(document.getElementById(`numCircuitosAgrupados-${id}`).value),
+            limiteQuedaTensao:parseFloat(document.getElementById(`limiteQuedaTensao-${id}`).value),
+            tipoDisjuntor:document.getElementById(`tipoDisjuntor-${id}`).value,
+            requerDR:document.getElementById(`requerDR-${id}`).checked,
+            classeDPS:document.getElementById(`classeDPS-${id}`).value,
+            // ***** LINHA ADICIONADA *****
+            dpsRatingKa: parseInt(document.getElementById(`dpsRatingKa-${id}`).value) || 0
+        };
         
         if(dados.tipoCircuito==='motores')dados.potenciaW=dados.potenciaCV*735.5;
 
