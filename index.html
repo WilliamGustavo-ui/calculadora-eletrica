@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Projetos Eletricos v16.0</title>
+    <title>Calculadora de Projetos Eletricos v17.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-customfonts/1.0.4/roboto-normal.js"></script>
@@ -171,6 +171,29 @@
                 <div class="form-group"><label for="areaObra">Área da Obra (m²)</label><input type="number" id="areaObra"></div>
             </div>
         </form>
+
+        <div id="feeder-container">
+            <h2>Alimentação Geral</h2>
+            <form id="feeder-form" class="circuit-block" autocomplete="off">
+                <div class="form-grid">
+                    <div class="form-group"><label for="feederFatorDemanda">Fator de Demanda Geral</label><input type="number" id="feederFatorDemanda" step="0.01" value="1.0"></div>
+                    <div class="form-group"><label for="feederFases">Sistema de Fases</label><select id="feederFases"><option value="Monofasico">Monofasico</option><option value="Bifasico">Bifasico</option><option value="Trifasico" selected>Trifasico</option></select></div>
+                    <div class="form-group"><label for="feederTipoLigacao">Tipo de Ligacao</label><select id="feederTipoLigacao"></select></div>
+                    <div class="form-group"><label for="feederTensaoV">Tensao (V)</label><select id="feederTensaoV"><option value="127">127 V</option><option value="220" selected>220 V</option><option value="380">380 V</option><option value="440">440 V</option></select></div>
+                    <div class="form-group"><label for="feederFatorPotencia">Fator de Potencia (eficiencia)</label><input type="number" id="feederFatorPotencia" step="0.01" value="0.92"></div>
+                    <div class="form-group"><label for="feederComprimentoM">Comprimento (m)</label><input type="number" id="feederComprimentoM" value="15"></div>
+                    <div class="form-group"><label for="feederTipoIsolacao">Tipo de Isolacao</label><select id="feederTipoIsolacao"><option value="PVC" selected>PVC 70 C</option><option value="EPR">EPR/XLPE 90 C</option></select></div>
+                    <div class="form-group"><label for="feederMaterialCabo">Material do Condutor</label><select id="feederMaterialCabo"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Aluminio</option></select></div>
+                    <div class="form-group"><label for="feederMetodoInstalacao">Metodo de Instalacao</label><select id="feederMetodoInstalacao"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select></div>
+                    <div class="form-group"><label for="feederTemperaturaAmbienteC">Temperatura Ambiente (C)</label><select id="feederTemperaturaAmbienteC"><option value="25">25</option><option value="30" selected>30</option><option value="35">35</option><option value="40">40</option></select></div>
+                    <div class="form-group"><label for="feederLimiteQuedaTensao">Limite Queda de Tensao (%)</label><input type="number" id="feederLimiteQuedaTensao" step="0.1" value="5.0"></div>
+                    <div class="form-group"><label for="feederTipoDisjuntor">Tipo de Disjuntor</label><select id="feederTipoDisjuntor"><option value="Minidisjuntor (DIN)">Minidisjuntor (DIN)</option><option value="Caixa Moldada (MCCB)" selected>Caixa Moldada (MCCB)</option></select></div>
+                    <div class="form-group"><label for="feederDpsClasse">Classe DPS</label><select id="feederDpsClasse"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select></div>
+                    <div class="form-group"><label for="feederDpsKa">Corrente DPS (kA)</label><select id="feederDpsKa"></select></div>
+                    <div class="form-group"><input type="checkbox" id="feederRequerDR" checked><label for="feederRequerDR">Requer Protecao DR Geral</label></div>
+                </div>
+            </form>
+        </div>
 
         <div id="circuits-container"></div>
         <button id="addCircuitBtn" style="background-color: var(--primary-color); width: 100%; margin-top: 20px;">Adicionar Circuito</button>

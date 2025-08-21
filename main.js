@@ -24,9 +24,8 @@ async function handleLogin() {
             ui.showAppView(currentUserProfile);
             
             technicalData = await api.fetchTechnicalData();
-            // Popula o primeiro circuito com as opções de DPS
             ui.resetForm(true, technicalData.dps);
-            handleSearch();
+            await handleSearch();
         } else {
             alert('Seu cadastro ainda não foi aprovado por um administrador.');
             await auth.signOutUser();
@@ -80,13 +79,18 @@ async function handleSaveProject() {
 
     const techData = {};
     document.querySelectorAll('#tech-form input').forEach(el => techData[el.id] = el.value);
+
+    const feederData = {};
+    document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(el => feederData[el.id] = el.type === 'checkbox' ? el.checked : el.value);
+
     const circuitsData = [];
-    document.querySelectorAll('.circuit-block').forEach(block => {
+    document.querySelectorAll('.circuit-block[data-id]').forEach(block => {
         const circuit = { id: block.dataset.id };
         block.querySelectorAll('input, select').forEach(el => { circuit[el.id] = el.type === 'checkbox' ? el.checked : el.value; });
         circuitsData.push(circuit);
     });
-    const projectData = { project_name: projectName, main_data: mainData, tech_data: techData, circuits_data: circuitsData, owner_id: currentUserProfile.id };
+
+    const projectData = { project_name: projectName, main_data: mainData, tech_data: techData, feeder_data: feederData, circuits_data: circuitsData, owner_id: currentUserProfile.id };
     const currentProjectId = document.getElementById('currentProjectId').value;
     try {
         const { data, error } = await api.saveProject(projectData, currentProjectId);
@@ -101,7 +105,7 @@ async function handleLoadProject() {
     const projectId = document.getElementById('savedProjectsSelect').value;
     if (!projectId) return;
     const project = await api.fetchProjectById(projectId);
-    if (project) { ui.populateFormWithProjectData(project, technicalData.dps); alert(`Obra "${project.project_name}" carregada.`); }
+    if (project) { ui.populateFormWithProjectData(project); alert(`Obra "${project.project_name}" carregada.`); }
 }
 
 async function handleDeleteProject() {
@@ -124,14 +128,14 @@ async function handleSearch(term = '') {
 }
 
 function handleCalculate() {
-    const results = utils.calcularTodosCircuitos(technicalData);
+    const results = utils.calcularProjetoCompleto(technicalData);
     if (results) {
         ui.renderReport(results);
     }
 }
 
 function handleGeneratePdf() {
-    const results = utils.calcularTodosCircuitos(technicalData);
+    const results = utils.calcularProjetoCompleto(technicalData);
     if(results) { ui.generatePdf(results, currentUserProfile); }
 }
 
@@ -197,7 +201,7 @@ function setupEventListeners() {
     document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
     document.getElementById('newBtn').addEventListener('click', handleNewProject);
     document.getElementById('searchInput').addEventListener('input', (e) => handleSearch(e.target.value));
-    document.getElementById('addCircuitBtn').addEventListener('click', () => ui.addCircuit(technicalData.dps));
+    document.getElementById('addCircuitBtn').addEventListener('click', () => ui.addCircuit());
     document.getElementById('circuits-container').addEventListener('click', e => { if (e.target.classList.contains('remove-btn')) { ui.removeCircuit(e.target.dataset.circuitId); } });
     document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
     document.getElementById('pdfBtn').addEventListener('click', handleGeneratePdf);
@@ -218,9 +222,6 @@ function setupEventListeners() {
 
 main(); // PONTO DE ENTRADA
 
-/**
- * onAuthStateChange agora cuida da restauração da sessão (quando a página é recarregada).
- */
 supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'INITIAL_SESSION') {
         if (session) {
@@ -230,9 +231,8 @@ supabase.auth.onAuthStateChange(async (event, session) => {
                 ui.showAppView(currentUserProfile);
                 
                 technicalData = await api.fetchTechnicalData();
-                 // Popula o primeiro circuito com as opções de DPS
                 ui.resetForm(true, technicalData.dps);
-                handleSearch();
+                await handleSearch();
             }
         }
     } else if (event === 'SIGNED_OUT') {
