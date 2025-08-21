@@ -15,7 +15,7 @@ export function showAppView(userProfile) {
     document.getElementById('loginContainer').style.display = 'none';
     document.getElementById('appContainer').style.display = 'block';
     document.getElementById('resetPasswordContainer').style.display = 'none';
-     
+    
     const isAdmin = userProfile?.is_admin || false;
     document.getElementById('adminPanelBtn').style.display = isAdmin ? 'block' : 'none';
     document.getElementById('manageProjectsBtn').style.display = isAdmin ? 'block' : 'none';
@@ -154,17 +154,14 @@ export function populateProjectList(projects, isAdmin) {
 
 export function populateFormWithProjectData(project) {
     document.getElementById('currentProjectId').value = project.id;
-    // Main data
     Object.keys(project.main_data).forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = project.main_data[id];
     });
-    // Tech data
     Object.keys(project.tech_data).forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = project.tech_data[id];
     });
-     // Feeder data
     if (project.feeder_data) {
         Object.keys(project.feeder_data).forEach(id => {
             const el = document.getElementById(id);
@@ -176,7 +173,6 @@ export function populateFormWithProjectData(project) {
         document.getElementById('feederFases').dispatchEvent(new Event('change'));
         document.getElementById('feederTipoLigacao').value = project.feeder_data['feederTipoLigacao'];
     }
-    // Circuits
     document.getElementById('circuits-container').innerHTML = '';
     circuitCount = 0;
     project.circuits_data.forEach(savedCircuitData => {
@@ -258,12 +254,11 @@ function getDpsText(dpsInfo) {
 export function renderReport(calculationResults){
     if(!calculationResults) return;
     const { feederResult, circuitResults } = calculationResults;
-
     const dataHora = (new Date).toLocaleString('pt-BR');
     const formatLine = (label, value) => (label + ':').padEnd(28, ' ') + value;
     let reportText = `======================================================\n==           RELATORIO DE PROJETO ELETRICO           ==\n======================================================\n${formatLine('Gerado em', dataHora)}\n`;
     
-    const dadosCliente = feederResult.dados; // Pega os dados do cliente do alimentador
+    const dadosCliente = feederResult.dados;
     reportText += `\n-- DADOS DA OBRA E CLIENTE --\n`;
     reportText += `${formatLine('Cliente', dadosCliente.cliente || 'Nao informado')}\n`;
     reportText += `${formatLine(`Documento (${dadosCliente.tipoDocumento})`, dadosCliente.documento || 'Nao informado')}\n`;
@@ -317,7 +312,6 @@ export function renderReport(calculationResults){
     document.getElementById('report').textContent = reportText.trim();
 }
 
-
 export function generatePdf(calculationResults, currentUserProfile) {
     if (!calculationResults) return;
     const { feederResult, circuitResults } = calculationResults;
@@ -326,28 +320,42 @@ export function generatePdf(calculationResults, currentUserProfile) {
     const doc = new jsPDF('p', 'mm', 'a4');
     let yPos = 20;
     const leftMargin = 15;
-    const valueMargin = 65; 
+    const valueMargin = 75; 
 
     doc.setFont('helvetica', 'normal');
     
     const addTitle = (title) => { doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.text(title, 105, yPos, { align: 'center' }); yPos += 12; };
     const addSection = (title) => { if (yPos > 260) { doc.addPage(); yPos = 20; } doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.text(title, leftMargin, yPos); yPos += 8; };
-    const addLineItem = (label, value) => { if (yPos > 270) { doc.addPage(); yPos = 20; } doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.text(label, leftMargin, yPos); doc.setFont('helvetica', 'normal'); doc.text(String(value || 'Nao informado'), valueMargin, yPos); yPos += 7; };
+    const addLineItem = (label, value) => { if (yPos > 270) { doc.addPage(); yPos = 20; } doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.text(label, leftMargin, yPos); doc.setFont('helvetica', 'normal'); doc.text(String(value || '-'), valueMargin, yPos); yPos += 6; };
     
-    addTitle("RELATORIO DE PROJETO ELETRICO");
+    addTitle("RELATÓRIO DE PROJETO ELÉTRICO");
 
     const dadosCliente = feederResult.dados;
     
     addSection("DADOS DA OBRA E CLIENTE");
+    addLineItem("Código da Obra:", dadosCliente.projectCode);
+    addLineItem("Obra (Projeto):", dadosCliente.obra);
     addLineItem("Cliente:", dadosCliente.cliente);
-    addLineItem("Obra:", dadosCliente.obra);
-    addLineItem("Endereco:", dadosCliente.endereco);
+    addLineItem(`Documento (${dadosCliente.tipoDocumento}):`, dadosCliente.documento);
+    addLineItem("Endereço:", dadosCliente.endereco);
+    addLineItem("Área da Obra:", `${dadosCliente.areaObra || '-'} m²`);
+    addLineItem("Telefone:", dadosCliente.telefone);
+    addLineItem("Celular:", dadosCliente.celular);
+    addLineItem("E-mail:", dadosCliente.email);
     yPos += 5;
 
-    addSection("INFORMACOES DO RESPONSÁVEL TÉCNICO");
+    addSection("INFORMAÇÕES DO RESPONSÁVEL TÉCNICO");
     addLineItem("Nome:", document.getElementById('respTecnico').value);
+    addLineItem("Título:", document.getElementById('titulo').value);
     addLineItem("CREA:", document.getElementById('crea').value);
     yPos += 5;
+
+    addSection("INFORMAÇÕES DO RELATÓRIO");
+    const dataFormatada = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    addLineItem("Gerado em:", dataFormatada);
+    addLineItem("Gerado por:", currentUserProfile?.nome || 'N/A');
+    yPos += 5;
+
 
     addSection("RESUMO DA ALIMENTAÇÃO GERAL");
     const feederHead = [['Carga Total', 'Tensão/Fases', 'Disjuntor Geral', 'DR', 'DPS', 'Cabo', 'Eletroduto']];
@@ -360,23 +368,25 @@ export function generatePdf(calculationResults, currentUserProfile) {
         `${feederResult.calculos.bitolaRecomendadaMm2} mm²`,
         feederResult.calculos.dutoRecomendado
     ]];
-    doc.autoTable({ startY: yPos, head: feederHead, body: feederBody, theme: 'grid', headStyles: { fillColor: [44, 62, 80] } });
+    doc.autoTable({ startY: yPos, head: feederHead, body: feederBody, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
     yPos = doc.lastAutoTable.finalY + 10;
 
-    addSection("RESUMO DOS CIRCUITOS");
-    const head = [['Ckt', 'Nome', 'Pot. (W)', 'Disjuntor', 'DR', 'DPS', 'Cabo', 'Eletroduto']];
-    const body = circuitResults.map(r => [
-            r.dados.id,
-            r.dados.nomeCircuito,
-            r.calculos.potenciaDemandada.toFixed(2),
-            r.calculos.disjuntorRecomendado.nome,
-            r.dados.requerDR ? 'Sim' : 'Nao',
-            getDpsText(r.dados.dpsInfo),
-            `${r.calculos.bitolaRecomendadaMm2} mm²`,
-            r.calculos.dutoRecomendado
-        ]
-    );
-    doc.autoTable({ startY: yPos, head: head, body: body, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { font: "helvetica", fontSize: 8 } });
+    if (circuitResults.length > 0) {
+        addSection("RESUMO DOS CIRCUITOS");
+        const head = [['Ckt', 'Nome', 'Pot. (W)', 'Disjuntor', 'DR', 'DPS', 'Cabo', 'Eletroduto']];
+        const body = circuitResults.map(r => [
+                r.dados.id,
+                r.dados.nomeCircuito,
+                r.calculos.potenciaDemandada.toFixed(2),
+                r.calculos.disjuntorRecomendado.nome,
+                r.dados.requerDR ? 'Sim' : 'Nao',
+                getDpsText(r.dados.dpsInfo),
+                `${r.calculos.bitolaRecomendadaMm2} mm²`,
+                r.calculos.dutoRecomendado
+            ]
+        );
+        doc.autoTable({ startY: yPos, head: head, body: body, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
+    }
     
     const allCalculationsForMemorial = [feederResult, ...circuitResults];
     allCalculationsForMemorial.forEach(result => {
@@ -406,7 +416,7 @@ export function generatePdf(calculationResults, currentUserProfile) {
         addLineItem("Eletroduto (aprox.):", `${calculos.dutoRecomendado} (${calculos.numCondutores} condutores)`);
         yPos += 5;
 
-        addSection("-- PROTECOES RECOMENDADAS --");
+        addSection("-- PROTEÇÕES RECOMENDADAS --");
         addLineItem("Disjuntor:", `${dados.tipoDisjuntor}: ${calculos.disjuntorRecomendado.nome} (Icc: ${calculos.disjuntorRecomendado.icc} kA)`);
         addLineItem("Proteção DR:", dados.requerDR ? `Sim (${calculos.disjuntorRecomendado.nome.replace('A','')}A / 30mA)` : 'Não');
         addLineItem("Proteção DPS:", getDpsText(dados.dpsInfo));

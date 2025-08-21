@@ -23,7 +23,6 @@ export function calcularProjetoCompleto(technicalData) {
         return { feederResult, circuitResults: [] };
     };
 
-    // ATUALIZADO: Encontra a corrente do maior disjuntor dos circuitos
     let maxCircuitBreakerAmps = 0;
     if (circuitResults.length > 0) {
         maxCircuitBreakerAmps = Math.max(...circuitResults.map(r => {
@@ -34,20 +33,35 @@ export function calcularProjetoCompleto(technicalData) {
 
     const totalPotenciaDemandadaCircuitos = circuitResults.reduce((sum, result) => sum + result.calculos.potenciaDemandada, 0);
 
-    // ATUALIZADO: Passa o valor do maior disjuntor para o cálculo do alimentador
     const feederResult = _calcularAlimentadorGeral(technicalData, totalPotenciaDemandadaCircuitos, maxCircuitBreakerAmps);
     if (!feederResult) return null;
     
     return { feederResult, circuitResults };
 }
 
+// Coleta todos os dados do formulário principal
+function getMainFormData() {
+    return {
+        projectCode: document.getElementById('projectCode').value,
+        cliente: document.getElementById('cliente').value,
+        tipoDocumento: document.getElementById('tipoDocumento').value,
+        documento: document.getElementById('documento').value,
+        telefone: document.getElementById('telefone').value,
+        celular: document.getElementById('celular').value,
+        email: document.getElementById('email').value,
+        obra: document.getElementById('obra').value,
+        endereco: document.getElementById('endereco').value,
+        areaObra: document.getElementById('areaObra').value
+    };
+}
+
 // --- FUNÇÕES AUXILIARES DE CÁLCULO ---
 
-// ATUALIZADO: Recebe o maxCircuitBreakerAmps como argumento
 function _calcularAlimentadorGeral(technicalData, potenciaTotal, maxCircuitBreakerAmps) {
+    const mainData = getMainFormData();
     const dados = {
+        ...mainData, // Adiciona todos os dados da obra/cliente
         id: 'Geral',
-        cliente: document.getElementById('cliente').value, tipoDocumento: document.getElementById('tipoDocumento').value, documento: document.getElementById('documento').value, telefone: document.getElementById('telefone').value, celular: document.getElementById('celular').value, email: document.getElementById('email').value, obra: document.getElementById('obra').value, endereco: document.getElementById('endereco').value, areaObra: document.getElementById('areaObra').value,
         nomeCircuito: "Alimentador Geral",
         fatorDemanda: parseFloat(document.getElementById('feederFatorDemanda').value) || 1.0,
         fases: document.getElementById('feederFases').value,
@@ -66,11 +80,9 @@ function _calcularAlimentadorGeral(technicalData, potenciaTotal, maxCircuitBreak
     };
 
     dados.dpsInfo = findDps(technicalData.dps, dados.dpsClasse, 'highest');
-
     const potenciaInstalada = potenciaTotal;
     const potenciaDemandada = potenciaInstalada * dados.fatorDemanda;
     
-    // ATUALIZADO: Passa o maxCircuitBreakerAmps para a função de cálculo principal
     return performCalculation(dados, potenciaInstalada, potenciaDemandada, technicalData, maxCircuitBreakerAmps);
 }
 
@@ -79,12 +91,13 @@ function _calcularCircuitosIndividuais(technicalData){
     const circuitBlocks=document.querySelectorAll('#circuits-container .circuit-block');
     if(circuitBlocks.length === 0) return [];
     
+    const mainData = getMainFormData();
     for (const block of circuitBlocks) {
         const id = block.dataset.id;
         
         const dados = {
+            ...mainData, // Adiciona todos os dados da obra/cliente
             id:id,
-            cliente:document.getElementById('cliente').value, tipoDocumento:document.getElementById('tipoDocumento').value, documento:document.getElementById('documento').value, telefone:document.getElementById('telefone').value, celular:document.getElementById('celular').value, email:document.getElementById('email').value, obra:document.getElementById('obra').value, endereco:document.getElementById('endereco').value, areaObra:document.getElementById('areaObra').value,
             nomeCircuito:document.getElementById(`nomeCircuito-${id}`).value,
             tipoCircuito:document.getElementById(`tipoCircuito-${id}`).value,
             potenciaW:parseFloat(document.getElementById(`potenciaW-${id}`).value) || 0,
@@ -108,9 +121,7 @@ function _calcularCircuitosIndividuais(technicalData){
         };
         
         dados.dpsInfo = findDps(technicalData.dps, dados.dpsClasse);
-
         if (dados.tipoCircuito === 'motores') dados.potenciaW = dados.potenciaCV * 735.5;
-
         const potenciaInstalada = dados.potenciaW;
         const potenciaDemandada = potenciaInstalada * dados.fatorDemanda;
         
@@ -135,7 +146,6 @@ function findDps(dpsList, dpsClasse, preference = 'lowest') {
     return suitableDps.length > 0 ? suitableDps[0] : null;
 }
 
-// ATUALIZADO: A função agora recebe um parâmetro opcional para a seletividade
 function performCalculation(dados, potenciaInstalada, potenciaDemandada, technicalData, maxDownstreamBreakerAmps = 0) {
     const correnteInstalada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * dados.fatorPotencia)) : 0;
     const correnteDemandada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * dados.fatorPotencia)) : 0;
@@ -156,12 +166,11 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
     const correnteCorrigidaA = correnteDemandada > 0 && (fatorK1 * fatorK2 * fatorK3 > 0) ? correnteDemandada / (fatorK1 * fatorK2 * fatorK3) : 0;
     let bitolaRecomendadaMm2="Nao encontrada", quedaTensaoCalculada=0, correnteMaximaCabo=0, disjuntorRecomendado={nome:"Coord. Inadequada",icc:0};
     
-    // ATUALIZADO: A lógica de seleção do disjuntor agora inclui a regra de seletividade
     const disjuntorCandidato = technicalData.disjuntores
         .filter(d =>
             d.tipo === dados.tipoDisjuntor &&
             d.corrente_a >= correnteDemandada &&
-            d.corrente_a >= maxDownstreamBreakerAmps // Nova regra de seletividade!
+            d.corrente_a >= maxDownstreamBreakerAmps
         )
         .sort((a,b) => a.corrente_a - b.corrente_a)[0];
 
