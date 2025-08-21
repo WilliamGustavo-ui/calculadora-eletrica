@@ -18,11 +18,16 @@ export function calcularProjetoCompleto(technicalData) {
     }
 
     const circuitResults = _calcularCircuitosIndividuais(technicalData);
-    if (!circuitResults) return null;
+    if (!circuitResults) {
+        // Ainda assim, permite calcular o alimentador mesmo sem circuitos (carga 0)
+        // para evitar erros de interface.
+        const feederResult = _calcularAlimentadorGeral(technicalData, 0);
+        return { feederResult, circuitResults: [] };
+    };
 
     const totalPotenciaDemandadaCircuitos = circuitResults.reduce((sum, result) => sum + result.calculos.potenciaDemandada, 0);
 
-    const feederResult = _calcularAlimentadorGeral(technicalData, totalPotenciaDemandadaCircuitos, circuitResults[0]?.dados);
+    const feederResult = _calcularAlimentadorGeral(technicalData, totalPotenciaDemandadaCircuitos);
     if (!feederResult) return null;
     
     return { feederResult, circuitResults };
@@ -30,10 +35,11 @@ export function calcularProjetoCompleto(technicalData) {
 
 // --- FUNÇÕES AUXILIARES DE CÁLCULO ---
 
-function _calcularAlimentadorGeral(technicalData, potenciaTotal, dadosClienteBase) {
+function _calcularAlimentadorGeral(technicalData, potenciaTotal) {
+    // CORRIGIDO: Pega os dados do cliente diretamente do formulário principal
     const dados = {
         id: 'Geral',
-        cliente: dadosClienteBase.cliente, tipoDocumento: dadosClienteBase.tipoDocumento, documento: dadosClienteBase.documento, obra: dadosClienteBase.obra, endereco: dadosClienteBase.endereco,
+        cliente: document.getElementById('cliente').value, tipoDocumento: document.getElementById('tipoDocumento').value, documento: document.getElementById('documento').value, telefone: document.getElementById('telefone').value, celular: document.getElementById('celular').value, email: document.getElementById('email').value, obra: document.getElementById('obra').value, endereco: document.getElementById('endereco').value, areaObra: document.getElementById('areaObra').value,
         nomeCircuito: "Alimentador Geral",
         fatorDemanda: parseFloat(document.getElementById('feederFatorDemanda').value) || 1.0,
         fases: document.getElementById('feederFases').value,
@@ -49,13 +55,10 @@ function _calcularAlimentadorGeral(technicalData, potenciaTotal, dadosClienteBas
         tipoDisjuntor: document.getElementById('feederTipoDisjuntor').value,
         requerDR: document.getElementById('feederRequerDR').checked,
         dpsClasse: document.getElementById('feederDpsClasse').value,
-        dpsKa: parseFloat(document.getElementById('feederDpsKa').value) || null
     };
 
-    const dpsInfo = findDps(technicalData.dps, dados.dpsClasse, dados.dpsKa);
-    dados.dpsInfo = dpsInfo;
+    dados.dpsInfo = findDps(technicalData.dps, dados.dpsClasse);
 
-    // A potência INSTALADA do alimentador é a soma das DEMANDADAS dos circuitos.
     const potenciaInstalada = potenciaTotal;
     const potenciaDemandada = potenciaInstalada * dados.fatorDemanda;
     
@@ -64,17 +67,15 @@ function _calcularAlimentadorGeral(technicalData, potenciaTotal, dadosClienteBas
 
 function _calcularCircuitosIndividuais(technicalData){
     const allResults=[];
-    const circuitBlocks=document.querySelectorAll('.circuit-block');
-    if(circuitBlocks.length===0){
-        alert("Adicione pelo menos um circuito para calcular.");
-        return null;
-    }
+    const circuitBlocks=document.querySelectorAll('#circuits-container .circuit-block');
+    if(circuitBlocks.length === 0) return []; // Retorna array vazio se não houver circuitos
     
     for (const block of circuitBlocks) {
         const id = block.dataset.id;
         
         const dados = {
             id:id,
+            // Dados do cliente são repetidos aqui para consistência, mas a fonte da verdade é o form principal
             cliente:document.getElementById('cliente').value, tipoDocumento:document.getElementById('tipoDocumento').value, documento:document.getElementById('documento').value, telefone:document.getElementById('telefone').value, celular:document.getElementById('celular').value, email:document.getElementById('email').value, obra:document.getElementById('obra').value, endereco:document.getElementById('endereco').value, areaObra:document.getElementById('areaObra').value,
             nomeCircuito:document.getElementById(`nomeCircuito-${id}`).value,
             tipoCircuito:document.getElementById(`tipoCircuito-${id}`).value,
@@ -96,11 +97,9 @@ function _calcularCircuitosIndividuais(technicalData){
             tipoDisjuntor:document.getElementById(`tipoDisjuntor-${id}`).value,
             requerDR:document.getElementById(`requerDR-${id}`).checked,
             dpsClasse: document.getElementById(`dpsClasse-${id}`).value,
-            dpsKa: parseFloat(document.getElementById(`dpsKa-${id}`).value) || null
         };
         
-        const dpsInfo = findDps(technicalData.dps, dados.dpsClasse, dados.dpsKa);
-        dados.dpsInfo = dpsInfo;
+        dados.dpsInfo = findDps(technicalData.dps, dados.dpsClasse);
 
         if (dados.tipoCircuito === 'motores') dados.potenciaW = dados.potenciaCV * 735.5;
 
@@ -113,30 +112,34 @@ function _calcularCircuitosIndividuais(technicalData){
     return allResults;
 }
 
-function findDps(dpsList, dpsClasse, dpsKa) {
-    if (!dpsClasse || !dpsKa) return null;
+// ATUALIZADO: Função findDps agora calcula/seleciona o kA
+function findDps(dpsList, dpsClasse) {
+    if (!dpsClasse) return null;
     
-    // Encontra o DPS com a menor corrente_ka que seja >= à solicitada, para a classe escolhida.
+    // Filtra pela classe, ordena pela corrente kA de forma crescente
     const suitableDps = dpsList
-        .filter(d => d.classe === dpsClasse && d.corrente_ka >= dpsKa)
+        .filter(d => d.classe === dpsClasse)
         .sort((a, b) => a.corrente_ka - b.corrente_ka);
         
+    // Retorna o primeiro da lista (o de menor kA)
     return suitableDps.length > 0 ? suitableDps[0] : null;
 }
 
 function performCalculation(dados, potenciaInstalada, potenciaDemandada, technicalData) {
-    const correnteInstalada = (dados.fases === 'Trifasico') ? (potenciaInstalada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (potenciaInstalada / (dados.tensaoV * dados.fatorPotencia));
-    const correnteDemandada = (dados.fases === 'Trifasico') ? (potenciaDemandada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (potenciaDemandada / (dados.tensaoV * dados.fatorPotencia));
+    const correnteInstalada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * dados.fatorPotencia)) : 0;
+    const correnteDemandada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * dados.fatorPotencia)) : 0;
     
-    const fatorK1 = technicalData.fatores_k1.find(f => f.temperatura_c === dados.temperaturaAmbienteC)?.fator || 1.0;
+    const fatorK1 = dados.temperaturaAmbienteC ? (technicalData.fatores_k1.find(f => f.temperatura_c === dados.temperaturaAmbienteC)?.fator || 1.0) : 1.0;
     const fatorK2 = (dados.resistividadeSolo > 0) ? (technicalData.fatores_k2.find(f => f.resistividade === dados.resistividadeSolo)?.fator || 1.0) : 1.0;
     
     let fatorK3 = 1.0;
-    const fatorK3_obj = technicalData.fatores_k3.find(f => f.num_circuitos === dados.numCircuitosAgrupados);
-    if (fatorK3_obj) {
-        const metodo = dados.metodoInstalacao;
-        if (metodo.startsWith('A') || metodo.startsWith('B')) fatorK3 = fatorK3_obj.fator_metodo_a_b;
-        else if (metodo.startsWith('C') || metodo.startsWith('D')) fatorK3 = fatorK3_obj.fator_metodo_c_d;
+    if (dados.numCircuitosAgrupados > 1) {
+        const fatorK3_obj = technicalData.fatores_k3.find(f => f.num_circuitos === dados.numCircuitosAgrupados);
+        if (fatorK3_obj) {
+            const metodo = dados.metodoInstalacao;
+            if (metodo.startsWith('A') || metodo.startsWith('B')) fatorK3 = fatorK3_obj.fator_metodo_a_b;
+            else if (metodo.startsWith('C') || metodo.startsWith('D')) fatorK3 = fatorK3_obj.fator_metodo_c_d;
+        }
     }
 
     const correnteCorrigidaA = correnteDemandada / (fatorK1 * fatorK2 * fatorK3);
@@ -147,8 +150,8 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
         .sort((a,b) => a.corrente_a - b.corrente_a)[0];
 
     if (disjuntorCandidato) {
-        let bitolaMinima = (dados.tipoCircuito === 'iluminacao') ? 1.5 : 2.5;
-        if (dados.id === 'Geral') bitolaMinima = 0; // Sem bitola minima para alimentador
+        let bitolaMinima = (dados.tipoCircuito === 'iluminacao') ? 1.5 : (dados.tipoCircuito ? 2.5 : 0);
+        if (dados.id === 'Geral') bitolaMinima = 0;
 
         const tabelaCaboSelecionada = technicalData.cabos.filter(c => c.material === dados.materialCabo && c.isolacao === dados.tipoIsolacao && c.secao_mm2 >= bitolaMinima);
         
@@ -159,7 +162,7 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
             if (Iz >= disjuntorCandidato.corrente_a) {
                 const resistividade = (dados.materialCabo === 'Cobre') ? 0.0172 : 0.0282;
                 const quedaVolts = (dados.fases === 'Trifasico') ? ((1.732 * resistividade * dados.comprimentoM * correnteDemandada) / cabo.secao_mm2) : ((2 * resistividade * dados.comprimentoM * correnteDemandada) / cabo.secao_mm2);
-                const quedaPercentual = (quedaVolts / dados.tensaoV) * 100.0;
+                const quedaPercentual = (dados.tensaoV > 0) ? (quedaVolts / dados.tensaoV) * 100.0 : 0;
                 
                 if (quedaPercentual <= dados.limiteQuedaTensao) {
                     bitolaRecomendadaMm2 = cabo.secao_mm2.toString();

@@ -24,7 +24,7 @@ async function handleLogin() {
             ui.showAppView(currentUserProfile);
             
             technicalData = await api.fetchTechnicalData();
-            ui.resetForm(true, technicalData.dps);
+            ui.resetForm(true);
             await handleSearch();
         } else {
             alert('Seu cadastro ainda não foi aprovado por um administrador.');
@@ -84,7 +84,8 @@ async function handleSaveProject() {
     document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(el => feederData[el.id] = el.type === 'checkbox' ? el.checked : el.value);
 
     const circuitsData = [];
-    document.querySelectorAll('.circuit-block[data-id]').forEach(block => {
+    // CORRIGIDO: Seletor agora é mais específico para evitar pegar o form do alimentador.
+    document.querySelectorAll('#circuits-container .circuit-block').forEach(block => {
         const circuit = { id: block.dataset.id };
         block.querySelectorAll('input, select').forEach(el => { circuit[el.id] = el.type === 'checkbox' ? el.checked : el.value; });
         circuitsData.push(circuit);
@@ -114,11 +115,11 @@ async function handleDeleteProject() {
     if (!projectId || !confirm(`Tem certeza que deseja excluir a obra "${projectName}"?`)) return;
     const { error } = await api.deleteProject(projectId);
     if (error) { alert('Erro ao excluir obra: ' + error.message); }
-    else { alert("Obra excluída."); ui.resetForm(true, technicalData.dps); await handleSearch(); }
+    else { alert("Obra excluída."); ui.resetForm(true); await handleSearch(); }
 }
 
 function handleNewProject() {
-    if (confirm("Deseja limpar todos os campos para iniciar uma nova obra?")) { ui.resetForm(true, technicalData.dps); }
+    if (confirm("Deseja limpar todos os campos para iniciar uma nova obra?")) { ui.resetForm(true); }
 }
 
 async function handleSearch(term = '') {
@@ -231,7 +232,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
                 ui.showAppView(currentUserProfile);
                 
                 technicalData = await api.fetchTechnicalData();
-                ui.resetForm(true, technicalData.dps);
+                ui.resetForm(true);
                 await handleSearch();
             }
         }
