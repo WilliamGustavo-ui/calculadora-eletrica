@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Projetos Eletricos v17.1</title>
+    <title>Calculadora de Projetos Eletricos v17.2</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-customfonts/1.0.4/roboto-normal.js"></script>
@@ -183,7 +183,18 @@
                     </div>
                     <div class="form-group"><label for="feederFases">Sistema de Fases</label><select id="feederFases"><option value="Monofasico">Monofasico</option><option value="Bifasico">Bifasico</option><option value="Trifasico" selected>Trifasico</option></select></div>
                     <div class="form-group"><label for="feederTipoLigacao">Tipo de Ligacao</label><select id="feederTipoLigacao"></select></div>
-                    <div class="form-group"><label for="feederTensaoV">Tensao (V)</label><select id="feederTensaoV"><option value="127">127 V</option><option value="220" selected>220 V</option><option value="380">380 V</option><option value="440">440 V</option></select></div>
+                    <div class="form-group"><label for="feederTensaoV">Tensao (V)</label>
+                        <select id="feederTensaoV">
+                            <option value="12">12 V</option>
+                            <option value="24">24 V</option>
+                            <option value="36">36 V</option>
+                            <option value="127">127 V</option>
+                            <option value="220" selected>220 V</option>
+                            <option value="380">380 V</option>
+                            <option value="440">440 V</option>
+                            <option value="760">760 V</option>
+                        </select>
+                    </div>
                     <div class="form-group"><label for="feederFatorPotencia">Fator de Potencia (eficiencia)</label><input type="number" id="feederFatorPotencia" step="0.01" value="0.92"></div>
                     <div class="form-group"><label for="feederComprimentoM">Comprimento (m)</label><input type="number" id="feederComprimentoM" value="15"></div>
                     <div class="form-group"><label for="feederTipoIsolacao">Tipo de Isolacao</label><select id="feederTipoIsolacao"><option value="PVC" selected>PVC 70 C</option><option value="EPR">EPR/XLPE 90 C</option></select></div>

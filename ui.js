@@ -300,7 +300,7 @@ export function renderReport(calculationResults){
         }
         reportText += `${formatLine('Corrente p/ Dimensionar', `${calculos.correnteCorrigidaA.toFixed(2)} A`)}\n`;
         reportText += `\n-- RESULTADOS DE DIMENSIONAMENTO --\n`;
-        reportText += `${formatLine('Bitola Recomendada', `${calculos.bitolaRecomendadaMm2} mm2`)}\n`;
+        reportText += `${formatLine('Bitola Recomendada', `${calculos.bitolaRecomendadaMm2} mm²`)}\n`;
         reportText += `${formatLine('Queda de Tensao (DV)', `${calculos.quedaTensaoCalculada.toFixed(2)} %`)}\n`;
         reportText += `${formatLine('Corrente Max. Cabo (Iz)', `${calculos.correnteMaximaCabo.toFixed(2)} A`)}\n`;
         reportText += `\n-- PROTECOES RECOMENDADAS --\n`;
@@ -356,13 +356,14 @@ export function generatePdf(calculationResults, currentUserProfile) {
     addLineItem("Gerado por:", currentUserProfile?.nome || 'N/A');
     yPos += 5;
 
-
     addSection("RESUMO DA ALIMENTAÇÃO GERAL");
+    const feederBreakerType = feederResult.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
+    const feederBreakerText = `${feederBreakerType} ${feederResult.calculos.disjuntorRecomendado.nome}`;
     const feederHead = [['Carga Total', 'Tensão/Fases', 'Disjuntor Geral', 'DR', 'DPS', 'Cabo', 'Eletroduto']];
     const feederBody = [[
         `${feederResult.calculos.potenciaDemandada.toFixed(2)} W`,
         `${feederResult.dados.tensaoV}V - ${feederResult.dados.fases}`,
-        feederResult.calculos.disjuntorRecomendado.nome,
+        feederBreakerText,
         feederResult.dados.requerDR ? 'Sim' : 'Nao',
         getDpsText(feederResult.dados.dpsInfo),
         `${feederResult.calculos.bitolaRecomendadaMm2} mm²`,
@@ -374,17 +375,20 @@ export function generatePdf(calculationResults, currentUserProfile) {
     if (circuitResults.length > 0) {
         addSection("RESUMO DOS CIRCUITOS");
         const head = [['Ckt', 'Nome', 'Pot. (W)', 'Disjuntor', 'DR', 'DPS', 'Cabo', 'Eletroduto']];
-        const body = circuitResults.map(r => [
+        const body = circuitResults.map(r => {
+            const circuitBreakerType = r.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
+            const circuitBreakerText = `${circuitBreakerType} ${r.calculos.disjuntorRecomendado.nome}`;
+            return [
                 r.dados.id,
                 r.dados.nomeCircuito,
                 r.calculos.potenciaDemandada.toFixed(2),
-                r.calculos.disjuntorRecomendado.nome,
+                circuitBreakerText,
                 r.dados.requerDR ? 'Sim' : 'Nao',
                 getDpsText(r.dados.dpsInfo),
                 `${r.calculos.bitolaRecomendadaMm2} mm²`,
                 r.calculos.dutoRecomendado
-            ]
-        );
+            ];
+        });
         doc.autoTable({ startY: yPos, head: head, body: body, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
     }
     
