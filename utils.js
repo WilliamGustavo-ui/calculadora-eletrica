@@ -19,13 +19,23 @@ export function calcularProjetoCompleto(technicalData) {
 
     const circuitResults = _calcularCircuitosIndividuais(technicalData);
     if (!circuitResults) {
-        const feederResult = _calcularAlimentadorGeral(technicalData, 0);
+        const feederResult = _calcularAlimentadorGeral(technicalData, 0, 0);
         return { feederResult, circuitResults: [] };
     };
 
+    // ATUALIZADO: Encontra a corrente do maior disjuntor dos circuitos
+    let maxCircuitBreakerAmps = 0;
+    if (circuitResults.length > 0) {
+        maxCircuitBreakerAmps = Math.max(...circuitResults.map(r => {
+            const breakerName = r.calculos.disjuntorRecomendado.nome;
+            return parseInt(breakerName, 10) || 0;
+        }));
+    }
+
     const totalPotenciaDemandadaCircuitos = circuitResults.reduce((sum, result) => sum + result.calculos.potenciaDemandada, 0);
 
-    const feederResult = _calcularAlimentadorGeral(technicalData, totalPotenciaDemandadaCircuitos);
+    // ATUALIZADO: Passa o valor do maior disjuntor para o cálculo do alimentador
+    const feederResult = _calcularAlimentadorGeral(technicalData, totalPotenciaDemandadaCircuitos, maxCircuitBreakerAmps);
     if (!feederResult) return null;
     
     return { feederResult, circuitResults };
@@ -33,7 +43,8 @@ export function calcularProjetoCompleto(technicalData) {
 
 // --- FUNÇÕES AUXILIARES DE CÁLCULO ---
 
-function _calcularAlimentadorGeral(technicalData, potenciaTotal) {
+// ATUALIZADO: Recebe o maxCircuitBreakerAmps como argumento
+function _calcularAlimentadorGeral(technicalData, potenciaTotal, maxCircuitBreakerAmps) {
     const dados = {
         id: 'Geral',
         cliente: document.getElementById('cliente').value, tipoDocumento: document.getElementById('tipoDocumento').value, documento: document.getElementById('documento').value, telefone: document.getElementById('telefone').value, celular: document.getElementById('celular').value, email: document.getElementById('email').value, obra: document.getElementById('obra').value, endereco: document.getElementById('endereco').value, areaObra: document.getElementById('areaObra').value,
@@ -54,12 +65,13 @@ function _calcularAlimentadorGeral(technicalData, potenciaTotal) {
         dpsClasse: document.getElementById('feederDpsClasse').value,
     };
 
-    dados.dpsInfo = findDps(technicalData.dps, dados.dpsClasse);
+    dados.dpsInfo = findDps(technicalData.dps, dados.dpsClasse, 'highest');
 
     const potenciaInstalada = potenciaTotal;
     const potenciaDemandada = potenciaInstalada * dados.fatorDemanda;
     
-    return performCalculation(dados, potenciaInstalada, potenciaDemandada, technicalData);
+    // ATUALIZADO: Passa o maxCircuitBreakerAmps para a função de cálculo principal
+    return performCalculation(dados, potenciaInstalada, potenciaDemandada, technicalData, maxCircuitBreakerAmps);
 }
 
 function _calcularCircuitosIndividuais(technicalData){
@@ -108,17 +120,23 @@ function _calcularCircuitosIndividuais(technicalData){
     return allResults;
 }
 
-function findDps(dpsList, dpsClasse) {
+function findDps(dpsList, dpsClasse, preference = 'lowest') {
     if (!dpsClasse) return null;
     
     const suitableDps = dpsList
         .filter(d => d.classe === dpsClasse)
-        .sort((a, b) => a.corrente_ka - b.corrente_ka);
+        .sort((a, b) => {
+            if (preference === 'highest') {
+                return b.corrente_ka - a.corrente_ka;
+            }
+            return a.corrente_ka - b.corrente_ka;
+        });
         
     return suitableDps.length > 0 ? suitableDps[0] : null;
 }
 
-function performCalculation(dados, potenciaInstalada, potenciaDemandada, technicalData) {
+// ATUALIZADO: A função agora recebe um parâmetro opcional para a seletividade
+function performCalculation(dados, potenciaInstalada, potenciaDemandada, technicalData, maxDownstreamBreakerAmps = 0) {
     const correnteInstalada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * dados.fatorPotencia)) : 0;
     const correnteDemandada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * dados.fatorPotencia)) : 0;
     
@@ -138,8 +156,13 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
     const correnteCorrigidaA = correnteDemandada > 0 && (fatorK1 * fatorK2 * fatorK3 > 0) ? correnteDemandada / (fatorK1 * fatorK2 * fatorK3) : 0;
     let bitolaRecomendadaMm2="Nao encontrada", quedaTensaoCalculada=0, correnteMaximaCabo=0, disjuntorRecomendado={nome:"Coord. Inadequada",icc:0};
     
+    // ATUALIZADO: A lógica de seleção do disjuntor agora inclui a regra de seletividade
     const disjuntorCandidato = technicalData.disjuntores
-        .filter(d => d.tipo === dados.tipoDisjuntor && d.corrente_a >= correnteDemandada)
+        .filter(d =>
+            d.tipo === dados.tipoDisjuntor &&
+            d.corrente_a >= correnteDemandada &&
+            d.corrente_a >= maxDownstreamBreakerAmps // Nova regra de seletividade!
+        )
         .sort((a,b) => a.corrente_a - b.corrente_a)[0];
 
     if (disjuntorCandidato) {
