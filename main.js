@@ -84,7 +84,6 @@ async function handleSaveProject() {
     document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(el => feederData[el.id] = el.type === 'checkbox' ? el.checked : el.value);
 
     const circuitsData = [];
-    // CORRIGIDO: Seletor agora é mais específico para evitar pegar o form do alimentador.
     document.querySelectorAll('#circuits-container .circuit-block').forEach(block => {
         const circuit = { id: block.dataset.id };
         block.querySelectorAll('input, select').forEach(el => { circuit[el.id] = el.type === 'checkbox' ? el.checked : el.value; });

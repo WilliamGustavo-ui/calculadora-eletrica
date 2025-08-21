@@ -2,7 +2,7 @@
 
 export const ligacoes = { Monofasico: [{value:'FN', text:'Fase-Neutro (FN)'}, {value:'FF', text:'Fase-Fase (FF)'}], Bifasico: [{value:'FF', text:'Fase-Fase (FF)'}, {value:'FFN', text:'Fase-Fase-Neutro (FFN)'}], Trifasico: [{value:'FFF', text:'Fase-Fase-Fase (FFF)'}, {value:'FFFN', text:'Fase-Fase-Fase-Neutro (FFFN)'}] };
 
-// --- FUNÇÕES DE MÁSCARA (permanecem as mesmas) ---
+// --- FUNÇÕES DE MÁSCARA ---
 export function mascaraCPF(event){event.target.value=event.target.value.replace(/\D/g,"").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2")}
 export function mascaraCelular(event){event.target.value=event.target.value.replace(/\D/g,'').replace(/^(\d{2})(\d)/g,'($1) $2').replace(/(\d{5})(\d{4})$/,'$1-$2')}
 export function mascaraTelefone(event){event.target.value=event.target.value.replace(/\D/g,'').replace(/^(\d{2})(\d)/g,'($1) $2').replace(/(\d{4})(\d)/,'$1-$2')}
@@ -19,8 +19,6 @@ export function calcularProjetoCompleto(technicalData) {
 
     const circuitResults = _calcularCircuitosIndividuais(technicalData);
     if (!circuitResults) {
-        // Ainda assim, permite calcular o alimentador mesmo sem circuitos (carga 0)
-        // para evitar erros de interface.
         const feederResult = _calcularAlimentadorGeral(technicalData, 0);
         return { feederResult, circuitResults: [] };
     };
@@ -36,7 +34,6 @@ export function calcularProjetoCompleto(technicalData) {
 // --- FUNÇÕES AUXILIARES DE CÁLCULO ---
 
 function _calcularAlimentadorGeral(technicalData, potenciaTotal) {
-    // CORRIGIDO: Pega os dados do cliente diretamente do formulário principal
     const dados = {
         id: 'Geral',
         cliente: document.getElementById('cliente').value, tipoDocumento: document.getElementById('tipoDocumento').value, documento: document.getElementById('documento').value, telefone: document.getElementById('telefone').value, celular: document.getElementById('celular').value, email: document.getElementById('email').value, obra: document.getElementById('obra').value, endereco: document.getElementById('endereco').value, areaObra: document.getElementById('areaObra').value,
@@ -68,14 +65,13 @@ function _calcularAlimentadorGeral(technicalData, potenciaTotal) {
 function _calcularCircuitosIndividuais(technicalData){
     const allResults=[];
     const circuitBlocks=document.querySelectorAll('#circuits-container .circuit-block');
-    if(circuitBlocks.length === 0) return []; // Retorna array vazio se não houver circuitos
+    if(circuitBlocks.length === 0) return [];
     
     for (const block of circuitBlocks) {
         const id = block.dataset.id;
         
         const dados = {
             id:id,
-            // Dados do cliente são repetidos aqui para consistência, mas a fonte da verdade é o form principal
             cliente:document.getElementById('cliente').value, tipoDocumento:document.getElementById('tipoDocumento').value, documento:document.getElementById('documento').value, telefone:document.getElementById('telefone').value, celular:document.getElementById('celular').value, email:document.getElementById('email').value, obra:document.getElementById('obra').value, endereco:document.getElementById('endereco').value, areaObra:document.getElementById('areaObra').value,
             nomeCircuito:document.getElementById(`nomeCircuito-${id}`).value,
             tipoCircuito:document.getElementById(`tipoCircuito-${id}`).value,
@@ -112,16 +108,13 @@ function _calcularCircuitosIndividuais(technicalData){
     return allResults;
 }
 
-// ATUALIZADO: Função findDps agora calcula/seleciona o kA
 function findDps(dpsList, dpsClasse) {
     if (!dpsClasse) return null;
     
-    // Filtra pela classe, ordena pela corrente kA de forma crescente
     const suitableDps = dpsList
         .filter(d => d.classe === dpsClasse)
         .sort((a, b) => a.corrente_ka - b.corrente_ka);
         
-    // Retorna o primeiro da lista (o de menor kA)
     return suitableDps.length > 0 ? suitableDps[0] : null;
 }
 
@@ -142,7 +135,7 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
         }
     }
 
-    const correnteCorrigidaA = correnteDemandada / (fatorK1 * fatorK2 * fatorK3);
+    const correnteCorrigidaA = correnteDemandada > 0 && (fatorK1 * fatorK2 * fatorK3 > 0) ? correnteDemandada / (fatorK1 * fatorK2 * fatorK3) : 0;
     let bitolaRecomendadaMm2="Nao encontrada", quedaTensaoCalculada=0, correnteMaximaCabo=0, disjuntorRecomendado={nome:"Coord. Inadequada",icc:0};
     
     const disjuntorCandidato = technicalData.disjuntores
@@ -161,7 +154,7 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
             
             if (Iz >= disjuntorCandidato.corrente_a) {
                 const resistividade = (dados.materialCabo === 'Cobre') ? 0.0172 : 0.0282;
-                const quedaVolts = (dados.fases === 'Trifasico') ? ((1.732 * resistividade * dados.comprimentoM * correnteDemandada) / cabo.secao_mm2) : ((2 * resistividade * dados.comprimentoM * correnteDemandada) / cabo.secao_mm2);
+                const quedaVolts = (cabo.secao_mm2 > 0) ? ((dados.fases === 'Trifasico') ? ((1.732 * resistividade * dados.comprimentoM * correnteDemandada) / cabo.secao_mm2) : ((2 * resistividade * dados.comprimentoM * correnteDemandada) / cabo.secao_mm2)) : 0;
                 const quedaPercentual = (dados.tensaoV > 0) ? (quedaVolts / dados.tensaoV) * 100.0 : 0;
                 
                 if (quedaPercentual <= dados.limiteQuedaTensao) {
