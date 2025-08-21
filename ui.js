@@ -15,7 +15,7 @@ export function showAppView(userProfile) {
     document.getElementById('loginContainer').style.display = 'none';
     document.getElementById('appContainer').style.display = 'block';
     document.getElementById('resetPasswordContainer').style.display = 'none';
-    
+     
     const isAdmin = userProfile?.is_admin || false;
     document.getElementById('adminPanelBtn').style.display = isAdmin ? 'block' : 'none';
     document.getElementById('manageProjectsBtn').style.display = isAdmin ? 'block' : 'none';
@@ -252,7 +252,7 @@ export function populateProjectsPanel_Admin(projects, users) {
 // --- RELATÓRIOS E PDF ---
 function getDpsText(dpsInfo) {
     if (!dpsInfo) return 'Nao';
-    return `Sim, ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`;
+    return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`;
 }
 
 export function renderReport(calculationResults){
