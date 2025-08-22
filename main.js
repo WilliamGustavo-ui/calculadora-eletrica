@@ -5,7 +5,7 @@ import * as utils from './utils.js';
 import { supabase } from './supabaseClient.js';
 
 let currentUserProfile = null;
-let technicalData = null; 
+let technicalData = null;
 let allClients = [];
 
 async function handleLogin() {
@@ -33,7 +33,12 @@ async function handleRegister(event) { event.preventDefault(); const email = doc
 async function handleForgotPassword(event) { event.preventDefault(); const email = document.getElementById('forgotEmail').value; const { error } = await auth.sendPasswordResetEmail(email); if (error) { alert("Erro ao enviar e-mail: " + error.message); } else { alert("Se o e-mail estiver cadastrado, um link de redefinição foi enviado!"); ui.closeModal('forgotPasswordModalOverlay'); event.target.reset(); } }
 async function handleResetPassword(event) { event.preventDefault(); const newPassword = document.getElementById('newPassword').value; if (!newPassword || newPassword.length < 6) { alert("A senha precisa ter no mínimo 6 caracteres."); return; } const { error } = await auth.updatePassword(newPassword); if (error) { alert("Erro ao atualizar senha: " + error.message); } else { alert("Senha atualizada com sucesso! A página será recarregada. Por favor, faça o login com sua nova senha."); window.location.hash = ''; window.location.reload(); } }
 
-async function handleOpenClientManagement() { allClients = await api.fetchClients(); ui.populateClientManagementModal(allClients); }
+async function handleOpenClientManagement() {
+    allClients = await api.fetchClients();
+    ui.populateClientManagementModal(allClients);
+    // A LINHA ABAIXO FOI ADICIONADA PARA ABRIR O MODAL
+    ui.openModal('clientManagementModalOverlay');
+}
 async function handleClientFormSubmit(event) {
     event.preventDefault();
     const clientId = document.getElementById('clientId').value;
