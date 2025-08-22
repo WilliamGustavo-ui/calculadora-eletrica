@@ -38,16 +38,33 @@ async function handleOpenClientManagement() {
     ui.populateClientManagementModal(allClients);
     ui.openModal('clientManagementModalOverlay');
 }
+
 async function handleClientFormSubmit(event) {
     event.preventDefault();
     const clientId = document.getElementById('clientId').value;
     const clientData = { nome: document.getElementById('clientNome').value, documento_tipo: document.getElementById('clientDocumentoTipo').value, documento_valor: document.getElementById('clientDocumentoValor').value, email: document.getElementById('clientEmail').value, celular: document.getElementById('clientCelular').value, telefone: document.getElementById('clientTelefone').value, endereco: document.getElementById('clientEndereco').value, owner_id: currentUserProfile.id };
+    
     try {
-        if (clientId) { await api.updateClient(clientId, clientData); alert('Cliente atualizado com sucesso!'); } else { await api.addClient(clientData); alert('Cliente cadastrado com sucesso!'); }
+        let result;
+        if (clientId) {
+            result = await api.updateClient(clientId, clientData);
+        } else {
+            result = await api.addClient(clientData);
+        }
+
+        if (result.error) {
+            throw result.error; // Lança o erro para o bloco catch
+        }
+
+        alert(clientId ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!');
         ui.resetClientForm();
         await handleOpenClientManagement();
-    } catch(error) { alert('Erro ao salvar cliente: ' + error.message); }
+
+    } catch(error) {
+        alert('Erro ao salvar cliente: ' + error.message);
+    }
 }
+
 async function handleClientListClick(event) {
     const target = event.target;
     const clientId = target.dataset.clientId;
@@ -100,25 +117,8 @@ async function handleSaveProject() {
 async function handleLoadProject() { const projectId = document.getElementById('savedProjectsSelect').value; if (!projectId) return; const project = await api.fetchProjectById(projectId); if (project) { ui.populateFormWithProjectData(project); alert(`Obra "${project.project_name}" carregada.`); } }
 async function handleDeleteProject() { const projectId = document.getElementById('savedProjectsSelect').value; const projectName = document.getElementById('savedProjectsSelect').options[document.getElementById('savedProjectsSelect').selectedIndex].text; if (!projectId || !confirm(`Tem certeza que deseja excluir a obra "${projectName}"?`)) return; const { error } = await api.deleteProject(projectId); if (error) { alert('Erro ao excluir obra: ' + error.message); } else { alert("Obra excluída."); ui.resetForm(true, null); await handleSearch(); } }
 async function handleSearch(term = '') { if (!currentUserProfile) return; const projects = await api.fetchProjects(term); ui.populateProjectList(projects); }
-
-function handleCalculate() {
-    const currentClientId = document.getElementById('currentClientId').value;
-    const currentClient = allClients.find(c => c.id == currentClientId) || null;
-    const results = utils.calcularProjetoCompleto(technicalData, currentClient);
-    if (results) {
-        ui.renderReport(results);
-    }
-}
-
-function handleGeneratePdf() {
-    const currentClientId = document.getElementById('currentClientId').value;
-    const currentClient = allClients.find(c => c.id == currentClientId) || null;
-    const results = utils.calcularProjetoCompleto(technicalData, currentClient);
-    if(results) {
-        ui.generatePdf(results, currentUserProfile);
-    }
-}
-
+function handleCalculate() { const currentClientId = document.getElementById('currentClientId').value; const currentClient = allClients.find(c => c.id == currentClientId) || null; const results = utils.calcularProjetoCompleto(technicalData, currentClient); if (results) { ui.renderReport(results); } }
+function handleGeneratePdf() { const currentClientId = document.getElementById('currentClientId').value; const currentClient = allClients.find(c => c.id == currentClientId) || null; const results = utils.calcularProjetoCompleto(technicalData, currentClient); if(results) { ui.generatePdf(results, currentUserProfile); } }
 async function showManageProjectsPanel() { const projects = await api.fetchProjects(''); allClients = await api.fetchClients(); ui.populateProjectsPanel(projects, allClients); ui.openModal('manageProjectsModalOverlay'); }
 async function handleProjectPanelClick(event) {
     if (event.target.classList.contains('transfer-client-btn')) {
