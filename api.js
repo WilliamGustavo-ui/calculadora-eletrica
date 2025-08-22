@@ -69,7 +69,7 @@ export async function transferProjectOwner(projectId, newOwnerId) {
 
 /**
  * ATUALIZADO
- * Busca todos os dados técnicos, incluindo os modelos de DPS, do Supabase de uma só vez.
+ * Busca todos os dados técnicos, incluindo os fatores para cabos EPR.
  */
 export async function fetchTechnicalData() {
     try {
@@ -78,20 +78,22 @@ export async function fetchTechnicalData() {
             cabosRes,
             eletrodutosRes,
             k1Res,
+            k1EprRes, // <-- Adicionado para EPR
             k2Res,
             k3Res,
-            dpsRes // <-- Adicionado
+            dpsRes
         ] = await Promise.all([
             supabase.from('disjuntores').select('*'),
             supabase.from('cabos').select('*'),
             supabase.from('eletrodutos').select('*'),
             supabase.from('fatores_k1_temperatura').select('*'),
+            supabase.from('fatores_k1_temperatura_epr').select('*'), // <-- Adicionado para EPR
             supabase.from('fatores_k2_solo').select('*'),
             supabase.from('fatores_k3_agrupamento').select('*'),
-            supabase.from('dps').select('*').order('classe').order('corrente_ka') // <-- Adicionado
+            supabase.from('dps').select('*').order('classe').order('corrente_ka')
         ]);
 
-        const errors = [disjuntoresRes, cabosRes, eletrodutosRes, k1Res, k2Res, k3Res, dpsRes].map(res => res.error).filter(Boolean);
+        const errors = [disjuntoresRes, cabosRes, eletrodutosRes, k1Res, k1EprRes, k2Res, k3Res, dpsRes].map(res => res.error).filter(Boolean);
         if (errors.length > 0) {
             throw new Error('Falha ao buscar dados técnicos: ' + errors.map(e => e.message).join(', '));
         }
@@ -101,9 +103,10 @@ export async function fetchTechnicalData() {
             cabos: cabosRes.data,
             eletrodutos: eletrodutosRes.data,
             fatores_k1: k1Res.data,
+            fatores_k1_epr: k1EprRes.data, // <-- Adicionado para EPR
             fatores_k2: k2Res.data,
             fatores_k3: k3Res.data,
-            dps: dpsRes.data, // <-- Adicionado
+            dps: dpsRes.data,
         };
     } catch (error) {
         console.error(error.message);

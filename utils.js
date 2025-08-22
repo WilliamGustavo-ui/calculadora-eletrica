@@ -39,7 +39,6 @@ export function calcularProjetoCompleto(technicalData) {
     return { feederResult, circuitResults };
 }
 
-// Coleta todos os dados do formulário principal
 function getMainFormData() {
     return {
         projectCode: document.getElementById('projectCode').value,
@@ -60,7 +59,7 @@ function getMainFormData() {
 function _calcularAlimentadorGeral(technicalData, potenciaTotal, maxCircuitBreakerAmps) {
     const mainData = getMainFormData();
     const dados = {
-        ...mainData, // Adiciona todos os dados da obra/cliente
+        ...mainData,
         id: 'Geral',
         nomeCircuito: "Alimentador Geral",
         fatorDemanda: parseFloat(document.getElementById('feederFatorDemanda').value) || 1.0,
@@ -96,7 +95,7 @@ function _calcularCircuitosIndividuais(technicalData){
         const id = block.dataset.id;
         
         const dados = {
-            ...mainData, // Adiciona todos os dados da obra/cliente
+            ...mainData,
             id:id,
             nomeCircuito:document.getElementById(`nomeCircuito-${id}`).value,
             tipoCircuito:document.getElementById(`tipoCircuito-${id}`).value,
@@ -150,7 +149,18 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
     const correnteInstalada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * dados.fatorPotencia)) : 0;
     const correnteDemandada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * dados.fatorPotencia)) : 0;
     
-    const fatorK1 = dados.temperaturaAmbienteC ? (technicalData.fatores_k1.find(f => f.temperatura_c === dados.temperaturaAmbienteC)?.fator || 1.0) : 1.0;
+    // ATUALIZADO: Lógica para selecionar a tabela de fatores correta (PVC ou EPR)
+    let fatorK1 = 1.0;
+    if (dados.temperaturaAmbienteC) {
+        const fatorTable = dados.tipoIsolacao === 'EPR' ? technicalData.fatores_k1_epr : technicalData.fatores_k1;
+        if (fatorTable) {
+            const fatorObj = fatorTable.find(f => f.temperatura_c === dados.temperaturaAmbienteC);
+            if (fatorObj) {
+                fatorK1 = fatorObj.fator;
+            }
+        }
+    }
+    
     const fatorK2 = (dados.resistividadeSolo > 0) ? (technicalData.fatores_k2.find(f => f.resistividade === dados.resistividadeSolo)?.fator || 1.0) : 1.0;
     
     let fatorK3 = 1.0;
@@ -187,7 +197,7 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
             if (Iz >= disjuntorCandidato.corrente_a) {
                 const resistividade = (dados.materialCabo === 'Cobre') ? 0.0172 : 0.0282;
                 const quedaVolts = (cabo.secao_mm2 > 0) ? ((dados.fases === 'Trifasico') ? ((1.732 * resistividade * dados.comprimentoM * correnteDemandada) / cabo.secao_mm2) : ((2 * resistividade * dados.comprimentoM * correnteDemandada) / cabo.secao_mm2)) : 0;
-                const quedaPercentual = (dados.tensaoV > 0) ? (quedaVolts / dados.tensaoV) * 100.0 : 0;
+                const quedaPercentual = (dados.tensaoV > 0) ? (quedaVolts / dados.tensaoV) * 1.0 : 0;
                 
                 if (quedaPercentual <= dados.limiteQuedaTensao) {
                     bitolaRecomendadaMm2 = cabo.secao_mm2.toString();
@@ -207,7 +217,10 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
     const bitolaNum = parseFloat(bitolaRecomendadaMm2);
     if (bitolaNum) {
         const duto_obj = technicalData.eletrodutos.find(e => e.num_condutores === numCondutores && e.secao_cabo_mm2 === bitolaNum);
-        if (duto_obj) dutoRecomendado = duto_obj.tamanho_nominal;
+        if (duto_obj) {
+            const match = String(duto_obj.tamanho_nominal).match(/\((.*?)\)/);
+            dutoRecomendado = match ? match[1] : duto_obj.tamanho_nominal;
+        }
     }
 
     const calculos = { potenciaInstalada, correnteInstalada, potenciaDemandada, correnteDemandada, fatorK1, fatorK2, fatorK3, correnteCorrigidaA, bitolaRecomendadaMm2, quedaTensaoCalculada, correnteMaximaCabo, disjuntorRecomendado, numCondutores, dutoRecomendado };
