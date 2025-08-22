@@ -225,8 +225,38 @@ export function populateFormWithProjectData(project) {
 }
 
 // --- PAINEL DE ADMINISTRAÇÃO ---
-export function populateUsersPanel(users) { /* ... */ }
-export function populateEditUserModal(userData) { /* ... */ }
+export function populateUsersPanel(users) {
+    const list = document.getElementById('adminUserList');
+    list.innerHTML = '';
+    if (!users || users.length === 0) {
+        list.innerHTML = '<li>Nenhum usuário encontrado.</li>';
+        return;
+    }
+    users.forEach(user => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <span>
+                <strong>${user.nome || 'Nome não preenchido'}</strong><br>
+                <small>${user.email}</small>
+            </span>
+            <div class="admin-user-actions">
+                ${!user.is_approved ? `<button class="approve-user-btn btn-success" data-user-id="${user.id}">Aprovar</button>` : ''}
+                <button class="edit-user-btn btn-secondary" data-user-id="${user.id}">Editar</button>
+                <button class="remove-user-btn btn-danger" data-user-id="${user.id}">Remover</button>
+            </div>
+        `;
+        list.appendChild(li);
+    });
+}
+export function populateEditUserModal(userData) {
+    document.getElementById('editUserId').value = userData.id;
+    document.getElementById('editNome').value = userData.nome || '';
+    document.getElementById('editEmail').value = userData.email || '';
+    document.getElementById('editCpf').value = userData.cpf || '';
+    document.getElementById('editTelefone').value = userData.telefone || '';
+    document.getElementById('editCrea').value = userData.crea || '';
+    openModal('editUserModalOverlay');
+}
 
 export function populateProjectsPanel(projects, clients) {
     const tableBody = document.getElementById('adminProjectsTableBody');
@@ -237,6 +267,79 @@ export function populateProjectsPanel(projects, clients) {
         row.innerHTML = `<td>${project.project_code || 'S/C'}</td><td>${project.project_name}</td><td>${project.client?.nome || 'Nenhum'}</td><td><select data-project-id="${project.id}"><option value="">-- Desvincular --</option>${clientOptions}</select><button class="transfer-client-btn" data-project-id="${project.id}">Transferir</button></td>`;
         tableBody.appendChild(row);
     });
+}
+
+// --- GERENCIAMENTO DE CLIENTES ---
+export function populateClientManagementModal(clients) {
+    const list = document.getElementById('clientList');
+    list.innerHTML = ''; // Limpa a lista
+    if (clients.length === 0) {
+        list.innerHTML = '<li>Nenhum cliente cadastrado.</li>';
+        return;
+    }
+    clients.forEach(client => {
+        const hasProjects = client.projects && client.projects.length > 0;
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <span>
+                <strong>${client.nome}</strong> (${client.client_code || 'S/C'})<br>
+                <small>${client.documento_valor || 'Sem documento'} - ${client.email || 'Sem email'}</small>
+            </span>
+            <div class="client-actions">
+                <button class="edit-client-btn btn-secondary" data-client-id="${client.id}">Editar</button>
+                <button class="delete-client-btn btn-danger" data-client-id="${client.id}" ${hasProjects ? 'disabled title="Cliente possui obras vinculadas"' : ''}>Excluir</button>
+            </div>
+        `;
+        list.appendChild(li);
+    });
+    openModal('clientManagementModalOverlay');
+}
+
+export function resetClientForm() {
+    const form = document.getElementById('clientForm');
+    form.reset();
+    document.getElementById('clientId').value = '';
+    document.getElementById('clientFormTitle').textContent = 'Cadastrar Novo Cliente';
+    document.getElementById('clientFormSubmitBtn').textContent = 'Salvar Cliente';
+    document.getElementById('clientFormCancelBtn').style.display = 'none';
+}
+
+export function openEditClientForm(client) {
+    document.getElementById('clientId').value = client.id;
+    document.getElementById('clientNome').value = client.nome;
+    document.getElementById('clientDocumentoTipo').value = client.documento_tipo;
+    document.getElementById('clientDocumentoValor').value = client.documento_valor;
+    document.getElementById('clientEmail').value = client.email;
+    document.getElementById('clientCelular').value = client.celular;
+    document.getElementById('clientTelefone').value = client.telefone;
+    document.getElementById('clientEndereco').value = client.endereco;
+    document.getElementById('clientFormTitle').textContent = 'Editar Cliente';
+    document.getElementById('clientFormSubmitBtn').textContent = 'Atualizar Cliente';
+    document.getElementById('clientFormCancelBtn').style.display = 'inline-block';
+}
+
+export function populateSelectClientModal(clients, isChange = false) {
+    const select = document.getElementById('clientSelectForNewProject');
+    select.innerHTML = '<option value="">-- Selecione um cliente --</option>';
+    clients.forEach(client => {
+        const option = document.createElement('option');
+        option.value = client.id;
+        option.textContent = `${client.nome} (${client.client_code})`;
+        option.dataset.client = JSON.stringify(client);
+        select.appendChild(option);
+    });
+
+    const title = document.querySelector('#selectClientModalOverlay h3');
+    const confirmBtn = document.getElementById('confirmClientSelectionBtn');
+    if (isChange) {
+        title.textContent = 'Vincular / Alterar Cliente da Obra';
+        confirmBtn.textContent = 'Confirmar Alteração';
+    } else {
+        title.textContent = 'Vincular Cliente à Nova Obra';
+        confirmBtn.textContent = 'Vincular e Continuar';
+    }
+
+    openModal('selectClientModalOverlay');
 }
 
 // --- RELATÓRIOS E PDF ---

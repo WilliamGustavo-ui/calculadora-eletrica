@@ -1,10 +1,29 @@
 import { supabase } from './supabaseClient.js';
 
 // --- FUNÇÕES DE CLIENTE ---
-export async function fetchClients() { /* ... (código completo na resposta anterior) ... */ }
-export async function addClient(clientData) { /* ... (código completo na resposta anterior) ... */ }
-export async function updateClient(clientId, clientData) { /* ... (código completo na resposta anterior) ... */ }
-export async function deleteClient(clientId) { /* ... (código completo na resposta anterior) ... */ }
+export async function fetchClients() {
+    const { data, error } = await supabase.from('clients').select('*, projects(id)').order('nome');
+    if (error) console.error('Erro ao buscar clientes:', error.message);
+    return data || [];
+}
+export async function addClient(clientData) {
+    const { data: codeData, error: codeError } = await supabase.rpc('generate_new_client_code');
+    if (codeError) throw codeError;
+    clientData.client_code = codeData;
+    const { data, error } = await supabase.from('clients').insert(clientData).select().single();
+    if (error) console.error('Erro ao adicionar cliente:', error.message);
+    return { data, error };
+}
+export async function updateClient(clientId, clientData) {
+    const { data, error } = await supabase.from('clients').update(clientData).eq('id', clientId).select().single();
+    if (error) console.error('Erro ao atualizar cliente:', error.message);
+    return { data, error };
+}
+export async function deleteClient(clientId) {
+    const { error } = await supabase.from('clients').delete().eq('id', clientId);
+    if (error) console.error('Erro ao deletar cliente:', error.message);
+    return { error };
+}
 
 // --- FUNÇÕES DE PROJETO ---
 export async function fetchProjects(searchTerm) {
@@ -16,17 +35,57 @@ export async function fetchProjects(searchTerm) {
     if (error) { console.error('Erro ao buscar projetos:', error.message); alert('Erro ao buscar projetos: ' + error.message); }
     return data || [];
 }
-export async function fetchProjectById(projectId) { /* ... (código completo na resposta anterior) ... */ }
-export async function saveProject(projectData, projectId) { /* ... (código completo na resposta anterior) ... */ }
-export async function deleteProject(projectId) { /* ... (código completo na resposta anterior) ... */ }
-export async function transferProjectClient(projectId, newClientId) { /* ... (código completo na resposta anterior) ... */ }
+export async function fetchProjectById(projectId) {
+    const { data, error } = await supabase.from('projects').select('*, client:clients(*)').eq('id', projectId).single();
+    if (error) console.error('Erro ao buscar projeto por ID:', error.message);
+    return data;
+}
+export async function saveProject(projectData, projectId) {
+    if (!projectId && !projectData.project_code) {
+        const { data: codeData, error: codeError } = await supabase.rpc('generate_new_project_code');
+        if (codeError) throw codeError;
+        projectData.project_code = codeData;
+    }
+    let result;
+    if (projectId) {
+        result = await supabase.from('projects').update(projectData).eq('id', projectId).select('*, client:clients(*)').single();
+    } else {
+        result = await supabase.from('projects').insert(projectData).select('*, client:clients(*)').single();
+    }
+    return result;
+}
+export async function deleteProject(projectId) {
+    const { error } = await supabase.from('projects').delete().eq('id', projectId);
+    return { error };
+}
+export async function transferProjectClient(projectId, newClientId) {
+    const { error } = await supabase.from('projects').update({ client_id: newClientId }).eq('id', projectId);
+    return { error };
+}
 
 // --- FUNÇÕES DE ADMINISTRAÇÃO E DADOS TÉCNICOS ---
-export async function fetchAllUsers() { /* ... (código completo na resposta anterior) ... */ }
-export async function approveUser(userId) { /* ... (código completo na resposta anterior) ... */ }
-export async function updateUserProfile(userId, profileData) { /* ... (código completo na resposta anterior) ... */ }
-export async function fetchAllApprovedUsers() { /* ... (código completo na resposta anterior) ... */ }
-export async function transferProjectOwner(projectId, newOwnerId) { /* ... (código completo na resposta anterior) ... */ }
+export async function fetchAllUsers() {
+    const { data, error } = await supabase.from('profiles').select('*').order('nome');
+    if (error) console.error('Erro ao buscar todos os usuários:', error.message);
+    return data || [];
+}
+export async function approveUser(userId) {
+    const { error } = await supabase.from('profiles').update({ is_approved: true }).eq('id', userId);
+    if (error) console.error('Erro ao aprovar usuário:', error.message);
+    return { error };
+}
+export async function updateUserProfile(userId, profileData) {
+    const { data, error } = await supabase.from('profiles').update(profileData).eq('id', userId).select().single();
+    if (error) console.error('Erro ao atualizar perfil do usuário:', error.message);
+    return { data, error };
+}
+export async function fetchUserById(userId) {
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    if (error) console.error('Erro ao buscar usuário por ID:', error.message);
+    return data;
+}
+export async function fetchAllApprovedUsers() { /* ... */ }
+export async function transferProjectOwner(projectId, newOwnerId) { /* ... */ }
 export async function fetchTechnicalData() {
     const technicalData = {};
     const tablesToFetch = [
