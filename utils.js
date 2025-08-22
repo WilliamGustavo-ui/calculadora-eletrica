@@ -10,15 +10,15 @@ export function aplicarMascara(event, tipoDoc) { const doc = tipoDoc || document
 export function atualizarMascaraDocumento(){const tipoDoc=document.getElementById('tipoDocumento').value;const inputDoc=document.getElementById('documento');inputDoc.value='';if(tipoDoc==='CPF'){inputDoc.placeholder='000.000.000-00';inputDoc.maxLength=14}else{inputDoc.placeholder='00.000.000/0000-00';inputDoc.maxLength=18}}
 
 // --- FUNÇÃO PRINCIPAL DE CÁLCULO ---
-export function calcularProjetoCompleto(technicalData) {
+export function calcularProjetoCompleto(technicalData, clientProfile = null) {
     if (!technicalData) {
         alert("Os dados técnicos não foram carregados. Verifique a conexão com o banco de dados.");
         return null;
     }
 
-    const circuitResults = _calcularCircuitosIndividuais(technicalData);
+    const circuitResults = _calcularCircuitosIndividuais(technicalData, clientProfile);
     if (!circuitResults) {
-        const feederResult = _calcularAlimentadorGeral(technicalData, 0, 0);
+        const feederResult = _calcularAlimentadorGeral(technicalData, 0, 0, clientProfile);
         return { feederResult, circuitResults: [] };
     };
 
@@ -32,15 +32,15 @@ export function calcularProjetoCompleto(technicalData) {
 
     const totalPotenciaDemandadaCircuitos = circuitResults.reduce((sum, result) => sum + result.calculos.potenciaDemandada, 0);
 
-    const feederResult = _calcularAlimentadorGeral(technicalData, totalPotenciaDemandadaCircuitos, maxCircuitBreakerAmps);
+    const feederResult = _calcularAlimentadorGeral(technicalData, totalPotenciaDemandadaCircuitos, maxCircuitBreakerAmps, clientProfile);
     if (!feederResult) return null;
     
     return { feederResult, circuitResults };
 }
 
-function getMainFormData() {
+function getProjectFormData() {
     return {
-        project_code: document.getElementById('project_code').value,
+        projectCode: document.getElementById('project_code').value,
         obra: document.getElementById('obra').value,
         cidadeObra: document.getElementById('cidadeObra').value,
         enderecoObra: document.getElementById('enderecoObra').value,
@@ -51,12 +51,29 @@ function getMainFormData() {
     };
 }
 
+function getClientFormData(clientProfile) {
+    if (!clientProfile) return {};
+    return {
+        cliente: clientProfile.nome,
+        tipoDocumento: clientProfile.documento_tipo,
+        documento: clientProfile.documento_valor,
+        celular: clientProfile.celular,
+        telefone: clientProfile.telefone,
+        email: clientProfile.email,
+        enderecoCliente: clientProfile.endereco
+    };
+}
+
+
 // --- FUNÇÕES AUXILIARES DE CÁLCULO ---
 
-function _calcularAlimentadorGeral(technicalData, potenciaTotal, maxCircuitBreakerAmps) {
-    const mainData = getMainFormData();
+function _calcularAlimentadorGeral(technicalData, potenciaTotal, maxCircuitBreakerAmps, clientProfile = null) {
+    const projectData = getProjectFormData();
+    const clientData = getClientFormData(clientProfile);
+
     const dados = {
-        ...mainData,
+        ...projectData,
+        ...clientData,
         id: 'Geral',
         nomeCircuito: "Alimentador Geral",
         fatorDemanda: parseFloat(document.getElementById('feederFatorDemanda').value) || 100,
@@ -82,17 +99,20 @@ function _calcularAlimentadorGeral(technicalData, potenciaTotal, maxCircuitBreak
     return performCalculation(dados, potenciaInstalada, potenciaDemandada, technicalData, maxCircuitBreakerAmps);
 }
 
-function _calcularCircuitosIndividuais(technicalData){
+function _calcularCircuitosIndividuais(technicalData, clientProfile = null){
     const allResults=[];
     const circuitBlocks=document.querySelectorAll('#circuits-container .circuit-block');
     if(circuitBlocks.length === 0) return [];
     
-    const mainData = getMainFormData();
+    const projectData = getProjectFormData();
+    const clientData = getClientFormData(clientProfile);
+
     for (const block of circuitBlocks) {
         const id = block.dataset.id;
         
         const dados = {
-            ...mainData,
+            ...projectData,
+            ...clientData,
             id:id,
             nomeCircuito:document.getElementById(`nomeCircuito-${id}`).value,
             tipoCircuito:document.getElementById(`tipoCircuito-${id}`).value,

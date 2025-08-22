@@ -36,7 +36,6 @@ async function handleResetPassword(event) { event.preventDefault(); const newPas
 async function handleOpenClientManagement() {
     allClients = await api.fetchClients();
     ui.populateClientManagementModal(allClients);
-    // A LINHA ABAIXO FOI ADICIONADA PARA ABRIR O MODAL
     ui.openModal('clientManagementModalOverlay');
 }
 async function handleClientFormSubmit(event) {
@@ -101,8 +100,25 @@ async function handleSaveProject() {
 async function handleLoadProject() { const projectId = document.getElementById('savedProjectsSelect').value; if (!projectId) return; const project = await api.fetchProjectById(projectId); if (project) { ui.populateFormWithProjectData(project); alert(`Obra "${project.project_name}" carregada.`); } }
 async function handleDeleteProject() { const projectId = document.getElementById('savedProjectsSelect').value; const projectName = document.getElementById('savedProjectsSelect').options[document.getElementById('savedProjectsSelect').selectedIndex].text; if (!projectId || !confirm(`Tem certeza que deseja excluir a obra "${projectName}"?`)) return; const { error } = await api.deleteProject(projectId); if (error) { alert('Erro ao excluir obra: ' + error.message); } else { alert("Obra excluída."); ui.resetForm(true, null); await handleSearch(); } }
 async function handleSearch(term = '') { if (!currentUserProfile) return; const projects = await api.fetchProjects(term); ui.populateProjectList(projects); }
-function handleCalculate() { const results = utils.calcularProjetoCompleto(technicalData); if (results) { ui.renderReport(results); } }
-function handleGeneratePdf() { const results = utils.calcularProjetoCompleto(technicalData); if(results) { ui.generatePdf(results, currentUserProfile); } }
+
+function handleCalculate() {
+    const currentClientId = document.getElementById('currentClientId').value;
+    const currentClient = allClients.find(c => c.id == currentClientId) || null;
+    const results = utils.calcularProjetoCompleto(technicalData, currentClient);
+    if (results) {
+        ui.renderReport(results);
+    }
+}
+
+function handleGeneratePdf() {
+    const currentClientId = document.getElementById('currentClientId').value;
+    const currentClient = allClients.find(c => c.id == currentClientId) || null;
+    const results = utils.calcularProjetoCompleto(technicalData, currentClient);
+    if(results) {
+        ui.generatePdf(results, currentUserProfile);
+    }
+}
+
 async function showManageProjectsPanel() { const projects = await api.fetchProjects(''); allClients = await api.fetchClients(); ui.populateProjectsPanel(projects, allClients); ui.openModal('manageProjectsModalOverlay'); }
 async function handleProjectPanelClick(event) {
     if (event.target.classList.contains('transfer-client-btn')) {

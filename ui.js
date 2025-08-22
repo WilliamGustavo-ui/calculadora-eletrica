@@ -292,7 +292,6 @@ export function populateClientManagementModal(clients) {
         `;
         list.appendChild(li);
     });
-    openModal('clientManagementModalOverlay');
 }
 
 export function resetClientForm() {
@@ -355,23 +354,23 @@ export function renderReport(calculationResults){
     const formatLine = (label, value) => (label + ':').padEnd(30, ' ') + value;
     let reportText = `======================================================\n==           RELATORIO DE PROJETO ELETRICO           ==\n======================================================\n${formatLine('Gerado em', dataHora)}\n`;
     
-    const dadosCliente = feederResult.dados;
+    const reportData = feederResult.dados;
     reportText += `\n-- DADOS DA OBRA E CLIENTE --\n`;
-    reportText += `${formatLine('Cliente', dadosCliente.cliente || 'Nao informado')}\n`;
-    reportText += `${formatLine(`Documento (${dadosCliente.tipoDocumento})`, dadosCliente.documento || 'Nao informado')}\n`;
-    reportText += `${formatLine('Celular', dadosCliente.celular || '-')}\n`;
-    reportText += `${formatLine('Telefone', dadosCliente.telefone || '-')}\n`;
-    reportText += `${formatLine('E-mail', dadosCliente.email || '-')}\n`;
-    reportText += `${formatLine('Endereço do Cliente', dadosCliente.enderecoCliente || '-')}\n`;
+    reportText += `${formatLine('Cliente', reportData.cliente || 'Nao informado')}\n`;
+    reportText += `${formatLine(`Documento (${reportData.tipoDocumento})`, reportData.documento || 'Nao informado')}\n`;
+    reportText += `${formatLine('Celular', reportData.celular || '-')}\n`;
+    reportText += `${formatLine('Telefone', reportData.telefone || '-')}\n`;
+    reportText += `${formatLine('E-mail', reportData.email || '-')}\n`;
+    reportText += `${formatLine('Endereço do Cliente', reportData.enderecoCliente || '-')}\n`;
     reportText += `\n-- DADOS DA OBRA --\n`;
-    reportText += `${formatLine('Código da Obra', dadosCliente.projectCode || '-')}\n`;
-    reportText += `${formatLine('Nome da Obra', dadosCliente.obra || '-')}\n`;
-    reportText += `${formatLine('Cidade da Obra', dadosCliente.cidadeObra || '-')}\n`;
-    reportText += `${formatLine('Endereço da Obra', dadosCliente.enderecoObra || '-')}\n`;
-    reportText += `${formatLine('Área da Obra (m²)', dadosCliente.areaObra || '-')}\n`;
-    reportText += `${formatLine('Unid. Residenciais', dadosCliente.unidadesResidenciais || '-')}\n`;
-    reportText += `${formatLine('Unid. Comerciais', dadosCliente.unidadesComerciais || '-')}\n`;
-    reportText += `${formatLine('Observações', dadosCliente.observacoes || '-')}\n`;
+    reportText += `${formatLine('Código da Obra', reportData.projectCode || '-')}\n`;
+    reportText += `${formatLine('Nome da Obra', reportData.obra || '-')}\n`;
+    reportText += `${formatLine('Cidade da Obra', reportData.cidadeObra || '-')}\n`;
+    reportText += `${formatLine('Endereço da Obra', reportData.enderecoObra || '-')}\n`;
+    reportText += `${formatLine('Área da Obra (m²)', reportData.areaObra || '-')}\n`;
+    reportText += `${formatLine('Unid. Residenciais', reportData.unidadesResidenciais || '-')}\n`;
+    reportText += `${formatLine('Unid. Comerciais', reportData.unidadesComerciais || '-')}\n`;
+    reportText += `${formatLine('Observações', reportData.observacoes || '-')}\n`;
 
     const respTecnico = document.getElementById('respTecnico').value;
     if (respTecnico) {
@@ -449,26 +448,26 @@ export function generatePdf(calculationResults, currentUserProfile) {
     
     addTitle("RELATÓRIO DE PROJETO ELÉTRICO");
 
-    const dadosCliente = feederResult.dados;
+    const reportData = feederResult.dados;
     
     addSection("DADOS DO CLIENTE");
-    addLineItem("Cliente:", dadosCliente.cliente);
-    addLineItem(`Documento (${dadosCliente.tipoDocumento}):`, dadosCliente.documento);
-    addLineItem("Celular:", dadosCliente.celular);
-    addLineItem("Telefone:", dadosCliente.telefone);
-    addLineItem("E-mail:", dadosCliente.email);
-    addLineItem("Endereço do Cliente:", dadosCliente.enderecoCliente);
+    addLineItem("Cliente:", reportData.cliente);
+    addLineItem(`Documento (${reportData.tipoDocumento}):`, reportData.documento);
+    addLineItem("Celular:", reportData.celular);
+    addLineItem("Telefone:", reportData.telefone);
+    addLineItem("E-mail:", reportData.email);
+    addLineItem("Endereço do Cliente:", reportData.enderecoCliente);
     yPos += 5;
 
     addSection("DADOS DA OBRA");
-    addLineItem("Código da Obra:", dadosCliente.projectCode);
-    addLineItem("Nome da Obra:", dadosCliente.obra);
-    addLineItem("Cidade da Obra:", dadosCliente.cidadeObra);
-    addLineItem("Endereço da Obra:", dadosCliente.enderecoObra);
-    addLineItem("Área da Obra (m²):", dadosCliente.areaObra);
-    addLineItem("Unid. Residenciais:", dadosCliente.unidadesResidenciais);
-    addLineItem("Unid. Comerciais:", dadosCliente.unidadesComerciais);
-    addLineItem("Observações:", dadosCliente.observacoes);
+    addLineItem("Código da Obra:", reportData.projectCode);
+    addLineItem("Nome da Obra:", reportData.obra);
+    addLineItem("Cidade da Obra:", reportData.cidadeObra);
+    addLineItem("Endereço da Obra:", reportData.enderecoObra);
+    addLineItem("Área da Obra (m²):", reportData.areaObra);
+    addLineItem("Unid. Residenciais:", reportData.unidadesResidenciais);
+    addLineItem("Unid. Comerciais:", reportData.unidadesComerciais);
+    addLineItem("Observações:", reportData.observacoes);
     yPos += 5;
 
     addSection("INFORMAÇÕES DO RESPONSÁVEL TÉCNICO");
