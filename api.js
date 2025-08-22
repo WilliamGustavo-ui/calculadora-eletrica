@@ -68,49 +68,39 @@ export async function transferProjectOwner(projectId, newOwnerId) {
 }
 
 /**
- * ATUALIZADO
- * Busca todos os dados técnicos, incluindo os fatores para cabos EPR.
+ * VERSÃO ROBUSTA
+ * Busca cada tabela de dados técnicos individualmente para evitar uma falha total.
+ * Se uma tabela falhar, um aviso será exibido no console, mas a aplicação continuará.
  */
 export async function fetchTechnicalData() {
-    try {
-        const [
-            disjuntoresRes,
-            cabosRes,
-            eletrodutosRes,
-            k1Res,
-            k1EprRes, // <-- Adicionado para EPR
-            k2Res,
-            k3Res,
-            dpsRes
-        ] = await Promise.all([
-            supabase.from('disjuntores').select('*'),
-            supabase.from('cabos').select('*'),
-            supabase.from('eletrodutos').select('*'),
-            supabase.from('fatores_k1_temperatura').select('*'),
-            supabase.from('fatores_k1_temperatura_epr').select('*'), // <-- Adicionado para EPR
-            supabase.from('fatores_k2_solo').select('*'),
-            supabase.from('fatores_k3_agrupamento').select('*'),
-            supabase.from('dps').select('*').order('classe').order('corrente_ka')
-        ]);
+    const technicalData = {};
+    const tablesToFetch = [
+        { key: 'disjuntores', name: 'disjuntores' },
+        { key: 'cabos', name: 'cabos' },
+        { key: 'eletrodutos', name: 'eletrodutos' },
+        { key: 'fatores_k1', name: 'fatores_k1_temperatura' },
+        { key: 'fatores_k1_epr', name: 'fatores_k1_temperatura_epr' },
+        { key: 'fatores_k2', name: 'fatores_k2_solo' },
+        { key: 'fatores_k3', name: 'fatores_k3_agrupamento' },
+        { key: 'dps', name: 'dps' }
+    ];
 
-        const errors = [disjuntoresRes, cabosRes, eletrodutosRes, k1Res, k1EprRes, k2Res, k3Res, dpsRes].map(res => res.error).filter(Boolean);
-        if (errors.length > 0) {
-            throw new Error('Falha ao buscar dados técnicos: ' + errors.map(e => e.message).join(', '));
+    console.log("Iniciando busca de dados técnicos...");
+
+    for (const table of tablesToFetch) {
+        const { data, error } = await supabase.from(table.name).select('*');
+        if (error) {
+            console.warn(`AVISO: Falha ao carregar a tabela '${table.name}'. A funcionalidade dependente pode não funcionar. Erro: ${error.message}`);
+            technicalData[table.key] = []; // Retorna um array vazio para evitar que a aplicação quebre
+        } else {
+            technicalData[table.key] = data;
         }
-
-        return {
-            disjuntores: disjuntoresRes.data,
-            cabos: cabosRes.data,
-            eletrodutos: eletrodutosRes.data,
-            fatores_k1: k1Res.data,
-            fatores_k1_epr: k1EprRes.data, // <-- Adicionado para EPR
-            fatores_k2: k2Res.data,
-            fatores_k3: k3Res.data,
-            dps: dpsRes.data,
-        };
-    } catch (error) {
-        console.error(error.message);
-        alert(error.message);
-        return null;
     }
+    
+    console.log("Dados técnicos carregados:", technicalData);
+    if (!technicalData.fatores_k1_epr || technicalData.fatores_k1_epr.length === 0) {
+         console.warn("A tabela de fatores EPR está vazia. O dropdown dinâmico para cabos EPR não funcionará.");
+    }
+    
+    return technicalData;
 }

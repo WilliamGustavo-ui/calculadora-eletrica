@@ -17,7 +17,6 @@ export function setupDynamicTemperatures(techData) {
             .map(f => f.temperatura_c)
             .sort((a, b) => a - b);
     }
-    // CORRIGIDO: O nome da propriedade estava com um erro de digitação (fatores)
     if (techData?.fatores_k1_epr) {
         tempOptions.epr = techData.fatores_k1_epr
             .filter(f => f.fator > 0)
@@ -201,7 +200,8 @@ function getCircuitHTML(id){
 }
 
 // --- PREENCHIMENTO DE DADOS ---
-// ... (O resto do arquivo permanece o mesmo)
+// O resto do arquivo (populateProjectList, populateFormWithProjectData, painel admin, relatórios) permanece o mesmo
+// ...
 export function populateProjectList(projects, isAdmin) {
     const select = document.getElementById('savedProjectsSelect');
     select.innerHTML = '<option value="">-- Selecione uma obra --</option>';
