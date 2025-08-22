@@ -39,18 +39,24 @@ export function calcularProjetoCompleto(technicalData) {
     return { feederResult, circuitResults };
 }
 
+// ATUALIZADO para incluir todos os novos campos
 function getMainFormData() {
     return {
         projectCode: document.getElementById('projectCode').value,
         cliente: document.getElementById('cliente').value,
-        tipoDocumento: document.getElementById('tipoDocumento').value,
         documento: document.getElementById('documento').value,
-        telefone: document.getElementById('telefone').value,
+        tipoDocumento: document.getElementById('tipoDocumento').value,
         celular: document.getElementById('celular').value,
+        telefone: document.getElementById('telefone').value,
         email: document.getElementById('email').value,
+        enderecoCliente: document.getElementById('enderecoCliente').value,
         obra: document.getElementById('obra').value,
-        endereco: document.getElementById('endereco').value,
-        areaObra: document.getElementById('areaObra').value
+        cidadeObra: document.getElementById('cidadeObra').value,
+        enderecoObra: document.getElementById('enderecoObra').value,
+        areaObra: document.getElementById('areaObra').value,
+        unidadesResidenciais: document.getElementById('unidadesResidenciais').value,
+        unidadesComerciais: document.getElementById('unidadesComerciais').value,
+        observacoes: document.getElementById('observacoes').value
     };
 }
 
@@ -80,7 +86,6 @@ function _calcularAlimentadorGeral(technicalData, potenciaTotal, maxCircuitBreak
 
     dados.dpsInfo = findDps(technicalData.dps, dados.dpsClasse, 'highest');
     const potenciaInstalada = potenciaTotal;
-    // Converte a % para decimal para o cálculo
     const potenciaDemandada = potenciaInstalada * (dados.fatorDemanda / 100);
     
     return performCalculation(dados, potenciaInstalada, potenciaDemandada, technicalData, maxCircuitBreakerAmps);
@@ -124,7 +129,6 @@ function _calcularCircuitosIndividuais(technicalData){
         if (dados.tipoCircuito === 'motores') dados.potenciaW = dados.potenciaCV * 735.5;
         
         const potenciaInstalada = dados.potenciaW;
-        // Converte a % para decimal para o cálculo
         const potenciaDemandada = potenciaInstalada * (dados.fatorDemanda / 100.0);
         
         const result = performCalculation(dados, potenciaInstalada, potenciaDemandada, technicalData);
@@ -214,8 +218,7 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
     if (bitolaNum && technicalData.eletrodutos) {
         const duto_obj = technicalData.eletrodutos.find(e => e.num_condutores === numCondutores && e.secao_cabo_mm2 === bitolaNum);
         if (duto_obj) {
-            const match = String(duto_obj.tamanho_nominal).match(/\((.*?)\)/);
-            dutoRecomendado = match ? match[1] : duto_obj.tamanho_nominal;
+            dutoRecomendado = duto_obj.tamanho_nominal;
         }
     }
 

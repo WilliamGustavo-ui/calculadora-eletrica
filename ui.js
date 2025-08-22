@@ -124,27 +124,23 @@ function initializeCircuitListeners(id) {
         });
     };
 
-    // Função que lida com todas as mudanças de tipo de circuito
     const handleCircuitTypeChange = () => {
         const selectedType = tipoCircuito.value;
 
-        // Alterna a visibilidade dos campos de potência
         potenciaWGroup.classList.toggle('hidden', selectedType === 'motores');
         potenciaCVGroup.classList.toggle('hidden', selectedType !== 'motores');
 
-        // Para circuitos de aquecimento, o fator de demanda é sempre 100%
         if (selectedType === 'aquecimento') {
             fatorDemandaInput.value = '100';
-            fatorDemandaInput.readOnly = true; // Bloqueia o campo
+            fatorDemandaInput.readOnly = true;
         } else {
-            fatorDemandaInput.readOnly = false; // Desbloqueia para outros tipos
+            fatorDemandaInput.readOnly = false;
         }
     };
 
     tipoCircuito.addEventListener('change', handleCircuitTypeChange);
     fases.addEventListener('change', atualizarLigacoes);
     
-    // Chama as funções uma vez para inicializar o estado correto
     atualizarLigacoes();
     handleCircuitTypeChange();
 }
@@ -153,9 +149,6 @@ function getCircuitHTML(id){
     return `<div class="circuit-block" id="circuit-${id}" data-id="${id}"><div class="circuit-header"><h2 id="circuit-title-${id}">Circuito ${id}</h2>${id>1?`<button type="button" class="remove-btn" data-circuit-id="${id}">Remover</button>`:''}</div><div class="form-grid"><div class="form-group"><label for="nomeCircuito-${id}">Nome do Circuito</label><input type="text" id="nomeCircuito-${id}" value="Circuito ${id}"></div><div class="form-group"><label for="tipoCircuito-${id}">Tipo de Circuito</label><select id="tipoCircuito-${id}"><option value="iluminacao">Iluminacao</option><option value="tug" selected>Tomadas de Uso Geral (TUG)</option><option value="tue">Tomadas de Uso Especifico (TUE)</option><option value="aquecimento">Aquecimento</option><option value="motores">Circuito de Motores</option><option value="ar_condicionado">Ar Condicionado</option></select></div><div class="form-group" id="potenciaW_group-${id}"><label for="potenciaW-${id}">Potencia (W)</label><input type="number" id="potenciaW-${id}" value="2500"></div><div class="form-group hidden" id="potenciaCV_group-${id}"><label for="potenciaCV-${id}">Potencia do Motor (CV)</label><select id="potenciaCV-${id}"><option value="0.25">1/4</option><option value="0.33">1/3</option><option value="0.5">1/2</option><option value="0.75">3/4</option><option value="1">1</option><option value="1.5">1 1/2</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="7.5">7 1/2</option><option value="10">10</option><option value="12.5">12 1/2</option><option value="15">15</option><option value="20">20</option><option value="25">25</option><option value="30">30</option></select></div><div class="form-group"><label for="fatorDemanda-${id}">Fator de Demanda (%)</label><input type="number" id="fatorDemanda-${id}" value="100" step="1"></div><div class="form-group"><label for="fases-${id}">Sistema de Fases</label><select id="fases-${id}"><option value="Monofasico" selected>Monofasico</option><option value="Bifasico">Bifasico</option><option value="Trifasico">Trifasico</option></select></div><div class="form-group"><label for="tipoLigacao-${id}">Tipo de Ligacao</label><select id="tipoLigacao-${id}"></select></div><div class="form-group"><label for="tensaoV-${id}">Tensao (V)</label><select id="tensaoV-${id}"><option value="12">12 V</option><option value="24">24 V</option><option value="36">36 V</option><option value="127">127 V</option><option value="220" selected>220 V</option><option value="380">380 V</option><option value="440">440 V</option><option value="760">760 V</option></select></div><div class="form-group"><label for="fatorPotencia-${id}">Fator de Potencia (eficiencia)</label><input type="number" id="fatorPotencia-${id}" step="0.01" value="0.92"></div><div class="form-group"><label for="comprimentoM-${id}">Comprimento (m)</label><input type="number" id="comprimentoM-${id}" value="20"></div><div class="form-group"><label for="tipoIsolacao-${id}">Tipo de Isolacao</label><select id="tipoIsolacao-${id}"><option value="PVC" selected>PVC 70 C</option><option value="EPR">EPR/XLPE 90 C</option></select></div><div class="form-group"><label for="materialCabo-${id}">Material do Condutor</label><select id="materialCabo-${id}"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Aluminio</option></select></div><div class="form-group"><label for="metodoInstalacao-${id}">Metodo de Instalacao</label><select id="metodoInstalacao-${id}"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select></div><div class="form-group"><label for="temperaturaAmbienteC-${id}">Temperatura Ambiente (C)</label><select id="temperaturaAmbienteC-${id}"><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option><option value="30" selected>30</option><option value="35">35</option><option value="40">40</option><option value="45">45</option><option value="50">50</option><option value="55">55</option><option value="60">60</option><option value="65">65</option><option value="70">70</option><option value="75">75</option><option value="80">80</option><option value="85">85</option><option value="90">90</option></select></div><div class="form-group"><label for="resistividadeSolo-${id}">Resistividade T. do Solo (C.m/W)</label><select id="resistividadeSolo-${id}"><option value="0" selected>Nao Aplicavel</option><option value="0.7">0.7</option><option value="0.8">0.8</option><option value="1.0">1.0</option><option value="1.5">1.5</option><option value="2.0">2.0</option><option value="2.5">2.5</option><option value="3.0">3.0</option></select></div><div class="form-group"><label for="numCircuitosAgrupados-${id}">N de Circuitos Agrupados</label><select id="numCircuitosAgrupados-${id}"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div><div class="form-group"><label for="limiteQuedaTensao-${id}">Limite Queda de Tensao (%)</label><input type="number" id="limiteQuedaTensao-${id}" step="0.1" value="4.0"></div><div class="form-group"><label for="tipoDisjuntor-${id}">Tipo de Disjuntor</label><select id="tipoDisjuntor-${id}"><option value="Minidisjuntor (DIN)">Minidisjuntor (DIN)</option><option value="Caixa Moldada (MCCB)">Caixa Moldada (MCCB)</option></select></div><div class="form-group"><label for="dpsClasse-${id}">Classe DPS</label><select id="dpsClasse-${id}"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select></div><div class="checkbox-group"><input type="checkbox" id="requerDR-${id}"><label for="requerDR-${id}">Requer Protecao DR</label></div></div></div>`;
 }
 
-// O restante do arquivo (funções de preenchimento, painel de admin, relatórios) permanece o mesmo e não precisa ser alterado.
-// ...
-// ... (código completo omitido para brevidade)
 // --- PREENCHIMENTO DE DADOS ---
 export function populateProjectList(projects, isAdmin) {
     const select = document.getElementById('savedProjectsSelect');
@@ -176,7 +169,10 @@ export function populateFormWithProjectData(project) {
     document.getElementById('currentProjectId').value = project.id;
     Object.keys(project.main_data).forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.value = project.main_data[id];
+        if (el) {
+            if (el.type === 'textarea') el.value = project.main_data[id] || '';
+            else el.value = project.main_data[id];
+        }
     });
     Object.keys(project.tech_data).forEach(id => {
         const el = document.getElementById(id);
@@ -282,8 +278,19 @@ export function renderReport(calculationResults){
     reportText += `\n-- DADOS DA OBRA E CLIENTE --\n`;
     reportText += `${formatLine('Cliente', dadosCliente.cliente || 'Nao informado')}\n`;
     reportText += `${formatLine(`Documento (${dadosCliente.tipoDocumento})`, dadosCliente.documento || 'Nao informado')}\n`;
-    reportText += `${formatLine('Obra', dadosCliente.obra || 'Nao informado')}\n`;
-    reportText += `${formatLine('Endereco', dadosCliente.endereco || 'Nao informado')}\n`;
+    reportText += `${formatLine('Celular', dadosCliente.celular || '-')}\n`;
+    reportText += `${formatLine('Telefone', dadosCliente.telefone || '-')}\n`;
+    reportText += `${formatLine('E-mail', dadosCliente.email || '-')}\n`;
+    reportText += `${formatLine('Endereço do Cliente', dadosCliente.enderecoCliente || '-')}\n`;
+    reportText += `\n-- DADOS DA OBRA --\n`;
+    reportText += `${formatLine('Código da Obra', dadosCliente.projectCode || '-')}\n`;
+    reportText += `${formatLine('Nome da Obra', dadosCliente.obra || '-')}\n`;
+    reportText += `${formatLine('Cidade da Obra', dadosCliente.cidadeObra || '-')}\n`;
+    reportText += `${formatLine('Endereço da Obra', dadosCliente.enderecoObra || '-')}\n`;
+    reportText += `${formatLine('Área da Obra (m²)', dadosCliente.areaObra || '-')}\n`;
+    reportText += `${formatLine('Unid. Residenciais', dadosCliente.unidadesResidenciais || '-')}\n`;
+    reportText += `${formatLine('Unid. Comerciais', dadosCliente.unidadesComerciais || '-')}\n`;
+    reportText += `${formatLine('Observações', dadosCliente.observacoes || '-')}\n`;
 
     const respTecnico = document.getElementById('respTecnico').value;
     if (respTecnico) {
@@ -363,16 +370,24 @@ export function generatePdf(calculationResults, currentUserProfile) {
 
     const dadosCliente = feederResult.dados;
     
-    addSection("DADOS DA OBRA E CLIENTE");
-    addLineItem("Código da Obra:", dadosCliente.projectCode);
-    addLineItem("Obra (Projeto):", dadosCliente.obra);
+    addSection("DADOS DO CLIENTE");
     addLineItem("Cliente:", dadosCliente.cliente);
     addLineItem(`Documento (${dadosCliente.tipoDocumento}):`, dadosCliente.documento);
-    addLineItem("Endereço:", dadosCliente.endereco);
-    addLineItem("Área da Obra:", `${dadosCliente.areaObra || '-'} m²`);
-    addLineItem("Telefone:", dadosCliente.telefone);
     addLineItem("Celular:", dadosCliente.celular);
+    addLineItem("Telefone:", dadosCliente.telefone);
     addLineItem("E-mail:", dadosCliente.email);
+    addLineItem("Endereço do Cliente:", dadosCliente.enderecoCliente);
+    yPos += 5;
+
+    addSection("DADOS DA OBRA");
+    addLineItem("Código da Obra:", dadosCliente.projectCode);
+    addLineItem("Nome da Obra:", dadosCliente.obra);
+    addLineItem("Cidade da Obra:", dadosCliente.cidadeObra);
+    addLineItem("Endereço da Obra:", dadosCliente.enderecoObra);
+    addLineItem("Área da Obra (m²):", dadosCliente.areaObra);
+    addLineItem("Unid. Residenciais:", dadosCliente.unidadesResidenciais);
+    addLineItem("Unid. Comerciais:", dadosCliente.unidadesComerciais);
+    addLineItem("Observações:", dadosCliente.observacoes);
     yPos += 5;
 
     addSection("INFORMAÇÕES DO RESPONSÁVEL TÉCNICO");
