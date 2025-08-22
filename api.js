@@ -2,28 +2,89 @@
 
 import { supabase } from './supabaseClient.js';
 
+// --- FUNÇÕES DE CLIENTE ---
+
+export async function fetchClients() {
+    const { data, error } = await supabase
+        .from('clients')
+        .select('*, projects(*)') // Busca clientes e seus projetos vinculados
+        .order('nome');
+    
+    if (error) console.error('Erro ao buscar clientes:', error.message);
+    return data || [];
+}
+
+export async function addClient(clientData) {
+    // 1. Gera o próximo código de cliente usando a função do banco
+    const { data: codeData, error: codeError } = await supabase.rpc('generate_new_client_code');
+    if (codeError) throw codeError;
+    
+    clientData.client_code = codeData;
+
+    // 2. Insere o novo cliente com o código gerado
+    const { data, error } = await supabase
+        .from('clients')
+        .insert(clientData)
+        .select()
+        .single();
+    
+    if (error) console.error('Erro ao adicionar cliente:', error.message);
+    return { data, error };
+}
+
+export async function updateClient(clientId, clientData) {
+    const { data, error } = await supabase
+        .from('clients')
+        .update(clientData)
+        .eq('id', clientId)
+        .select()
+        .single();
+        
+    if (error) console.error('Erro ao atualizar cliente:', error.message);
+    return { data, error };
+}
+
+export async function deleteClient(clientId) {
+    const { error } = await supabase.from('clients').delete().eq('id', clientId);
+    if (error) console.error('Erro ao deletar cliente:', error.message);
+    return { error };
+}
+
 // --- FUNÇÕES DE PROJETO ---
 
 export async function fetchProjects(searchTerm) {
-    let query = supabase.from('projects').select('id, project_name, owner_id, profile:profiles(nome)');
+    // Busca por nome do projeto, código do projeto ou nome do cliente
+    let query = supabase.from('projects').select('id, project_name, project_code, owner_id, client:clients(nome)');
+    
     if (searchTerm) {
-        query = query.ilike('project_name', `%${searchTerm}%`);
+        query = query.or(`project_name.ilike.%${searchTerm}%,project_code.ilike.%${searchTerm}%,clients.nome.ilike.%${searchTerm}%`);
     }
+    
     const { data, error } = await query.order('project_name');
-    if (error) {
-        console.error('Erro ao buscar projetos:', error.message);
-        alert("Erro ao carregar os projetos: " + error.message);
-    }
+    if (error) console.error('Erro ao buscar projetos:', error.message);
     return data || [];
 }
 
 export async function fetchProjectById(projectId) {
-    const { data, error } = await supabase.from('projects').select('*').eq('id', projectId).single();
+    // Busca um projeto e os dados do seu cliente vinculado
+    const { data, error } = await supabase
+        .from('projects')
+        .select('*, client:clients(*)')
+        .eq('id', projectId)
+        .single();
+        
     if (error) console.error('Erro ao buscar projeto por ID:', error.message);
     return data;
 }
 
 export async function saveProject(projectData, projectId) {
+    // Gera um código de projeto se for um novo projeto
+    if (!projectId) {
+        const { data: codeData, error: codeError } = await supabase.rpc('generate_new_project_code');
+        if (codeError) throw codeError;
+        projectData.project_code = codeData;
+    }
+
     let result;
     if (projectId) {
         result = await supabase.from('projects').update(projectData).eq('id', projectId).select().single();
@@ -38,7 +99,12 @@ export async function deleteProject(projectId) {
     return { error };
 }
 
-// --- FUNÇÕES DE ADMINISTRAÇÃO ---
+export async function transferProjectClient(projectId, newClientId) {
+    const { error } = await supabase.from('projects').update({ client_id: newClientId }).eq('id', projectId);
+    return { error };
+}
+
+// --- FUNÇÕES DE ADMINISTRAÇÃO E DADOS TÉCNICOS --- (sem alterações)
 
 export async function fetchAllUsers() {
     const { data, error } = await supabase.from('profiles').select('*').order('nome');
@@ -67,47 +133,33 @@ export async function transferProjectOwner(projectId, newOwnerId) {
     return { error };
 }
 
-/**
- * ATUALIZADO
- * Busca todos os dados técnicos, incluindo os modelos de DPS, do Supabase de uma só vez.
- */
 export async function fetchTechnicalData() {
-    try {
-        const [
-            disjuntoresRes,
-            cabosRes,
-            eletrodutosRes,
-            k1Res,
-            k2Res,
-            k3Res,
-            dpsRes // <-- Adicionado
-        ] = await Promise.all([
-            supabase.from('disjuntores').select('*'),
-            supabase.from('cabos').select('*'),
-            supabase.from('eletrodutos').select('*'),
-            supabase.from('fatores_k1_temperatura').select('*'),
-            supabase.from('fatores_k2_solo').select('*'),
-            supabase.from('fatores_k3_agrupamento').select('*'),
-            supabase.from('dps').select('*').order('classe').order('corrente_ka') // <-- Adicionado
-        ]);
+    const technicalData = {};
+    const tablesToFetch = [
+        { key: 'disjuntores', name: 'disjuntores' },
+        { key: 'cabos', name: 'cabos' },
+        { key: 'eletrodutos', name: 'eletrodutos' },
+        { key: 'fatores_k1', name: 'fatores_k1_temperatura' },
+        { key: 'fatores_k2', name: 'fatores_k2_solo' },
+        { key: 'fatores_k3', name: 'fatores_k3_agrupamento' },
+        { key: 'dps', name: 'dps' }
+    ];
 
-        const errors = [disjuntoresRes, cabosRes, eletrodutosRes, k1Res, k2Res, k3Res, dpsRes].map(res => res.error).filter(Boolean);
-        if (errors.length > 0) {
-            throw new Error('Falha ao buscar dados técnicos: ' + errors.map(e => e.message).join(', '));
+    console.log("Iniciando busca de dados técnicos...");
+
+    for (const table of tablesToFetch) {
+        try {
+            const { data, error } = await supabase.from(table.name).select('*');
+            if (error) {
+                throw new Error(error.message);
+            }
+            technicalData[table.key] = data;
+        } catch (err) {
+            console.error(`ERRO FATAL ao carregar a tabela '${table.name}'. Detalhes: ${err.message}`);
+            technicalData[table.key] = [];
         }
-
-        return {
-            disjuntores: disjuntoresRes.data,
-            cabos: cabosRes.data,
-            eletrodutos: eletrodutosRes.data,
-            fatores_k1: k1Res.data,
-            fatores_k2: k2Res.data,
-            fatores_k3: k3Res.data,
-            dps: dpsRes.data, // <-- Adicionado
-        };
-    } catch (error) {
-        console.error(error.message);
-        alert(error.message);
-        return null;
     }
+    
+    console.log("Dados técnicos carregados:", technicalData);
+    return technicalData;
 }
