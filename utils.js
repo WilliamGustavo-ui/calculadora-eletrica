@@ -149,9 +149,16 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
     const correnteInstalada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * dados.fatorPotencia)) : 0;
     const correnteDemandada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * dados.fatorPotencia)) : 0;
     
-    // ATUALIZADO: Lógica simplificada para buscar na tabela única de fatores K1
-    const fatorK1_obj = technicalData.fatores_k1?.find(f => f.temperatura_c === dados.temperaturaAmbienteC);
-    const fatorK1 = fatorK1_obj ? fatorK1_obj.fator : 1.0;
+    let fatorK1 = 1.0;
+    if (dados.temperaturaAmbienteC) {
+        const fatorTable = dados.tipoIsolacao === 'EPR' ? technicalData.fatores_k1_epr : technicalData.fatores_k1;
+        if (fatorTable) {
+            const fatorObj = fatorTable.find(f => f.temperatura_c === dados.temperaturaAmbienteC);
+            if (fatorObj) {
+                fatorK1 = fatorObj.fator;
+            }
+        }
+    }
     
     const fatorK2 = (dados.resistividadeSolo > 0 && technicalData.fatores_k2) ? (technicalData.fatores_k2.find(f => f.resistividade === dados.resistividadeSolo)?.fator || 1.0) : 1.0;
     

@@ -3,13 +3,21 @@
 import { ligacoes } from './utils.js';
 
 let circuitCount = 0;
-// Armazena a lista única de temperaturas
-let temperatures = [];
+let tempOptions = {
+    pvc: [],
+    epr: []
+};
 
 // --- PREPARAÇÃO DOS DADOS DE TEMPERATURA ---
 export function setupDynamicTemperatures(techData) {
     if (techData?.fatores_k1) {
-        temperatures = techData.fatores_k1
+        tempOptions.pvc = techData.fatores_k1
+            .filter(f => f.fator > 0)
+            .map(f => f.temperatura_c)
+            .sort((a, b) => a - b);
+    }
+    if (techData?.fatores_k1_epr) {
+        tempOptions.epr = techData.fatores_k1_epr
             .filter(f => f.fator > 0)
             .map(f => f.temperatura_c)
             .sort((a, b) => a - b);
@@ -17,7 +25,7 @@ export function setupDynamicTemperatures(techData) {
 }
 
 // --- FUNÇÃO AUXILIAR PARA POPULAR O DROPDOWN DE TEMPERATURA ---
-function populateTemperatureDropdown(selectElement) {
+function populateTemperatureDropdown(selectElement, temperatures) {
     const currentValue = selectElement.value;
     selectElement.innerHTML = '';
     temperatures.forEach(temp => {
