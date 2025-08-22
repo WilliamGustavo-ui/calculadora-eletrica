@@ -60,7 +60,7 @@ export async function transferProjectOwner(projectId, newOwnerId) {
 
 /**
  * VERSÃO FINAL E ROBUSTA
- * Busca cada tabela de dados técnicos individualmente para evitar uma falha total.
+ * Busca cada tabela de dados técnicos individualmente.
  */
 export async function fetchTechnicalData() {
     const technicalData = {};
@@ -68,8 +68,7 @@ export async function fetchTechnicalData() {
         { key: 'disjuntores', name: 'disjuntores' },
         { key: 'cabos', name: 'cabos' },
         { key: 'eletrodutos', name: 'eletrodutos' },
-        { key: 'fatores_k1', name: 'fatores_k1_temperatura' },
-        { key: 'fatores_k1_epr', name: 'fatores_k1_temperatura_epr' }, // <-- Busca a tabela EPR
+        { key: 'fatores_k1', name: 'fatores_k1_temperatura' }, // <-- Tabela única
         { key: 'fatores_k2', name: 'fatores_k2_solo' },
         { key: 'fatores_k3', name: 'fatores_k3_agrupamento' },
         { key: 'dps', name: 'dps' }

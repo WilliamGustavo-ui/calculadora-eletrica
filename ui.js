@@ -3,21 +3,13 @@
 import { ligacoes } from './utils.js';
 
 let circuitCount = 0;
-let tempOptions = {
-    pvc: [],
-    epr: []
-};
+// Armazena a lista única de temperaturas
+let temperatures = [];
 
 // --- PREPARAÇÃO DOS DADOS DE TEMPERATURA ---
 export function setupDynamicTemperatures(techData) {
     if (techData?.fatores_k1) {
-        tempOptions.pvc = techData.fatores_k1
-            .filter(f => f.fator > 0)
-            .map(f => f.temperatura_c)
-            .sort((a, b) => a - b);
-    }
-    if (techData?.fatores_k1_epr) {
-        tempOptions.epr = techData.fatores_k1_epr
+        temperatures = techData.fatores_k1
             .filter(f => f.fator > 0)
             .map(f => f.temperatura_c)
             .sort((a, b) => a - b);
@@ -25,7 +17,7 @@ export function setupDynamicTemperatures(techData) {
 }
 
 // --- FUNÇÃO AUXILIAR PARA POPULAR O DROPDOWN DE TEMPERATURA ---
-function populateTemperatureDropdown(selectElement, temperatures) {
+function populateTemperatureDropdown(selectElement) {
     const currentValue = selectElement.value;
     selectElement.innerHTML = '';
     temperatures.forEach(temp => {
@@ -219,7 +211,6 @@ export function populateFormWithProjectData(project) {
         });
         document.getElementById('feederFases').dispatchEvent(new Event('change'));
         document.getElementById('feederTipoLigacao').value = project.feeder_data['feederTipoLigacao'];
-        // A lista de temperatura será populada automaticamente pelo initializeFeederListeners
     }
     document.getElementById('circuits-container').innerHTML = '';
     circuitCount = 0;
