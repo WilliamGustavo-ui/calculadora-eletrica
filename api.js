@@ -3,7 +3,6 @@
 import { supabase } from './supabaseClient.js';
 
 // --- FUNÇÕES DE PROJETO ---
-
 export async function fetchProjects(searchTerm) {
     let query = supabase.from('projects').select('id, project_name, owner_id, profile:profiles(nome)');
     if (searchTerm) {
@@ -16,13 +15,11 @@ export async function fetchProjects(searchTerm) {
     }
     return data || [];
 }
-
 export async function fetchProjectById(projectId) {
     const { data, error } = await supabase.from('projects').select('*').eq('id', projectId).single();
     if (error) console.error('Erro ao buscar projeto por ID:', error.message);
     return data;
 }
-
 export async function saveProject(projectData, projectId) {
     let result;
     if (projectId) {
@@ -32,45 +29,38 @@ export async function saveProject(projectData, projectId) {
     }
     return result;
 }
-
 export async function deleteProject(projectId) {
     const { error } = await supabase.from('projects').delete().eq('id', projectId);
     return { error };
 }
 
 // --- FUNÇÕES DE ADMINISTRAÇÃO ---
-
 export async function fetchAllUsers() {
     const { data, error } = await supabase.from('profiles').select('*').order('nome');
     if (error) console.error('Erro ao buscar usuários:', error.message);
     return data || [];
 }
-
 export async function approveUser(userId) {
     const { error } = await supabase.from('profiles').update({ is_approved: true }).eq('id', userId);
     return { error };
 }
-
 export async function updateUserProfile(userId, profileData) {
     const { error } = await supabase.from('profiles').update(profileData).eq('id', userId);
     return { error };
 }
-
 export async function fetchAllApprovedUsers() {
     const { data, error } = await supabase.from('profiles').select('id, nome').eq('is_approved', true);
     if (error) console.error('Erro ao buscar usuários aprovados:', error.message);
     return data || [];
 }
-
 export async function transferProjectOwner(projectId, newOwnerId) {
     const { error } = await supabase.from('projects').update({ owner_id: newOwnerId }).eq('id', projectId);
     return { error };
 }
 
 /**
- * VERSÃO ROBUSTA
- * Busca cada tabela de dados técnicos individualmente para evitar uma falha total.
- * Se uma tabela falhar, um aviso será exibido no console, mas a aplicação continuará.
+ * VERSÃO REATORADA E ROBUSTA
+ * Busca cada tabela de dados técnicos individualmente, agora com a tabela de temperatura unificada.
  */
 export async function fetchTechnicalData() {
     const technicalData = {};
@@ -78,8 +68,7 @@ export async function fetchTechnicalData() {
         { key: 'disjuntores', name: 'disjuntores' },
         { key: 'cabos', name: 'cabos' },
         { key: 'eletrodutos', name: 'eletrodutos' },
-        { key: 'fatores_k1', name: 'fatores_k1_temperatura' },
-        { key: 'fatores_k1_epr', name: 'fatores_k1_temperatura_epr' },
+        { key: 'fatores_k1', name: 'fatores_k1_temperatura' }, // <-- Tabela unificada
         { key: 'fatores_k2', name: 'fatores_k2_solo' },
         { key: 'fatores_k3', name: 'fatores_k3_agrupamento' },
         { key: 'dps', name: 'dps' }
@@ -91,16 +80,12 @@ export async function fetchTechnicalData() {
         const { data, error } = await supabase.from(table.name).select('*');
         if (error) {
             console.warn(`AVISO: Falha ao carregar a tabela '${table.name}'. A funcionalidade dependente pode não funcionar. Erro: ${error.message}`);
-            technicalData[table.key] = []; // Retorna um array vazio para evitar que a aplicação quebre
+            technicalData[table.key] = [];
         } else {
             technicalData[table.key] = data;
         }
     }
     
     console.log("Dados técnicos carregados:", technicalData);
-    if (!technicalData.fatores_k1_epr || technicalData.fatores_k1_epr.length === 0) {
-         console.warn("A tabela de fatores EPR está vazia. O dropdown dinâmico para cabos EPR não funcionará.");
-    }
-    
     return technicalData;
 }

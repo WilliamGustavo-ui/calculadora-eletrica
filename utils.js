@@ -131,7 +131,7 @@ function _calcularCircuitosIndividuais(technicalData){
 }
 
 function findDps(dpsList, dpsClasse, preference = 'lowest') {
-    if (!dpsClasse) return null;
+    if (!dpsClasse || !dpsList) return null;
     
     const suitableDps = dpsList
         .filter(d => d.classe === dpsClasse)
@@ -149,22 +149,22 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
     const correnteInstalada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * dados.fatorPotencia)) : 0;
     const correnteDemandada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * dados.fatorPotencia)) : 0;
     
-    // ATUALIZADO: Lógica para selecionar a tabela de fatores correta (PVC ou EPR)
+    // ATUALIZADO: Lógica para buscar na tabela unificada de fatores K1
     let fatorK1 = 1.0;
-    if (dados.temperaturaAmbienteC) {
-        const fatorTable = dados.tipoIsolacao === 'EPR' ? technicalData.fatores_k1_epr : technicalData.fatores_k1;
-        if (fatorTable) {
-            const fatorObj = fatorTable.find(f => f.temperatura_c === dados.temperaturaAmbienteC);
-            if (fatorObj) {
-                fatorK1 = fatorObj.fator;
-            }
+    if (dados.temperaturaAmbienteC && technicalData.fatores_k1) {
+        const fatorObj = technicalData.fatores_k1.find(f => 
+            f.isolacao === dados.tipoIsolacao && 
+            f.temperatura_c === dados.temperaturaAmbienteC
+        );
+        if (fatorObj) {
+            fatorK1 = fatorObj.fator;
         }
     }
     
-    const fatorK2 = (dados.resistividadeSolo > 0) ? (technicalData.fatores_k2.find(f => f.resistividade === dados.resistividadeSolo)?.fator || 1.0) : 1.0;
+    const fatorK2 = (dados.resistividadeSolo > 0 && technicalData.fatores_k2) ? (technicalData.fatores_k2.find(f => f.resistividade === dados.resistividadeSolo)?.fator || 1.0) : 1.0;
     
     let fatorK3 = 1.0;
-    if (dados.numCircuitosAgrupados > 1) {
+    if (dados.numCircuitosAgrupados > 1 && technicalData.fatores_k3) {
         const fatorK3_obj = technicalData.fatores_k3.find(f => f.num_circuitos === dados.numCircuitosAgrupados);
         if (fatorK3_obj) {
             const metodo = dados.metodoInstalacao;
@@ -177,14 +177,14 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
     let bitolaRecomendadaMm2="Nao encontrada", quedaTensaoCalculada=0, correnteMaximaCabo=0, disjuntorRecomendado={nome:"Coord. Inadequada",icc:0};
     
     const disjuntorCandidato = technicalData.disjuntores
-        .filter(d =>
+        ?.filter(d =>
             d.tipo === dados.tipoDisjuntor &&
             d.corrente_a >= correnteDemandada &&
             d.corrente_a >= maxDownstreamBreakerAmps
         )
         .sort((a,b) => a.corrente_a - b.corrente_a)[0];
 
-    if (disjuntorCandidato) {
+    if (disjuntorCandidato && technicalData.cabos) {
         let bitolaMinima = (dados.tipoCircuito === 'iluminacao') ? 1.5 : (dados.tipoCircuito ? 2.5 : 0);
         if (dados.id === 'Geral') bitolaMinima = 0;
 
@@ -197,7 +197,7 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
             if (Iz >= disjuntorCandidato.corrente_a) {
                 const resistividade = (dados.materialCabo === 'Cobre') ? 0.0172 : 0.0282;
                 const quedaVolts = (cabo.secao_mm2 > 0) ? ((dados.fases === 'Trifasico') ? ((1.732 * resistividade * dados.comprimentoM * correnteDemandada) / cabo.secao_mm2) : ((2 * resistividade * dados.comprimentoM * correnteDemandada) / cabo.secao_mm2)) : 0;
-                const quedaPercentual = (dados.tensaoV > 0) ? (quedaVolts / dados.tensaoV) * 1.0 : 0;
+                const quedaPercentual = (dados.tensaoV > 0) ? (quedaVolts / dados.tensaoV) * 100.0 : 0;
                 
                 if (quedaPercentual <= dados.limiteQuedaTensao) {
                     bitolaRecomendadaMm2 = cabo.secao_mm2.toString();
@@ -215,7 +215,7 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
     
     let dutoRecomendado = "Nao encontrado";
     const bitolaNum = parseFloat(bitolaRecomendadaMm2);
-    if (bitolaNum) {
+    if (bitolaNum && technicalData.eletrodutos) {
         const duto_obj = technicalData.eletrodutos.find(e => e.num_condutores === numCondutores && e.secao_cabo_mm2 === bitolaNum);
         if (duto_obj) {
             const match = String(duto_obj.tamanho_nominal).match(/\((.*?)\)/);
