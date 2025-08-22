@@ -24,6 +24,7 @@ async function handleLogin() {
             ui.showAppView(currentUserProfile);
             
             technicalData = await api.fetchTechnicalData();
+            ui.setupDynamicTemperatures(technicalData);
             ui.resetForm(true);
             await handleSearch();
         } else {
@@ -231,6 +232,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
                 ui.showAppView(currentUserProfile);
                 
                 technicalData = await api.fetchTechnicalData();
+                ui.setupDynamicTemperatures(technicalData);
                 ui.resetForm(true);
                 await handleSearch();
             }
