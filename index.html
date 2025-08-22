@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Projetos Eletricos v18.0</title>
+    <title>Calculadora de Projetos Eletricos v18.1</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-customfonts/1.0.4/roboto-normal.js"></script>
@@ -138,7 +138,7 @@
             </div>
             <hr style="margin: 20px 0;">
             <p style="text-align: center;">Ou</p>
-            <button type="button" id="addNewClientFromSelectModalBtn" style="width:100%; background-color: var(--success-color);">Cadastrar Novo Cliente</button>
+            <button type="button" id="addNewClientFromSelectModalBtn" style="width:100%;" class="btn-success">Cadastrar Novo Cliente</button>
         </div>
     </div>
     
@@ -152,8 +152,8 @@
             <label for="password">Senha</label>
             <input type="password" id="password" required>
         </div>
-        <button id="loginBtn" style="width:100%; margin-top: 10px;">Entrar</button>
-        <button id="registerBtn" style="width:100%; margin-top: 10px;">Registrar-se</button>
+        <button id="loginBtn" class="btn-success" style="width:100%; margin-top: 10px;">Entrar</button>
+        <button id="registerBtn" class="btn-secondary" style="width:100%; margin-top: 10px;">Registrar-se</button>
         <p style="text-align: center; margin-top: 15px;">
             <a href="#" id="forgotPasswordLink">Esqueceu a senha?</a>
         </p>
@@ -172,10 +172,10 @@
 
     <div id="appContainer" class="container" style="display: none;">
         <div class="top-right-buttons">
-            <button id="manageClientsBtn">Gerenciar Clientes</button>
-            <button id="manageProjectsBtn">Gerenciar Obras</button>
-            <button id="adminPanelBtn">Gerenciar Usuários</button>
-            <button id="logoutBtn">Sair</button>
+            <button id="manageClientsBtn" class="btn-primary">Gerenciar Clientes</button>
+            <button id="manageProjectsBtn" class="btn-primary">Gerenciar Obras</button>
+            <button id="adminPanelBtn" class="btn-warning">Gerenciar Usuários</button>
+            <button id="logoutBtn" class="btn-primary">Sair</button>
         </div>
         <h1>Calculadora de Projetos Elétricos</h1>
         
@@ -191,12 +191,12 @@
                         <label for="savedProjectsSelect">Carregar Obra Salva</label>
                         <select id="savedProjectsSelect"></select>
                     </div>
-                    <button id="loadBtn">Carregar</button>
+                    <button id="loadBtn" class="btn-secondary">Carregar</button>
                 </div>
                 <div class="button-wrapper">
-                    <button id="newBtn">Nova Obra</button>
-                    <button id="saveBtn">Salvar / Atualizar Obra</button>
-                    <button id="deleteBtn">Excluir Obra</button>
+                    <button id="newBtn" class="btn-primary">Nova Obra</button>
+                    <button id="saveBtn" class="btn-success">Salvar / Atualizar Obra</button>
+                    <button id="deleteBtn" class="btn-danger">Excluir Obra</button>
                 </div>
             </div>
         </div>
@@ -207,7 +207,7 @@
             
             <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <h2>Informações da Obra/Cliente</h2>
-                <button type="button" id="changeClientBtn" style="padding: 5px 10px; font-size: 0.8rem;">Vincular / Alterar Cliente</button>
+                <button type="button" id="changeClientBtn" class="btn-secondary" style="padding: 5px 10px; font-size: 0.8rem;">Vincular / Alterar Cliente</button>
             </div>
             <div id="clientLinkDisplay">Cliente: Nenhum</div>
             
@@ -249,7 +249,7 @@
         </div>
 
         <div id="circuits-container"></div>
-        <button id="addCircuitBtn">Adicionar Circuito</button>
+        <button id="addCircuitBtn" class="btn-primary">Adicionar Circuito</button>
         
         <form id="tech-form" autocomplete="off">
             <h2>Responsável Técnico</h2>
@@ -261,8 +261,8 @@
         </form>
 
         <div class="button-container">
-             <button id="calculateBtn">Gerar Memorial Descritivo</button>
-             <button id="pdfBtn">Gerar PDF</button>
+             <button id="calculateBtn" class="btn-secondary">Gerar Memorial Descritivo</button>
+             <button id="pdfBtn" class="btn-success">Gerar PDF</button>
         </div>
         <pre id="report">O relatório aparecerá aqui.</pre>
     </div>

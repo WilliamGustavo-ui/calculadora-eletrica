@@ -56,3 +56,9 @@ button { padding: 15px; color: white; border: none; border-radius: 5px; cursor: 
 .full-width {
     grid-column: 1 / -1;
 }
+
+.btn-primary { background-color: var(--primary-color); }
+.btn-secondary { background-color: var(--secondary-color); }
+.btn-success { background-color: var(--success-color); }
+.btn-danger { background-color: var(--danger-color); }
+.btn-warning { background-color: var(--warning-color); }

@@ -26,7 +26,7 @@ async function handleLogin() {
             technicalData = await api.fetchTechnicalData();
             if (technicalData) {
                 ui.setupDynamicTemperatures(technicalData);
-                await handleNewProject(false); // Inicia com um projeto novo sem pop-up
+                await handleNewProject(false); 
                 await handleSearch();
             }
         } else {
@@ -231,6 +231,7 @@ async function handleProjectPanelClick(event) {
     }
 }
 
+
 // --- INICIALIZAÇÃO E EVENTOS GERAIS ---
 function main() {
     setupEventListeners();
@@ -265,9 +266,8 @@ function setupEventListeners() {
     document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
     document.getElementById('adminProjectsTableBody').addEventListener('click', handleProjectPanelClick);
     document.getElementById('adminPanelBtn').addEventListener('click', async () => {const users = await api.fetchAllUsers(); ui.populateUsersPanel(users); ui.openModal('adminPanelModalOverlay'); });
-    document.getElementById('adminUserList').addEventListener('click', async (e) => { /* ...lógica admin... */ });
-    document.getElementById('editUserForm').addEventListener('submit', async (e) => { /* ...lógica admin... */ });
-
+    document.getElementById('adminUserList').addEventListener('click', (e) => { /* ...lógica admin... */ });
+    document.getElementById('editUserForm').addEventListener('submit', (e) => { /* ...lógica admin... */ });
 
     // Clientes
     document.getElementById('manageClientsBtn').addEventListener('click', handleOpenClientManagement);
@@ -277,9 +277,9 @@ function setupEventListeners() {
     document.getElementById('confirmClientSelectionBtn').addEventListener('click', () => handleConfirmClientSelection(document.getElementById('currentProjectId').value));
     document.getElementById('continueWithoutClientBtn').addEventListener('click', handleContinueWithoutClient);
     document.getElementById('addNewClientFromSelectModalBtn').addEventListener('click', () => { ui.closeModal('selectClientModalOverlay'); handleOpenClientManagement(); });
-    document.getElementById('changeClientBtn').addEventListener('click', async () => { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients); });
+    document.getElementById('changeClientBtn').addEventListener('click', async () => { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients, true); });
 
-    // Máscaras (agora apontando para os IDs corretos dentro dos modais)
+    // Máscaras (agora apontando para os IDs corretos dentro dos modais de registro e cliente)
     document.getElementById('regCpf').addEventListener('input', utils.mascaraCPF);
     document.getElementById('regTelefone').addEventListener('input', utils.mascaraCelular);
     document.getElementById('editCpf').addEventListener('input', utils.mascaraCPF);
