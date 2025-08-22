@@ -10,11 +10,9 @@ export function setupDynamicTemperatures(techData) {
     if (techData?.fatores_k1) {
         tempOptions.pvc = techData.fatores_k1.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
     }
-    // Mantém a busca separada para EPR, caso a tabela exista
     if (techData?.fatores_k1_epr) {
         tempOptions.epr = techData.fatores_k1_epr.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
     } else {
-        // Se a tabela EPR não existir, usa a mesma do PVC
         tempOptions.epr = tempOptions.pvc;
     }
 }
@@ -29,7 +27,6 @@ function populateTemperatureDropdown(selectElement, temperatures) {
         option.textContent = `${temp}°C`;
         selectElement.appendChild(option);
     });
-
     if (temperatures.includes(parseInt(currentValue))) {
         selectElement.value = currentValue;
     } else if (temperatures.includes(30)) {
@@ -41,7 +38,20 @@ function populateTemperatureDropdown(selectElement, temperatures) {
 
 // --- CONTROLE DE VISIBILIDADE E MODAIS ---
 export function showLoginView() { document.getElementById('loginContainer').style.display = 'block'; document.getElementById('appContainer').style.display = 'none'; document.getElementById('resetPasswordContainer').style.display = 'none'; }
-export function showAppView(userProfile) { document.getElementById('loginContainer').style.display = 'none'; document.getElementById('appContainer').style.display = 'block'; document.getElementById('resetPasswordContainer').style.display = 'none'; const isAdmin = userProfile?.is_admin || false; document.getElementById('adminPanelBtn').style.display = isAdmin ? 'block' : 'none'; document.getElementById('manageProjectsBtn').style.display = isAdmin ? 'block' : 'none'; document.getElementById('manageClientsBtn').style.display = 'block'; }
+export function showAppView(userProfile) {
+    document.getElementById('loginContainer').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'block';
+    document.getElementById('resetPasswordContainer').style.display = 'none';
+    
+    const isAdmin = userProfile?.is_admin || false;
+    
+    // Botões visíveis apenas para administradores
+    document.getElementById('adminPanelBtn').style.display = isAdmin ? 'block' : 'none';
+    
+    // Botões visíveis para todos os usuários
+    document.getElementById('manageClientsBtn').style.display = 'block';
+    document.getElementById('manageProjectsBtn').style.display = 'block';
+}
 export function showResetPasswordView() { document.getElementById('loginContainer').style.display = 'none'; document.getElementById('appContainer').style.display = 'none'; document.getElementById('resetPasswordContainer').style.display = 'block'; }
 export function openModal(modalId) { document.getElementById(modalId).style.display = 'flex'; }
 export function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
@@ -258,52 +268,68 @@ export function populateEditUserModal(userData) {
     openModal('editUserModalOverlay');
 }
 
-export function populateProjectsPanel(projects, clients, users) {
+export function populateProjectsPanel(projects, clients, users, currentUserProfile) {
     const tableBody = document.getElementById('adminProjectsTableBody');
     const tableHead = document.querySelector('#adminProjectsTable thead tr');
+
+    const isAdmin = currentUserProfile?.is_admin || false;
 
     // Atualiza o cabeçalho da tabela
     tableHead.innerHTML = `
         <th>Código</th>
         <th>Obra</th>
+        <th>Dono (Login)</th>
         <th>Cliente Vinculado</th>
-        <th>Transferir Cliente</th>
-        <th>Transferir Dono (Login)</th>
+        <th>Ações</th>
     `;
 
     tableBody.innerHTML = '';
     projects.forEach(project => {
         const row = document.createElement('tr');
+        const ownerName = project.owner?.nome || project.owner?.email || 'Desconhecido';
 
-        // Opções para o dropdown de Clientes
+        // HTML para as ações (pode ser complexo, então construímos em partes)
+        let actionsHtml = `<div class="action-cell">`;
+
+        // Ação 1: Transferir Cliente (visível para todos)
         const clientOptions = clients.map(c => 
             `<option value="${c.id}" ${c.id === project.client_id ? 'selected' : ''}>${c.nome}</option>`
         ).join('');
-
-        // Opções para o dropdown de Usuários (Dono)
-        const ownerOptions = users.map(u => 
-            `<option value="${u.id}" ${u.id === project.owner_id ? 'selected' : ''}>${u.nome || u.email}</option>`
-        ).join('');
-
-        row.innerHTML = `
-            <td>${project.project_code || 'S/C'}</td>
-            <td>${project.project_name}</td>
-            <td>${project.client?.nome || 'Nenhum'}</td>
-            
-            <td class="action-cell">
+        actionsHtml += `
+            <div class="action-group">
+                <label>Cliente:</label>
                 <select class="transfer-client-select" data-project-id="${project.id}">
                     <option value="">-- Desvincular --</option>
                     ${clientOptions}
                 </select>
-                <button class="transfer-client-btn btn-success" data-project-id="${project.id}">Salvar Cliente</button>
-            </td>
+                <button class="transfer-client-btn btn-success" data-project-id="${project.id}">Salvar</button>
+            </div>
+        `;
 
-            <td class="action-cell">
-                <select class="transfer-owner-select" data-project-id="${project.id}">
-                    ${ownerOptions}
-                </select>
-                <button class="transfer-owner-btn btn-secondary" data-project-id="${project.id}">Transferir Dono</button>
-            </td>
+        // Ação 2: Transferir Dono (visível apenas para Admins)
+        if (isAdmin) {
+            const ownerOptions = users.map(u => 
+                `<option value="${u.id}" ${u.id === project.owner_id ? 'selected' : ''}>${u.nome || u.email}</option>`
+            ).join('');
+            actionsHtml += `
+                <div class="action-group">
+                    <label>Transferir Dono:</label>
+                    <select class="transfer-owner-select" data-project-id="${project.id}">
+                        ${ownerOptions}
+                    </select>
+                    <button class="transfer-owner-btn btn-secondary" data-project-id="${project.id}">Transferir</button>
+                </div>
+            `;
+        }
+
+        actionsHtml += `</div>`; // Fecha action-cell
+        
+        row.innerHTML = `
+            <td>${project.project_code || 'S/C'}</td>
+            <td>${project.project_name}</td>
+            <td>${ownerName}</td>
+            <td>${project.client?.nome || 'Nenhum'}</td>
+            <td>${actionsHtml}</td>
         `;
         tableBody.appendChild(row);
     });
@@ -312,7 +338,7 @@ export function populateProjectsPanel(projects, clients, users) {
 // --- GERENCIAMENTO DE CLIENTES ---
 export function populateClientManagementModal(clients) {
     const list = document.getElementById('clientList');
-    list.innerHTML = ''; // Limpa a lista
+    list.innerHTML = '';
     if (clients.length === 0) {
         list.innerHTML = '<li>Nenhum cliente cadastrado.</li>';
         return;
@@ -382,11 +408,11 @@ export function populateSelectClientModal(clients, isChange = false) {
 }
 
 // --- RELATÓRIOS E PDF ---
+// Funções renderReport e generatePdf permanecem inalteradas...
 function getDpsText(dpsInfo) {
     if (!dpsInfo) return 'Nao';
     return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`;
 }
-
 export function renderReport(calculationResults){
     if(!calculationResults) return;
     const { feederResult, circuitResults } = calculationResults;
@@ -469,7 +495,6 @@ export function renderReport(calculationResults){
     });
     document.getElementById('report').textContent = reportText.trim();
 }
-
 export function generatePdf(calculationResults, currentUserProfile) {
     if (!calculationResults) return;
     const { feederResult, circuitResults } = calculationResults;

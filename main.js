@@ -117,8 +117,8 @@ function handleGeneratePdf() { const currentClientId = document.getElementById('
 async function showManageProjectsPanel() {
     const projects = await api.fetchProjects('');
     allClients = await api.fetchClients();
-    const allUsers = await api.fetchAllUsers(); // Busca todos os usuários
-    ui.populateProjectsPanel(projects, allClients, allUsers);
+    const allUsers = await api.fetchAllUsers();
+    ui.populateProjectsPanel(projects, allClients, allUsers, currentUserProfile);
     ui.openModal('manageProjectsModalOverlay');
 }
 
@@ -126,7 +126,6 @@ async function handleProjectPanelClick(event) {
     const target = event.target;
     const projectId = target.dataset.projectId;
 
-    // Lógica para transferir o CLIENTE
     if (target.classList.contains('transfer-client-btn')) {
         const select = target.parentElement.querySelector('.transfer-client-select');
         const newClientId = select.value || null;
@@ -136,11 +135,10 @@ async function handleProjectPanelClick(event) {
             alert('Erro ao transferir cliente: ' + error.message);
         } else {
             alert('Cliente da obra atualizado com sucesso!');
-            await showManageProjectsPanel(); // Recarrega o painel
+            await showManageProjectsPanel();
         }
     }
 
-    // Lógica para transferir o DONO (LOGIN)
     if (target.classList.contains('transfer-owner-btn')) {
         const select = target.parentElement.querySelector('.transfer-owner-select');
         const newOwnerId = select.value;
@@ -151,7 +149,7 @@ async function handleProjectPanelClick(event) {
                 alert('Erro ao transferir propriedade: ' + error.message);
             } else {
                 alert('Propriedade da obra transferida com sucesso!');
-                await showManageProjectsPanel(); // Recarrega o painel
+                await showManageProjectsPanel();
             }
         }
     }

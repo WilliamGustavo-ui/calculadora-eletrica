@@ -27,7 +27,7 @@ export async function deleteClient(clientId) {
 
 // --- FUNÇÕES DE PROJETO ---
 export async function fetchProjects(searchTerm) {
-    let query = supabase.from('projects').select('id, project_name, project_code, owner_id, client_id, client:clients(nome)');
+    let query = supabase.from('projects').select('id, project_name, project_code, owner_id, client_id, client:clients(nome), owner:profiles(nome, email)');
     if (searchTerm) {
         query = query.or(`project_name.ilike.%${searchTerm}%,project_code.ilike.%${searchTerm}%,clients.nome.ilike.%${searchTerm}%`);
     }
@@ -70,7 +70,6 @@ export async function transferProjectOwner(projectId, newOwnerId) {
     if (error) console.error('Erro ao transferir propriedade da obra:', error.message);
     return { error };
 }
-
 
 // --- FUNÇÕES DE ADMINISTRAÇÃO E DADOS TÉCNICOS ---
 export async function fetchAllUsers() {
