@@ -60,7 +60,8 @@ export async function transferProjectOwner(projectId, newOwnerId) {
 
 /**
  * VERSÃO FINAL E ROBUSTA
- * Busca cada tabela de dados técnicos individualmente, agora com a tabela de temperatura unificada.
+ * Busca cada tabela de dados técnicos individualmente para evitar uma falha total.
+ * Se uma tabela falhar, um aviso será exibido no console, mas a aplicação continuará.
  */
 export async function fetchTechnicalData() {
     const technicalData = {};
@@ -68,7 +69,7 @@ export async function fetchTechnicalData() {
         { key: 'disjuntores', name: 'disjuntores' },
         { key: 'cabos', name: 'cabos' },
         { key: 'eletrodutos', name: 'eletrodutos' },
-        { key: 'fatores_k1', name: 'fatores_k1_temperatura' }, // <-- Tabela unificada
+        { key: 'fatores_k1', name: 'fatores_k1_temperatura' }, // Tabela unificada
         { key: 'fatores_k2', name: 'fatores_k2_solo' },
         { key: 'fatores_k3', name: 'fatores_k3_agrupamento' },
         { key: 'dps', name: 'dps' }
@@ -77,15 +78,19 @@ export async function fetchTechnicalData() {
     console.log("Iniciando busca de dados técnicos...");
 
     for (const table of tablesToFetch) {
-        const { data, error } = await supabase.from(table.name).select('*');
-        if (error) {
-            console.warn(`AVISO: Falha ao carregar a tabela '${table.name}'. A funcionalidade dependente pode não funcionar. Erro: ${error.message}`);
-            technicalData[table.key] = [];
-        } else {
+        try {
+            const { data, error } = await supabase.from(table.name).select('*');
+            if (error) {
+                // Lança um erro para ser pego pelo bloco catch
+                throw new Error(error.message);
+            }
             technicalData[table.key] = data;
+        } catch (err) {
+            console.error(`ERRO FATAL ao carregar a tabela '${table.name}'. Verifique o nome da tabela e as políticas de segurança (RLS) no Supabase. Detalhes: ${err.message}`);
+            technicalData[table.key] = []; // Define como vazio para não quebrar o resto do app
         }
     }
     
-    console.log("Dados técnicos carregados:", technicalData);
+    console.log("Dados técnicos carregados (pode haver falhas parciais, verifique avisos acima):", technicalData);
     return technicalData;
 }
