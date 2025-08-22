@@ -231,7 +231,6 @@ async function handleProjectPanelClick(event) {
     }
 }
 
-
 // --- INICIALIZAÇÃO E EVENTOS GERAIS ---
 function main() {
     setupEventListeners();
@@ -277,9 +276,9 @@ function setupEventListeners() {
     document.getElementById('confirmClientSelectionBtn').addEventListener('click', () => handleConfirmClientSelection(document.getElementById('currentProjectId').value));
     document.getElementById('continueWithoutClientBtn').addEventListener('click', handleContinueWithoutClient);
     document.getElementById('addNewClientFromSelectModalBtn').addEventListener('click', () => { ui.closeModal('selectClientModalOverlay'); handleOpenClientManagement(); });
-    document.getElementById('changeClientBtn').addEventListener('click', async () => { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients, true); });
+    document.getElementById('changeClientBtn').addEventListener('click', async () => { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients); });
 
-    // Máscaras (agora apontando para os IDs corretos dentro dos modais de registro e cliente)
+    // Máscaras
     document.getElementById('regCpf').addEventListener('input', utils.mascaraCPF);
     document.getElementById('regTelefone').addEventListener('input', utils.mascaraCelular);
     document.getElementById('editCpf').addEventListener('input', utils.mascaraCPF);

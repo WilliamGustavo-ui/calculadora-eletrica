@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Projetos Eletricos v18.1</title>
+    <title>Calculadora de Projetos Eletricos v18.2</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-customfonts/1.0.4/roboto-normal.js"></script>
@@ -13,6 +13,7 @@
 
     <div id="registerModalOverlay" class="modal-overlay">
         <div class="modal-content">
+            <button type="button" class="close-modal-btn" data-modal-id="registerModalOverlay">&times;</button>
             <h2>Registrar Novo Usuário</h2>
             <form id="registerForm" autocomplete="off">
                 <div class="form-grid">
@@ -24,14 +25,15 @@
                     <div class="form-group"><label for="regCrea">CREA</label><input type="text" id="regCrea"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit">Registrar</button>
-                    <button type="button" class="close-modal-btn" data-modal-id="registerModalOverlay">Cancelar</button>
+                    <button type="submit" class="btn-success">Registrar</button>
+                    <button type="button" class="close-modal-btn btn-secondary" data-modal-id="registerModalOverlay">Cancelar</button>
                 </div>
             </form>
         </div>
     </div>
     <div id="forgotPasswordModalOverlay" class="modal-overlay">
         <div class="modal-content">
+            <button type="button" class="close-modal-btn" data-modal-id="forgotPasswordModalOverlay">&times;</button>
             <h2>Redefinir Senha</h2>
             <form id="forgotPasswordForm" autocomplete="off">
                 <div class="form-group">
@@ -39,23 +41,25 @@
                     <input type="email" id="forgotEmail" required>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit">Enviar Link</button>
-                    <button type="button" class="close-modal-btn" data-modal-id="forgotPasswordModalOverlay">Cancelar</button>
+                    <button type="submit" class="btn-primary">Enviar Link</button>
+                    <button type="button" class="close-modal-btn btn-secondary" data-modal-id="forgotPasswordModalOverlay">Cancelar</button>
                 </div>
             </form>
         </div>
     </div>
     <div id="adminPanelModalOverlay" class="modal-overlay">
         <div class="modal-content">
+            <button type="button" class="close-modal-btn" data-modal-id="adminPanelModalOverlay">&times;</button>
             <h3>Painel de Administrador - Gerenciar Usuários</h3>
             <ul id="adminUserList"></ul>
             <div class="modal-footer">
-                <button type="button" class="close-modal-btn" data-modal-id="adminPanelModalOverlay">Fechar</button>
+                <button type="button" class="close-modal-btn btn-secondary" data-modal-id="adminPanelModalOverlay">Fechar</button>
             </div>
         </div>
     </div>
     <div id="editUserModalOverlay" class="modal-overlay">
         <div class="modal-content">
+            <button type="button" class="close-modal-btn" data-modal-id="editUserModalOverlay">&times;</button>
             <h3>Editar Usuário</h3>
             <form id="editUserForm" autocomplete="off">
                 <input type="hidden" id="editUserId">
@@ -67,8 +71,8 @@
                     <div class="form-group"><label for="editCrea">CREA</label><input type="text" id="editCrea"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit">Salvar Alterações</button>
-                    <button type="button" class="close-modal-btn" data-modal-id="editUserModalOverlay">Cancelar</button>
+                    <button type="submit" class="btn-success">Salvar Alterações</button>
+                    <button type="button" class="close-modal-btn btn-secondary" data-modal-id="editUserModalOverlay">Cancelar</button>
                 </div>
             </form>
         </div>
@@ -76,6 +80,7 @@
     
     <div id="manageProjectsModalOverlay" class="modal-overlay">
         <div class="modal-content large">
+            <button type="button" class="close-modal-btn" data-modal-id="manageProjectsModalOverlay">&times;</button>
             <h3>Gerenciamento de Obras</h3>
             <table id="adminProjectsTable">
                 <thead>
@@ -89,18 +94,18 @@
                 <tbody id="adminProjectsTableBody"></tbody>
             </table>
             <div class="modal-footer">
-                <button type="button" class="close-modal-btn" data-modal-id="manageProjectsModalOverlay">Fechar</button>
+                <button type="button" class="close-modal-btn btn-secondary" data-modal-id="manageProjectsModalOverlay">Fechar</button>
             </div>
         </div>
     </div>
 
     <div id="clientManagementModalOverlay" class="modal-overlay">
         <div class="modal-content large">
-            <button type="button" class="close-modal-btn" data-modal-id="clientManagementModalOverlay" style="position: absolute; top: 15px; right: 15px; padding: 5px 10px;">X</button>
+            <button type="button" class="close-modal-btn" data-modal-id="clientManagementModalOverlay">&times;</button>
             <h3>Gerenciamento de Clientes</h3>
             <div id="clientListContainer">
                 <h4>Clientes Cadastrados</h4>
-                <ul id="clientList" style="max-height: 200px; overflow-y: auto;"></ul>
+                <ul id="clientList" style="max-height: 200px; overflow-y: auto; margin:0; padding:0;"></ul>
             </div>
             <hr style="margin: 25px 0;">
             <div id="clientFormContainer">
@@ -116,8 +121,8 @@
                         <div class="form-group full-width"><label for="clientEndereco">Endereço</label><input type="text" id="clientEndereco"></div>
                     </div>
                     <div class="modal-footer">
-                        <button type="submit" id="clientFormSubmitBtn">Salvar Cliente</button>
-                        <button type="button" id="clientFormCancelBtn" style="display: none;">Cancelar Edição</button>
+                        <button type="submit" id="clientFormSubmitBtn" class="btn-success">Salvar Cliente</button>
+                        <button type="button" id="clientFormCancelBtn" class="btn-secondary" style="display: none;">Cancelar Edição</button>
                     </div>
                 </form>
             </div>
@@ -126,15 +131,15 @@
 
     <div id="selectClientModalOverlay" class="modal-overlay">
         <div class="modal-content">
-             <button type="button" class="close-modal-btn" data-modal-id="selectClientModalOverlay" style="position: absolute; top: 15px; right: 15px; padding: 5px 10px;">X</button>
+             <button type="button" class="close-modal-btn" data-modal-id="selectClientModalOverlay">&times;</button>
             <h3>Vincular Cliente à Nova Obra</h3>
             <div class="form-group">
                 <label for="clientSelectForNewProject">Selecione um Cliente Existente</label>
                 <select id="clientSelectForNewProject"></select>
             </div>
             <div class="modal-footer">
-                <button type="button" id="confirmClientSelectionBtn">Vincular e Continuar</button>
-                <button type="button" id="continueWithoutClientBtn">Continuar Sem Cliente</button>
+                <button type="button" id="confirmClientSelectionBtn" class="btn-primary">Vincular e Continuar</button>
+                <button type="button" id="continueWithoutClientBtn" class="btn-secondary">Continuar Sem Cliente</button>
             </div>
             <hr style="margin: 20px 0;">
             <p style="text-align: center;">Ou</p>
@@ -166,7 +171,7 @@
                 <label for="newPassword">Nova Senha (mínimo 6 caracteres)</label>
                 <input type="password" id="newPassword" required>
             </div>
-            <button type="submit">Salvar Nova Senha</button>
+            <button type="submit" class="btn-success">Salvar Nova Senha</button>
         </form>
     </div>
 
@@ -175,7 +180,7 @@
             <button id="manageClientsBtn" class="btn-primary">Gerenciar Clientes</button>
             <button id="manageProjectsBtn" class="btn-primary">Gerenciar Obras</button>
             <button id="adminPanelBtn" class="btn-warning">Gerenciar Usuários</button>
-            <button id="logoutBtn" class="btn-primary">Sair</button>
+            <button id="logoutBtn" class="btn-danger">Sair</button>
         </div>
         <h1>Calculadora de Projetos Elétricos</h1>
         
@@ -212,7 +217,7 @@
             <div id="clientLinkDisplay">Cliente: Nenhum</div>
             
             <div class="form-grid-3-col">
-                <div class="form-group"><label for="project_code">Código da Obra</label><input type="text" id="project_code" readonly placeholder="Será gerado ao salvar"></div>
+                <div class="form-group"><label for="project_code">Código da Obra</label><input type="text" id="project_code" readonly placeholder="Gerado ao salvar"></div>
                 <div class="form-group"><label for="obra">Nome da Obra</label><input type="text" id="obra"></div>
                 <div class="form-group"><label for="cidadeObra">Cidade da Obra</label><input type="text" id="cidadeObra"></div>
                 <div class="form-group full-width"><label for="enderecoObra">Endereço da Obra</label><input type="text" id="enderecoObra"></div>
@@ -238,7 +243,7 @@
                     <div class="form-group"><label for="feederComprimentoM">Comprimento (m)</label><input type="number" id="feederComprimentoM" value="15"></div>
                     <div class="form-group"><label for="feederTipoIsolacao">Tipo de Isolacao</label><select id="feederTipoIsolacao"><option value="PVC" selected>PVC 70 C</option><option value="EPR">EPR/XLPE 90 C</option></select></div>
                     <div class="form-group"><label for="feederMaterialCabo">Material do Condutor</label><select id="feederMaterialCabo"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Aluminio</option></select></div>
-                    <div class="form-group"><label for="feederMetodoInstalacao">Metodo de Instalacao</label><select id="feederMetodoInstalacao"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select></div>
+                    <div class="form-group"><label for="feederMetodoInstalacao">Metodo de Instalacao</label><select id="metodoInstalacao-${id}"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select></div>
                     <div class="form-group"><label for="feederTemperaturaAmbienteC">Temperatura Ambiente (C)</label><select id="feederTemperaturaAmbienteC"></select></div>
                     <div class="form-group"><label for="feederLimiteQuedaTensao">Limite Queda de Tensao (%)</label><input type="number" id="feederLimiteQuedaTensao" step="0.1" value="5.0"></div>
                     <div class="form-group"><label for="feederTipoDisjuntor">Tipo de Disjuntor</label><select id="feederTipoDisjuntor"><option value="Minidisjuntor (DIN)">Minidisjuntor (DIN)</option><option value="Caixa Moldada (MCCB)" selected>Caixa Moldada (MCCB)</option></select></div>

@@ -6,8 +6,7 @@ export const ligacoes = { Monofasico: [{value:'FN', text:'Fase-Neutro (FN)'}, {v
 export function mascaraCPF(event){event.target.value=event.target.value.replace(/\D/g,"").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2")}
 export function mascaraCelular(event){event.target.value=event.target.value.replace(/\D/g,'').replace(/^(\d{2})(\d)/g,'($1) $2').replace(/(\d{5})(\d{4})$/,'$1-$2')}
 export function mascaraTelefone(event){event.target.value=event.target.value.replace(/\D/g,'').replace(/^(\d{2})(\d)/g,'($1) $2').replace(/(\d{4})(\d)/,'$1-$2')}
-export function aplicarMascara(event){const tipoDoc=document.getElementById('tipoDocumento').value;let value=event.target.value.replace(/\D/g,"");if(tipoDoc==='CPF'){value=value.slice(0,11).replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2")}else{value=value.slice(0,14).replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2')}
-event.target.value=value}
+export function aplicarMascara(event, tipoDoc) { const doc = tipoDoc || document.getElementById('tipoDocumento').value; let value = event.target.value.replace(/\D/g,""); if(doc==='CPF'){value=value.slice(0,11).replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2")}else{value=value.slice(0,14).replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2')} event.target.value=value}
 export function atualizarMascaraDocumento(){const tipoDoc=document.getElementById('tipoDocumento').value;const inputDoc=document.getElementById('documento');inputDoc.value='';if(tipoDoc==='CPF'){inputDoc.placeholder='000.000.000-00';inputDoc.maxLength=14}else{inputDoc.placeholder='00.000.000/0000-00';inputDoc.maxLength=18}}
 
 // --- FUNÇÃO PRINCIPAL DE CÁLCULO ---
@@ -39,17 +38,9 @@ export function calcularProjetoCompleto(technicalData) {
     return { feederResult, circuitResults };
 }
 
-// ATUALIZADO para incluir todos os novos campos
 function getMainFormData() {
     return {
-        projectCode: document.getElementById('projectCode').value,
-        cliente: document.getElementById('cliente').value,
-        documento: document.getElementById('documento').value,
-        tipoDocumento: document.getElementById('tipoDocumento').value,
-        celular: document.getElementById('celular').value,
-        telefone: document.getElementById('telefone').value,
-        email: document.getElementById('email').value,
-        enderecoCliente: document.getElementById('enderecoCliente').value,
+        project_code: document.getElementById('project_code').value,
         obra: document.getElementById('obra').value,
         cidadeObra: document.getElementById('cidadeObra').value,
         enderecoObra: document.getElementById('enderecoObra').value,

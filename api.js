@@ -7,7 +7,7 @@ import { supabase } from './supabaseClient.js';
 export async function fetchClients() {
     const { data, error } = await supabase
         .from('clients')
-        .select('*, projects(id)') // Busca clientes e a contagem de seus projetos
+        .select('*, projects(id)') 
         .order('nome');
     
     if (error) console.error('Erro ao buscar clientes:', error.message);
