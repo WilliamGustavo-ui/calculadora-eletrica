@@ -291,14 +291,23 @@ export function renderReport(calculationResults){
         reportText += `${formatLine('Fator de Demanda Aplicado', dados.fatorDemanda)}\n`;
         reportText += `${formatLine('Potencia Demandada', `${calculos.potenciaDemandada.toFixed(2)} W`)}\n`;
         reportText += `${formatLine('Corrente Demandada (Ib)', `${calculos.correnteDemandada.toFixed(2)} A`)}\n`;
+        
         reportText += `\n-- ESPECIFICACOES DO CABO E CORRECOES --\n`;
+        reportText += `${formatLine('Sistema de Fases', dados.fases)}\n`;
+        reportText += `${formatLine('Tipo de Ligação', dados.tipoLigacao)}\n`;
+        reportText += `${formatLine('Tensão (V)', `${dados.tensaoV} V`)}\n`;
         reportText += `${formatLine('Material / Isolacao', `${dados.materialCabo} / ${dados.tipoIsolacao}`)}\n`;
         reportText += `${formatLine('Metodo de Instalacao', dados.metodoInstalacao)}\n`;
         reportText += `${formatLine('Comprimento (m)', `${dados.comprimentoM} m`)}\n`;
+        reportText += `${formatLine('Temperatura Ambiente', `${dados.temperaturaAmbienteC}°C`)}\n`;
+        if (dados.id !== 'Geral') {
+             reportText += `${formatLine('Circuitos Agrupados', dados.numCircuitosAgrupados)}\n`;
+        }
         if(dados.id !== 'Geral' && calculos.fatorK1) {
            reportText += `${formatLine('Fatores de Correcao', `K1=${calculos.fatorK1.toFixed(2)}, K2=${calculos.fatorK2.toFixed(2)}, K3=${calculos.fatorK3.toFixed(2)}`)}\n`;
         }
         reportText += `${formatLine('Corrente p/ Dimensionar', `${calculos.correnteCorrigidaA.toFixed(2)} A`)}\n`;
+
         reportText += `\n-- RESULTADOS DE DIMENSIONAMENTO --\n`;
         reportText += `${formatLine('Bitola Recomendada', `${calculos.bitolaRecomendadaMm2} mm²`)}\n`;
         reportText += `${formatLine('Queda de Tensao (DV)', `${calculos.quedaTensaoCalculada.toFixed(2)} %`)}\n`;
@@ -412,12 +421,16 @@ export function generatePdf(calculationResults, currentUserProfile) {
         yPos += 5;
 
         addSection("-- DIMENSIONAMENTO DE INFRA --");
+        addLineItem("Sistema de Fases:", dados.fases);
+        addLineItem("Tipo de Ligação:", dados.tipoLigacao);
+        addLineItem("Tensão (V):", `${dados.tensaoV} V`);
         addLineItem("Material / Isolação:", `${dados.materialCabo} / ${dados.tipoIsolacao}`);
         addLineItem("Método de Instalação:", dados.metodoInstalacao);
         addLineItem("Distância:", `${dados.comprimentoM} m`);
-        addLineItem("Bitola Recomendada:", `${calculos.bitolaRecomendadaMm2} mm²`);
-        addLineItem("Corrente Max. Cabo:", `${calculos.correnteMaximaCabo.toFixed(2)} A`);
-        addLineItem("Eletroduto (aprox.):", `${calculos.dutoRecomendado} (${calculos.numCondutores} condutores)`);
+        addLineItem("Temperatura Ambiente:", `${dados.temperaturaAmbienteC}°C`);
+        if (dados.id !== 'Geral') {
+            addLineItem("Circuitos Agrupados:", dados.numCircuitosAgrupados);
+        }
         yPos += 5;
 
         addSection("-- PROTEÇÕES RECOMENDADAS --");
