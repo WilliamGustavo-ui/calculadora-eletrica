@@ -27,7 +27,7 @@ export async function deleteClient(clientId) {
 
 // --- FUNÇÕES DE PROJETO ---
 export async function fetchProjects(searchTerm) {
-    let query = supabase.from('projects').select('id, project_name, project_code, client:clients(nome)');
+    let query = supabase.from('projects').select('id, project_name, project_code, owner_id, client_id, client:clients(nome)');
     if (searchTerm) {
         query = query.or(`project_name.ilike.%${searchTerm}%,project_code.ilike.%${searchTerm}%,clients.nome.ilike.%${searchTerm}%`);
     }
@@ -62,6 +62,15 @@ export async function transferProjectClient(projectId, newClientId) {
     const { error } = await supabase.from('projects').update({ client_id: newClientId }).eq('id', projectId);
     return { error };
 }
+export async function transferProjectOwner(projectId, newOwnerId) {
+    const { error } = await supabase
+        .from('projects')
+        .update({ owner_id: newOwnerId })
+        .eq('id', projectId);
+    if (error) console.error('Erro ao transferir propriedade da obra:', error.message);
+    return { error };
+}
+
 
 // --- FUNÇÕES DE ADMINISTRAÇÃO E DADOS TÉCNICOS ---
 export async function fetchAllUsers() {
@@ -84,8 +93,6 @@ export async function fetchUserById(userId) {
     if (error) console.error('Erro ao buscar usuário por ID:', error.message);
     return data;
 }
-export async function fetchAllApprovedUsers() { /* ... */ }
-export async function transferProjectOwner(projectId, newOwnerId) { /* ... */ }
 export async function fetchTechnicalData() {
     const technicalData = {};
     const tablesToFetch = [

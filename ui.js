@@ -258,13 +258,53 @@ export function populateEditUserModal(userData) {
     openModal('editUserModalOverlay');
 }
 
-export function populateProjectsPanel(projects, clients) {
+export function populateProjectsPanel(projects, clients, users) {
     const tableBody = document.getElementById('adminProjectsTableBody');
+    const tableHead = document.querySelector('#adminProjectsTable thead tr');
+
+    // Atualiza o cabeçalho da tabela
+    tableHead.innerHTML = `
+        <th>Código</th>
+        <th>Obra</th>
+        <th>Cliente Vinculado</th>
+        <th>Transferir Cliente</th>
+        <th>Transferir Dono (Login)</th>
+    `;
+
     tableBody.innerHTML = '';
     projects.forEach(project => {
         const row = document.createElement('tr');
-        const clientOptions = clients.map(c => `<option value="${c.id}" ${c.id === project.client_id ? 'selected' : ''}>${c.nome}</option>`).join('');
-        row.innerHTML = `<td>${project.project_code || 'S/C'}</td><td>${project.project_name}</td><td>${project.client?.nome || 'Nenhum'}</td><td><select data-project-id="${project.id}"><option value="">-- Desvincular --</option>${clientOptions}</select><button class="transfer-client-btn" data-project-id="${project.id}">Transferir</button></td>`;
+
+        // Opções para o dropdown de Clientes
+        const clientOptions = clients.map(c => 
+            `<option value="${c.id}" ${c.id === project.client_id ? 'selected' : ''}>${c.nome}</option>`
+        ).join('');
+
+        // Opções para o dropdown de Usuários (Dono)
+        const ownerOptions = users.map(u => 
+            `<option value="${u.id}" ${u.id === project.owner_id ? 'selected' : ''}>${u.nome || u.email}</option>`
+        ).join('');
+
+        row.innerHTML = `
+            <td>${project.project_code || 'S/C'}</td>
+            <td>${project.project_name}</td>
+            <td>${project.client?.nome || 'Nenhum'}</td>
+            
+            <td class="action-cell">
+                <select class="transfer-client-select" data-project-id="${project.id}">
+                    <option value="">-- Desvincular --</option>
+                    ${clientOptions}
+                </select>
+                <button class="transfer-client-btn btn-success" data-project-id="${project.id}">Salvar Cliente</button>
+            </td>
+
+            <td class="action-cell">
+                <select class="transfer-owner-select" data-project-id="${project.id}">
+                    ${ownerOptions}
+                </select>
+                <button class="transfer-owner-btn btn-secondary" data-project-id="${project.id}">Transferir Dono</button>
+            </td>
+        `;
         tableBody.appendChild(row);
     });
 }
