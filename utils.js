@@ -119,7 +119,6 @@ function _calcularCircuitosIndividuais(technicalData, clientProfile = null){
             nomeCircuito:document.getElementById(`nomeCircuito-${id}`).value,
             tipoCircuito:document.getElementById(`tipoCircuito-${id}`).value,
             potenciaW:parseFloat(document.getElementById(`potenciaW-${id}`).value) || 0,
-            // Não precisamos mais do potenciaCV aqui, pois o valor já está convertido em 'potenciaW'
             fatorDemanda: parseFloat(document.getElementById(`fatorDemanda-${id}`).value) || 100,
             fases:document.getElementById(`fases-${id}`).value,
             tipoLigacao:document.getElementById(`tipoLigacao-${id}`).value,

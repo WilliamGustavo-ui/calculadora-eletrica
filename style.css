@@ -8,8 +8,7 @@ h2 { border-top: 1px solid #e0e0e0; padding-top: 25px; margin-top: 30px; }
 @media (min-width: 900px) { .form-grid-3-col { grid-template-columns: repeat(3, 1fr); } }
 .full-width { grid-column: 1 / -1; }
 .form-group { display: flex; flex-direction: column; }
-.form-group.inline { flex-direction: row; align-items: center; gap: 15px; }
-.form-group.inline > .form-group { flex: 1; } /* ADICIONADO */
+.form-group.inline > .form-group { flex: 1; }
 label { margin-bottom: 8px; font-weight: 600; }
 input, select, textarea { padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 1rem; font-family: inherit; }
 input:read-only { background-color: #ecf0f1; cursor: not-allowed; }
@@ -49,6 +48,8 @@ button:active { transform: scale(0.98); }
 #adminProjectsTable select { padding: 4px; font-size: 0.9rem; max-width: 150px; }
 #adminProjectsTable button { font-size: 0.8rem; padding: 5px 10px; margin-left: 5px; }
 #clientLinkDisplay { background-color: #eaf5ff; padding: 10px 15px; border-radius: 5px; margin-bottom: 20px; text-align: center; font-weight: 500; color: var(--primary-color); border: 1px solid var(--secondary-color); }
+.potencia-group { display: flex; gap: 15px; align-items: flex-end; } /* NOVO */
+.potencia-group > .form-group { flex: 1; } /* NOVO */
 .btn-primary { background-color: var(--primary-color); }
 .btn-secondary { background-color: var(--secondary-color); }
 .btn-success { background-color: var(--success-color); }

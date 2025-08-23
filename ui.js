@@ -3,10 +3,12 @@
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 
 let circuitCount = 0;
+let technicalData = null; // Armazenar todos os dados técnicos
 let tempOptions = { pvc: [], epr: [] };
 
-// --- PREPARAÇÃO DOS DADOS DE TEMPERATURA ---
-export function setupDynamicTemperatures(techData) {
+// --- PREPARAÇÃO DOS DADOS GERAIS ---
+export function setupDynamicData(techData) {
+    technicalData = techData; // Salva todos os dados
     if (techData?.fatores_k1) {
         tempOptions.pvc = techData.fatores_k1.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
     }
@@ -17,7 +19,7 @@ export function setupDynamicTemperatures(techData) {
     }
 }
 
-// --- FUNÇÃO AUXILIAR PARA POPULAR DROPDOWNS ---
+// --- FUNÇÕES AUXILIARES PARA POPULAR DROPDOWNS ---
 function populateTemperatureDropdown(selectElement, temperatures) {
     const currentValue = selectElement.value;
     selectElement.innerHTML = '';
@@ -34,6 +36,28 @@ function populateTemperatureDropdown(selectElement, temperatures) {
     } else if (temperatures.length > 0) {
         selectElement.value = temperatures[0];
     }
+}
+
+function populateBtuDropdown(selectElement, btuData) {
+    selectElement.innerHTML = '';
+    if (!btuData) return;
+    btuData.sort((a,b) => a.valor_btu - b.valor_btu).forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.valor_btu;
+        option.textContent = item.descricao;
+        selectElement.appendChild(option);
+    });
+}
+
+function populateCvDropdown(selectElement, cvData) {
+    selectElement.innerHTML = '';
+    if(!cvData) return;
+    cvData.sort((a,b) => a.valor_cv - b.valor_cv).forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.valor_cv;
+        option.textContent = item.descricao;
+        selectElement.appendChild(option);
+    });
 }
 
 // --- CONTROLE DE VISIBILIDADE E MODAIS ---
@@ -135,9 +159,12 @@ function initializeCircuitListeners(id) {
 
     const potenciaWInput = document.getElementById(`potenciaW-${id}`);
     const potenciaBTUGroup = document.getElementById(`potenciaBTU_group-${id}`);
-    const potenciaBTUInput = document.getElementById(`potenciaBTU-${id}`);
+    const potenciaBTUSelect = document.getElementById(`potenciaBTU-${id}`);
     const potenciaCVGroup = document.getElementById(`potenciaCV_group-${id}`);
     const potenciaCVSelect = document.getElementById(`potenciaCV-${id}`);
+    
+    populateBtuDropdown(potenciaBTUSelect, technicalData.ar_condicionado_btu);
+    populateCvDropdown(potenciaCVSelect, technicalData.motores_cv);
 
     const atualizarLigacoes = () => {
         const faseSelecionada = fases.value;
@@ -152,8 +179,8 @@ function initializeCircuitListeners(id) {
         populateTemperatureDropdown(temperaturaAmbiente, temps);
     };
 
-    const handleBtuInputChange = () => {
-        const btuValue = parseFloat(potenciaBTUInput.value) || 0;
+    const handleBtuSelectChange = () => {
+        const btuValue = parseFloat(potenciaBTUSelect.value) || 0;
         potenciaWInput.value = (btuValue * BTU_TO_WATTS_FACTOR).toFixed(2);
     };
 
@@ -173,7 +200,7 @@ function initializeCircuitListeners(id) {
         if (selectedType === 'ar_condicionado') {
             potenciaBTUGroup.classList.remove('hidden');
             potenciaWInput.readOnly = true;
-            handleBtuInputChange();
+            handleBtuSelectChange();
         } else if (selectedType === 'motores') {
             potenciaCVGroup.classList.remove('hidden');
             potenciaWInput.readOnly = true;
@@ -187,7 +214,7 @@ function initializeCircuitListeners(id) {
     tipoCircuito.addEventListener('change', handleCircuitTypeChange);
     fases.addEventListener('change', atualizarLigacoes);
     tipoIsolacao.addEventListener('change', handleInsulationChange);
-    potenciaBTUInput.addEventListener('input', handleBtuInputChange);
+    potenciaBTUSelect.addEventListener('change', handleBtuSelectChange);
     potenciaCVSelect.addEventListener('change', handleCvSelectChange);
 
     atualizarLigacoes();
@@ -207,7 +234,7 @@ function getCircuitHTML(id){
                 <input type="text" id="nomeCircuito-${id}" value="Circuito ${id}">
             </div>
 
-            <div class="form-group inline">
+            <div class="full-width potencia-group">
                 <div class="form-group">
                     <label for="tipoCircuito-${id}">Tipo de Circuito</label>
                     <select id="tipoCircuito-${id}">
@@ -221,19 +248,16 @@ function getCircuitHTML(id){
                 </div>
                 <div class="form-group hidden" id="potenciaBTU_group-${id}">
                     <label for="potenciaBTU-${id}">Potência (BTU/h)</label>
-                    <input type="number" id="potenciaBTU-${id}" value="9000">
+                    <select id="potenciaBTU-${id}"></select>
                 </div>
                 <div class="form-group hidden" id="potenciaCV_group-${id}">
                     <label for="potenciaCV-${id}">Potência do Motor (CV)</label>
-                    <select id="potenciaCV-${id}">
-                        <option value="0.25">1/4</option><option value="0.33">1/3</option><option value="0.5">1/2</option><option value="0.75">3/4</option><option value="1">1</option><option value="1.5">1.5</option><option value="2">2</option><option value="3">3</option><option value="5">5</option><option value="7.5">7.5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option>
-                    </select>
+                    <select id="potenciaCV-${id}"></select>
                 </div>
-            </div>
-
-            <div class="form-group">
-                <label for="potenciaW-${id}">Potência (W)</label>
-                <input type="number" id="potenciaW-${id}" value="2500">
+                <div class="form-group">
+                    <label for="potenciaW-${id}">Potência (W)</label>
+                    <input type="number" id="potenciaW-${id}" value="2500">
+                </div>
             </div>
             
             <div class="form-group">
@@ -396,42 +420,18 @@ export function populateFormWithProjectData(project) {
 export function populateUsersPanel(users) {
     const list = document.getElementById('adminUserList');
     list.innerHTML = '';
-    if (!users || users.length === 0) {
-        list.innerHTML = '<li>Nenhum usuário encontrado.</li>';
-        return;
-    }
+    if (!users || users.length === 0) { list.innerHTML = '<li>Nenhum usuário encontrado.</li>'; return; }
     users.forEach(user => {
         const li = document.createElement('li');
-        li.innerHTML = `
-            <span>
-                <strong>${user.nome || 'Nome não preenchido'}</strong><br>
-                <small>${user.email}</small>
-            </span>
-            <div class="admin-user-actions">
-                ${!user.is_approved ? `<button class="approve-user-btn btn-success" data-user-id="${user.id}">Aprovar</button>` : ''}
-                <button class="edit-user-btn btn-secondary" data-user-id="${user.id}">Editar</button>
-                <button class="remove-user-btn btn-danger" data-user-id="${user.id}">Remover</button>
-            </div>
-        `;
+        li.innerHTML = `<span><strong>${user.nome || 'Nome não preenchido'}</strong><br><small>${user.email}</small></span><div class="admin-user-actions">${!user.is_approved ? `<button class="approve-user-btn btn-success" data-user-id="${user.id}">Aprovar</button>` : ''}<button class="edit-user-btn btn-secondary" data-user-id="${user.id}">Editar</button><button class="remove-user-btn btn-danger" data-user-id="${user.id}">Remover</button></div>`;
         list.appendChild(li);
     });
 }
-export function populateEditUserModal(userData) {
-    document.getElementById('editUserId').value = userData.id;
-    document.getElementById('editNome').value = userData.nome || '';
-    document.getElementById('editEmail').value = userData.email || '';
-    document.getElementById('editCpf').value = userData.cpf || '';
-    document.getElementById('editTelefone').value = userData.telefone || '';
-    document.getElementById('editCrea').value = userData.crea || '';
-    openModal('editUserModalOverlay');
-}
-
+export function populateEditUserModal(userData) { document.getElementById('editUserId').value = userData.id; document.getElementById('editNome').value = userData.nome || ''; document.getElementById('editEmail').value = userData.email || ''; document.getElementById('editCpf').value = userData.cpf || ''; document.getElementById('editTelefone').value = userData.telefone || ''; document.getElementById('editCrea').value = userData.crea || ''; openModal('editUserModalOverlay'); }
 export function populateProjectsPanel(projects, clients, users, currentUserProfile) {
     const tableBody = document.getElementById('adminProjectsTableBody');
     const tableHead = document.querySelector('#adminProjectsTable thead tr');
-
     const isAdmin = currentUserProfile?.is_admin || false;
-
     tableHead.innerHTML = `<th>Código</th><th>Obra</th><th>Dono (Login)</th><th>Cliente Vinculado</th><th>Ações</th>`;
     tableBody.innerHTML = '';
     projects.forEach(project => {

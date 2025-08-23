@@ -102,7 +102,9 @@ export async function fetchTechnicalData() {
         { key: 'fatores_k1_epr', name: 'fatores_k1_temperatura_epr' },
         { key: 'fatores_k2', name: 'fatores_k2_solo' },
         { key: 'fatores_k3', name: 'fatores_k3_agrupamento' },
-        { key: 'dps', name: 'dps' }
+        { key: 'dps', name: 'dps' },
+        { key: 'ar_condicionado_btu', name: 'ar_condicionado_btu' }, // ADICIONADO
+        { key: 'motores_cv', name: 'motores_cv' } // ADICIONADO
     ];
     console.log("Iniciando busca de dados técnicos...");
     for (const table of tablesToFetch) {
