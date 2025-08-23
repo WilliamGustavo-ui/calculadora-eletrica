@@ -552,14 +552,14 @@ export function generatePdf(calculationResults, currentUserProfile) {
     addSection("RESUMO DA ALIMENTAÇÃO GERAL");
     const feederBreakerType = feederResult.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
     const feederBreakerText = `${feederBreakerType} ${feederResult.calculos.disjuntorRecomendado.nome}`;
-    const feederHead = [['Carga Total', 'Tensão/Fases', 'Disjuntor Geral', 'DR', 'DPS', 'Cabo', 'Eletroduto']];
+    const feederHead = [['Carga Total', 'Tensão/Fases', 'Disjuntor Geral', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
     const feederBody = [[
         `${feederResult.calculos.potenciaDemandada.toFixed(2)} W`,
         `${feederResult.dados.tensaoV}V - ${feederResult.dados.fases}`,
         feederBreakerText,
         feederResult.dados.requerDR ? 'Sim' : 'Nao',
         getDpsText(feederResult.dados.dpsInfo),
-        `${feederResult.calculos.bitolaRecomendadaMm2} mm²`,
+        `${feederResult.calculos.bitolaRecomendadaMm2} mm² (${feederResult.dados.tipoIsolacao})`,
         feederResult.calculos.dutoRecomendado
     ]];
     doc.autoTable({ startY: yPos, head: feederHead, body: feederBody, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
@@ -567,7 +567,7 @@ export function generatePdf(calculationResults, currentUserProfile) {
 
     if (circuitResults.length > 0) {
         addSection("RESUMO DOS CIRCUITOS");
-        const head = [['Ckt', 'Nome', 'Pot. (W)', 'Disjuntor', 'DR', 'DPS', 'Cabo', 'Eletroduto']];
+        const head = [['Ckt', 'Nome', 'Pot. (W)', 'Disjuntor', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
         const body = circuitResults.map(r => {
             const circuitBreakerType = r.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
             const circuitBreakerText = `${circuitBreakerType} ${r.calculos.disjuntorRecomendado.nome}`;
@@ -578,7 +578,7 @@ export function generatePdf(calculationResults, currentUserProfile) {
                 circuitBreakerText,
                 r.dados.requerDR ? 'Sim' : 'Nao',
                 getDpsText(r.dados.dpsInfo),
-                `${r.calculos.bitolaRecomendadaMm2} mm²`,
+                `${r.calculos.bitolaRecomendadaMm2} mm² (${r.dados.tipoIsolacao})`,
                 r.calculos.dutoRecomendado
             ];
         });
