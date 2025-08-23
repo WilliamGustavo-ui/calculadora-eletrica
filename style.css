@@ -8,6 +8,8 @@ h2 { border-top: 1px solid #e0e0e0; padding-top: 25px; margin-top: 30px; }
 @media (min-width: 900px) { .form-grid-3-col { grid-template-columns: repeat(3, 1fr); } }
 .full-width { grid-column: 1 / -1; }
 .form-group { display: flex; flex-direction: column; }
+.form-group.inline { flex-direction: row; align-items: center; gap: 15px; }
+.form-group.inline > .form-group { flex: 1; } /* ADICIONADO */
 label { margin-bottom: 8px; font-weight: 600; }
 input, select, textarea { padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 1rem; font-family: inherit; }
 input:read-only { background-color: #ecf0f1; cursor: not-allowed; }
@@ -52,14 +54,5 @@ button:active { transform: scale(0.98); }
 .btn-success { background-color: var(--success-color); }
 .btn-danger { background-color: var(--danger-color); }
 .btn-warning { background-color: var(--warning-color); }
-
-/* Estilos Adicionados */
-#adminProjectsTable .action-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    align-items: stretch;
-}
-.transfer-client-btn.btn-success {
-    background-color: var(--success-color);
-}
+#adminProjectsTable .action-cell { display: flex; flex-direction: column; gap: 5px; align-items: stretch; }
+.transfer-client-btn.btn-success { background-color: var(--success-color); }

@@ -1,6 +1,8 @@
 // Arquivo: utils.js
 
 export const ligacoes = { Monofasico: [{value:'FN', text:'Fase-Neutro (FN)'}, {value:'FF', text:'Fase-Fase (FF)'}], Bifasico: [{value:'FF', text:'Fase-Fase (FF)'}, {value:'FFN', text:'Fase-Fase-Neutro (FFN)'}], Trifasico: [{value:'FFF', text:'Fase-Fase-Fase (FFF)'}, {value:'FFFN', text:'Fase-Fase-Fase-Neutro (FFFN)'}] };
+export const BTU_TO_WATTS_FACTOR = 0.293071;
+export const CV_TO_WATTS_FACTOR = 735.5;
 
 // --- FUNÇÕES DE MÁSCARA ---
 export function mascaraCPF(event){event.target.value=event.target.value.replace(/\D/g,"").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2")}
@@ -117,7 +119,7 @@ function _calcularCircuitosIndividuais(technicalData, clientProfile = null){
             nomeCircuito:document.getElementById(`nomeCircuito-${id}`).value,
             tipoCircuito:document.getElementById(`tipoCircuito-${id}`).value,
             potenciaW:parseFloat(document.getElementById(`potenciaW-${id}`).value) || 0,
-            potenciaCV:parseFloat(document.getElementById(`potenciaCV-${id}`).value) || 0,
+            // Não precisamos mais do potenciaCV aqui, pois o valor já está convertido em 'potenciaW'
             fatorDemanda: parseFloat(document.getElementById(`fatorDemanda-${id}`).value) || 100,
             fases:document.getElementById(`fases-${id}`).value,
             tipoLigacao:document.getElementById(`tipoLigacao-${id}`).value,
@@ -137,7 +139,6 @@ function _calcularCircuitosIndividuais(technicalData, clientProfile = null){
         };
         
         dados.dpsInfo = findDps(technicalData.dps, dados.dpsClasse);
-        if (dados.tipoCircuito === 'motores') dados.potenciaW = dados.potenciaCV * 735.5;
         
         const potenciaInstalada = dados.potenciaW;
         const potenciaDemandada = potenciaInstalada * (dados.fatorDemanda / 100.0);
