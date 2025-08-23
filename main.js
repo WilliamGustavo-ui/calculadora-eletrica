@@ -18,7 +18,7 @@ async function handleLogin() {
             ui.showAppView(currentUserProfile);
             technicalData = await api.fetchTechnicalData();
             if (technicalData) {
-                ui.setupDynamicTemperatures(technicalData);
+                ui.setupDynamicData(technicalData); // CORRIGIDO
                 await handleNewProject(false);
                 await handleSearch();
             }
@@ -96,7 +96,19 @@ async function handleSaveProject() {
     const feederData = {};
     document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(el => feederData[el.id] = el.type === 'checkbox' ? el.checked : el.value);
     const circuitsData = [];
-    document.querySelectorAll('#circuits-container .circuit-block').forEach(block => { const circuit = { id: block.dataset.id }; block.querySelectorAll('input, select').forEach(el => { circuit[el.id] = el.type === 'checkbox' ? el.checked : el.value; }); circuitsData.push(circuit); });
+    document.querySelectorAll('#circuits-container .circuit-block').forEach(block => { 
+        const circuit = { id: block.dataset.id }; 
+        block.querySelectorAll('input, select').forEach(el => { 
+            // Salva o valor do BTU ou CV selecionado para poder recarregar corretamente
+            if (el.id.startsWith('potenciaBTU')) {
+                circuit['potenciaBTU_value'] = el.value;
+            } else if (el.id.startsWith('potenciaCV')) {
+                circuit['potenciaCV_value'] = el.value;
+            }
+            circuit[el.id] = el.type === 'checkbox' ? el.checked : el.value; 
+        }); 
+        circuitsData.push(circuit); 
+    });
     const projectData = { project_name: nomeObra, client_id: document.getElementById('currentClientId').value || null, main_data: mainData, tech_data: techData, feeder_data: feederData, circuits_data: circuitsData, owner_id: currentUserProfile.id };
     const currentProjectId = document.getElementById('currentProjectId').value;
     try {
@@ -214,7 +226,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
                 ui.showAppView(currentUserProfile);
                 technicalData = await api.fetchTechnicalData();
                 if (technicalData) {
-                    ui.setupDynamicTemperatures(technicalData);
+                    ui.setupDynamicData(technicalData); // CORRIGIDO
                     await handleNewProject(false);
                     await handleSearch();
                 }

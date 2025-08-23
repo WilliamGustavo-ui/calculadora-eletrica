@@ -150,6 +150,7 @@ function initializeFeederListeners() {
 }
 
 function initializeCircuitListeners(id) {
+    // Obter todos os elementos do DOM
     const tipoCircuito = document.getElementById(`tipoCircuito-${id}`);
     const fases = document.getElementById(`fases-${id}`);
     const tipoLigacao = document.getElementById(`tipoLigacao-${id}`);
@@ -163,9 +164,11 @@ function initializeCircuitListeners(id) {
     const potenciaCVGroup = document.getElementById(`potenciaCV_group-${id}`);
     const potenciaCVSelect = document.getElementById(`potenciaCV-${id}`);
     
+    // Popular os novos dropdowns com dados do banco
     populateBtuDropdown(potenciaBTUSelect, technicalData.ar_condicionado_btu);
     populateCvDropdown(potenciaCVSelect, technicalData.motores_cv);
 
+    // Funções de manipulação de eventos
     const atualizarLigacoes = () => {
         const faseSelecionada = fases.value;
         const ligacoesDisponiveis = ligacoes[faseSelecionada] || [];
@@ -192,31 +195,35 @@ function initializeCircuitListeners(id) {
     const handleCircuitTypeChange = () => {
         const selectedType = tipoCircuito.value;
         
+        // Reseta o estado dos campos para o padrão
         potenciaBTUGroup.classList.add('hidden');
         potenciaCVGroup.classList.add('hidden');
         potenciaWInput.readOnly = false;
         fatorDemandaInput.readOnly = false;
 
+        // Aplica a lógica para o tipo de circuito selecionado
         if (selectedType === 'ar_condicionado') {
             potenciaBTUGroup.classList.remove('hidden');
             potenciaWInput.readOnly = true;
-            handleBtuSelectChange();
+            handleBtuSelectChange(); // Calcula o valor inicial
         } else if (selectedType === 'motores') {
             potenciaCVGroup.classList.remove('hidden');
             potenciaWInput.readOnly = true;
-            handleCvSelectChange();
+            handleCvSelectChange(); // Calcula o valor inicial
         } else if (selectedType === 'aquecimento') {
             fatorDemandaInput.value = '100';
             fatorDemandaInput.readOnly = true;
         }
     };
 
+    // Adicionar os ouvintes de eventos
     tipoCircuito.addEventListener('change', handleCircuitTypeChange);
     fases.addEventListener('change', atualizarLigacoes);
     tipoIsolacao.addEventListener('change', handleInsulationChange);
     potenciaBTUSelect.addEventListener('change', handleBtuSelectChange);
     potenciaCVSelect.addEventListener('change', handleCvSelectChange);
 
+    // Chamar as funções de inicialização para garantir o estado correto do formulário
     atualizarLigacoes();
     handleCircuitTypeChange();
     handleInsulationChange();
@@ -353,7 +360,7 @@ function getCircuitHTML(id){
     </div>`;
 }
 
-// --- PREENCHIMENTO DE DADOS ---
+// --- PREENCHIMENTO DE DADOS (CARREGAR PROJETO) ---
 export function populateProjectList(projects) {
     const select = document.getElementById('savedProjectsSelect');
     select.innerHTML = '<option value="">-- Selecione uma obra --</option>';
@@ -400,22 +407,35 @@ export function populateFormWithProjectData(project) {
         project.circuits_data.forEach(savedCircuitData => {
             addCircuit();
             const currentId = circuitCount;
+            // Popula todos os campos primeiro
             Object.keys(savedCircuitData).forEach(savedId => {
                 if (savedId === 'id') return;
                 const newId = savedId.replace(`-${savedCircuitData.id}`, `-${currentId}`);
                 const element = document.getElementById(newId);
                 if (element) {
-                    if (element.type === 'checkbox') { element.checked = savedCircuitData[savedId]; } else { element.value = savedCircuitData[savedId]; }
+                    if (element.type === 'checkbox') { element.checked = savedCircuitData[savedId]; } 
+                    else { element.value = savedCircuitData[savedId]; }
                 }
             });
+
+            // Lida com os campos especiais de BTU e CV
+            const tipoCircuitoEl = document.getElementById(`tipoCircuito-${currentId}`);
+            if (savedCircuitData.tipoCircuito === 'ar_condicionado' && savedCircuitData.potenciaBTU_value) {
+                document.getElementById(`potenciaBTU-${currentId}`).value = savedCircuitData.potenciaBTU_value;
+            } else if (savedCircuitData.tipoCircuito === 'motores' && savedCircuitData.potenciaCV_value) {
+                document.getElementById(`potenciaCV-${currentId}`).value = savedCircuitData.potenciaCV_value;
+            }
+
+            // Dispara os eventos para atualizar a UI
             document.getElementById(`fases-${currentId}`).dispatchEvent(new Event('change'));
             document.getElementById(`tipoLigacao-${currentId}`).value = savedCircuitData[`tipoLigacao-${savedCircuitData.id}`];
-            document.getElementById(`tipoCircuito-${currentId}`).dispatchEvent(new Event('change'));
+            tipoCircuitoEl.dispatchEvent(new Event('change'));
             document.getElementById(`tipoIsolacao-${currentId}`).dispatchEvent(new Event('change'));
         });
     }
 }
 
+// O restante do arquivo (funções de admin, cliente, PDF, etc.) permanece o mesmo da versão anterior.
 // --- PAINEL DE ADMINISTRAÇÃO ---
 export function populateUsersPanel(users) {
     const list = document.getElementById('adminUserList');
