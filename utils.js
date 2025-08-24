@@ -88,6 +88,8 @@ function _calcularAlimentadorGeral(technicalData, potenciaTotal, maxCircuitBreak
         materialCabo: document.getElementById('feederMaterialCabo').value,
         metodoInstalacao: document.getElementById('feederMetodoInstalacao').value,
         temperaturaAmbienteC: parseInt(document.getElementById('feederTemperaturaAmbienteC').value),
+        resistividadeSolo: parseFloat(document.getElementById('feederResistividadeSolo').value),
+        numCircuitosAgrupados: parseInt(document.getElementById('feederNumCircuitosAgrupados').value),
         limiteQuedaTensao: parseFloat(document.getElementById('feederLimiteQuedaTensao').value),
         tipoDisjuntor: document.getElementById('feederTipoDisjuntor').value,
         requerDR: document.getElementById('feederRequerDR').checked,
@@ -167,11 +169,15 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
     const correnteInstalada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * dados.fatorPotencia)) : 0;
     const correnteDemandada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * dados.fatorPotencia)) : 0;
     
-    const fatorK1_obj = technicalData.fatores_k1?.find(f => f.temperatura_c === dados.temperaturaAmbienteC);
+    // Fator K1 (Temperatura) - Agora busca na tabela correta dependendo da isolação
+    const tempTable = (dados.tipoIsolacao === 'PVC') ? technicalData.fatores_k1 : technicalData.fatores_k1_epr;
+    const fatorK1_obj = tempTable?.find(f => f.temperatura_c === dados.temperaturaAmbienteC);
     const fatorK1 = fatorK1_obj ? fatorK1_obj.fator : 1.0;
     
+    // Fator K2 (Resistividade do Solo)
     const fatorK2 = (dados.resistividadeSolo > 0 && technicalData.fatores_k2) ? (technicalData.fatores_k2.find(f => f.resistividade === dados.resistividadeSolo)?.fator || 1.0) : 1.0;
     
+    // Fator K3 (Agrupamento)
     let fatorK3 = 1.0;
     if (dados.numCircuitosAgrupados > 1 && technicalData.fatores_k3) {
         const fatorK3_obj = technicalData.fatores_k3.find(f => f.num_circuitos === dados.numCircuitosAgrupados);
@@ -203,7 +209,7 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
         
         for (const cabo of tabelaCaboSelecionada) {
             const capacidadeConducao = cabo[`capacidade_${dados.metodoInstalacao.toLowerCase()}`] || 0;
-            const Iz = capacidadeConducao * fatorK1 * fatorK2 * fatorK3;
+            const Iz = capacidadeConducao * fatorDeCorrecaoTotal;
             
             if (Iz >= disjuntorCandidato.corrente_a) {
                 const resistividade = (dados.materialCabo === 'Cobre') ? 0.0172 : 0.0282;

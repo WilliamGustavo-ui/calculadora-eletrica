@@ -48,8 +48,9 @@ button:active { transform: scale(0.98); }
 #adminProjectsTable select { padding: 4px; font-size: 0.9rem; max-width: 150px; }
 #adminProjectsTable button { font-size: 0.8rem; padding: 5px 10px; margin-left: 5px; }
 #clientLinkDisplay { background-color: #eaf5ff; padding: 10px 15px; border-radius: 5px; margin-bottom: 20px; text-align: center; font-weight: 500; color: var(--primary-color); border: 1px solid var(--secondary-color); }
-.potencia-group { display: flex; gap: 15px; align-items: flex-end; } /* NOVO */
-.potencia-group > .form-group { flex: 1; } /* NOVO */
+.potencia-group { display: flex; gap: 15px; align-items: flex-end; }
+.potencia-group > .form-group { flex: 1; }
+.checkbox-group { display: flex; align-items: center; justify-content: flex-start; gap: 8px; padding-top: 25px; /* Alinha com a base dos outros inputs */ }
 .btn-primary { background-color: var(--primary-color); }
 .btn-secondary { background-color: var(--secondary-color); }
 .btn-success { background-color: var(--success-color); }

@@ -236,7 +236,16 @@
             <h2>Alimentação Geral</h2>
             <form id="feeder-form" class="circuit-block" autocomplete="off">
                 <div class="form-grid">
+                    <div class="form-group">
+                        <label for="feederPotenciaInstalada">Potência Total Instalada (W)</label>
+                        <input type="text" id="feederPotenciaInstalada" value="0.00" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="feederPotenciaDemandada">Potência Total Demandada (W)</label>
+                        <input type="text" id="feederPotenciaDemandada" value="0.00" readonly>
+                    </div>
                     <div class="form-group"><label for="feederFatorDemanda">Fator de Demanda Geral (%)</label><input type="number" id="feederFatorDemanda" value="100" step="1"></div>
+                    
                     <div class="form-group"><label for="feederFases">Sistema de Fases</label><select id="feederFases"><option value="Monofasico">Monofasico</option><option value="Bifasico">Bifasico</option><option value="Trifasico" selected>Trifasico</option></select></div>
                     <div class="form-group"><label for="feederTipoLigacao">Tipo de Ligacao</label><select id="feederTipoLigacao"></select></div>
                     <div class="form-group"><label for="feederTensaoV">Tensao (V)</label><select id="feederTensaoV"><option value="12">12 V</option><option value="24">24 V</option><option value="36">36 V</option><option value="127">127 V</option><option value="220" selected>220 V</option><option value="380">380 V</option><option value="440">440 V</option><option value="760">760 V</option></select></div>
@@ -251,12 +260,14 @@
                         </select>
                     </div>
                     <div class="form-group"><label for="feederMaterialCabo">Material do Condutor</label><select id="feederMaterialCabo"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Aluminio</option></select></div>
-                    <div class="form-group"><label for="feederMetodoInstalacao">Metodo de Instalacao</label><select id="feederMetodoInstalacao"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select></div>
+                    <div class="form-group"><label for="feederMetodoInstalacao">Metodo de Instalacao</label><select id="feederMetodoInstalacao"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option><option value="E">E</option><option value="F">F</option></select></div>
                     <div class="form-group"><label for="feederTemperaturaAmbienteC">Temperatura Ambiente (C)</label><select id="feederTemperaturaAmbienteC"></select></div>
+                    <div class="form-group"><label for="feederResistividadeSolo">Resistividade T. do Solo (C.m/W)</label><select id="feederResistividadeSolo"></select></div>
+                    <div class="form-group"><label for="feederNumCircuitosAgrupados">N de Circuitos Agrupados</label><select id="feederNumCircuitosAgrupados"><option value="1" selected>1 (Não aplicável ao geral)</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
                     <div class="form-group"><label for="feederLimiteQuedaTensao">Limite Queda de Tensao (%)</label><input type="number" id="feederLimiteQuedaTensao" step="0.1" value="5.0"></div>
                     <div class="form-group"><label for="feederTipoDisjuntor">Tipo de Disjuntor</label><select id="feederTipoDisjuntor"><option value="Minidisjuntor (DIN)">Minidisjuntor (DIN)</option><option value="Caixa Moldada (MCCB)" selected>Caixa Moldada (MCCB)</option></select></div>
                     <div class="form-group"><label for="feederDpsClasse">Classe DPS</label><select id="feederDpsClasse"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select></div>
-                    <div class="form-group"><input type="checkbox" id="feederRequerDR" checked><label for="feederRequerDR">Requer Protecao DR Geral</label></div>
+                    <div class="checkbox-group"><input type="checkbox" id="feederRequerDR" checked><label for="feederRequerDR">Requer Protecao DR Geral</label></div>
                 </div>
             </form>
         </div>
