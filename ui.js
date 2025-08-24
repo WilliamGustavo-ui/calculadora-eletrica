@@ -556,7 +556,8 @@ export function renderReport(calculationResults){
     reportText += `\n-- QUADRO DE CARGAS RESUMIDO --\n`;
     reportText += `- Alimentador Geral\n`;
     circuitResults.forEach(result => {
-        reportText += `${formatLine(`- Circuito ${result.dados.id}`, result.dados.nomeCircuito)}\n`;
+        const { id, nomeCircuito, tensaoV, fases, tipoLigacao } = result.dados;
+        reportText += `${formatLine(`- Ckt ${id}: ${nomeCircuito}`, `(${tensaoV}V, ${fases} - ${tipoLigacao})`)}\n`;
     });
 
     const allCalculations = [feederResult, ...circuitResults];
@@ -564,7 +565,7 @@ export function renderReport(calculationResults){
         const { dados, calculos } = result;
         const title = dados.id === 'Geral' ? 'ALIMENTADOR GERAL' : `CIRCUITO ${dados.id}`;
         
-        const potenciaDemandadaVA = dados.fatorPotencia > 0 ? (calculos.potenciaDemandada / dados.fatorPotencia).toFixed(2) : "0.00";
+        const potenciaDemandadaVA = dados.fatorPotencia > 0 ? (calculos.potenciaDemandada / dados.fatorPotencia) : 0;
         const correnteCorrigidaTexto = isFinite(calculos.correnteCorrigidaA) ? `${calculos.correnteCorrigidaA.toFixed(2)} A` : "Incalculável";
         
         reportText += `\n\n======================================================\n==           MEMORIAL DE CALCULO - ${title.padEnd(16, ' ')} ==\n======================================================\n`;
@@ -572,7 +573,7 @@ export function renderReport(calculationResults){
         if (dados.id !== 'Geral') { reportText += `${formatLine('Nome do Circuito', dados.nomeCircuito)}\n`; reportText += `${formatLine('Tipo de Circuito', dados.tipoCircuito)}\n`; }
         reportText += `${formatLine('Potencia Instalada', `${calculos.potenciaInstalada.toFixed(2)} W`)}\n`;
         reportText += `${formatLine('Fator de Demanda Aplicado (%)', `${dados.fatorDemanda}%`)}\n`;
-        reportText += `${formatLine('Potencia Demandada', `${potenciaDemandadaVA} VA`)}\n`;
+        reportText += `${formatLine('Potencia Demandada', `${potenciaDemandadaVA.toFixed(2)} VA`)}\n`;
         reportText += `${formatLine('Fator de Potência', dados.fatorPotencia)}\n`;
         reportText += `${formatLine('Sistema de Fases', dados.fases)}\n`;
         reportText += `${formatLine('Tipo de Ligação', dados.tipoLigacao)}\n`;
@@ -672,11 +673,12 @@ export function generatePdf(calculationResults, currentUserProfile) {
 
     if (circuitResults.length > 0) {
         addSection("RESUMO DOS CIRCUITOS");
-        const head = [['Ckt', 'Nome', 'Disjuntor', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
+        const head = [['Ckt', 'Nome', 'Tensão/Fases', 'Disjuntor', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
         const body = circuitResults.map(r => {
             const circuitBreakerType = r.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
             const circuitBreakerText = `${circuitBreakerType} ${r.calculos.disjuntorRecomendado.nome}`;
-            return [ r.dados.id, r.dados.nomeCircuito, circuitBreakerText, r.dados.requerDR ? 'Sim' : 'Nao', getDpsText(r.dados.dpsInfo), `${r.calculos.bitolaRecomendadaMm2} mm² (${r.dados.tipoIsolacao})`, r.calculos.dutoRecomendado ];
+            const tensaoFasesText = `${r.dados.tensaoV}V / ${r.dados.fases} / ${r.dados.tipoLigacao}`;
+            return [ r.dados.id, r.dados.nomeCircuito, tensaoFasesText, circuitBreakerText, r.dados.requerDR ? 'Sim' : 'Nao', getDpsText(r.dados.dpsInfo), `${r.calculos.bitolaRecomendadaMm2} mm² (${r.dados.tipoIsolacao})`, r.calculos.dutoRecomendado ];
         });
         doc.autoTable({ startY: yPos, head: head, body: body, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
     }
@@ -686,7 +688,7 @@ export function generatePdf(calculationResults, currentUserProfile) {
         doc.addPage();
         yPos = 20;
         const { dados, calculos } = result;
-        const potenciaDemandadaVA = dados.fatorPotencia > 0 ? (calculos.potenciaDemandada / dados.fatorPotencia).toFixed(2) : "0.00";
+        const potenciaDemandadaVA = dados.fatorPotencia > 0 ? (calculos.potenciaDemandada / dados.fatorPotencia) : 0;
         const correnteCorrigidaTexto = isFinite(calculos.correnteCorrigidaA) ? `${calculos.correnteCorrigidaA.toFixed(2)} A` : "Incalculável";
 
         const title = dados.id === 'Geral' 
@@ -699,7 +701,7 @@ export function generatePdf(calculationResults, currentUserProfile) {
         if (dados.id !== 'Geral') { addLineItem("Tipo de Circuito:", dados.tipoCircuito); }
         addLineItem("Potência Instalada:", `${calculos.potenciaInstalada.toFixed(2)} W`);
         addLineItem("Fator de Demanda:", `${dados.fatorDemanda}%`);
-        addLineItem("Potência Demandada:", `${potenciaDemandadaVA} VA`);
+        addLineItem("Potência Demandada:", `${potenciaDemandadaVA.toFixed(2)} VA`);
         addLineItem("Fator de Potência:", dados.fatorPotencia);
         addLineItem("Sistema de Fases:", dados.fases);
         addLineItem("Tipo de Ligação:", dados.tipoLigacao);
