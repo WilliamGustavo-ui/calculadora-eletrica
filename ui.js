@@ -554,9 +554,9 @@ export function renderReport(calculationResults){
     }
 
     reportText += `\n-- QUADRO DE CARGAS RESUMIDO --\n`;
-    reportText += `${formatLine(`Alimentador Geral`, `Pot. Demandada: ${feederResult.calculos.potenciaDemandada.toFixed(2)} W`)}\n`;
+    reportText += `${formatLine(`Alimentador Geral`, `Carga Total: ${feederResult.calculos.potenciaDemandada.toFixed(2)} W`)}\n`;
     circuitResults.forEach(result => {
-        reportText += `${formatLine(`Circuito ${result.dados.id}`, `${result.dados.nomeCircuito} - Pot. Demandada: ${result.calculos.potenciaDemandada.toFixed(2)} W`)}\n`;
+        reportText += `${formatLine(`Circuito ${result.dados.id}`, `${result.dados.nomeCircuito} - ${result.calculos.potenciaInstalada.toFixed(2)} W`)}\n`;
     });
 
     const allCalculations = [feederResult, ...circuitResults];
@@ -570,6 +570,7 @@ export function renderReport(calculationResults){
         if (dados.id !== 'Geral') { reportText += `${formatLine('Nome do Circuito', dados.nomeCircuito)}\n`; reportText += `${formatLine('Tipo de Circuito', dados.tipoCircuito)}\n`; }
         reportText += `${formatLine('Potencia Instalada', `${calculos.potenciaInstalada.toFixed(2)} W`)}\n`;
         reportText += `${formatLine('Fator de Demanda Aplicado (%)', `${dados.fatorDemanda}%`)}\n`;
+        reportText += `${formatLine('Potencia Demandada', `${calculos.potenciaDemandada.toFixed(2)} W`)}\n`;
         reportText += `${formatLine('Fator de Potência', dados.fatorPotencia)}\n`;
         reportText += `${formatLine('Sistema de Fases', dados.fases)}\n`;
         reportText += `${formatLine('Tipo de Ligação', dados.tipoLigacao)}\n`;
@@ -661,18 +662,18 @@ export function generatePdf(calculationResults, currentUserProfile) {
     addSection("RESUMO DA ALIMENTAÇÃO GERAL");
     const feederBreakerType = feederResult.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
     const feederBreakerText = `${feederBreakerType} ${feederResult.calculos.disjuntorRecomendado.nome}`;
-    const feederHead = [['Pot. Demandada (W)', 'Tensão/Fases', 'Disjuntor Geral', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
-    const feederBody = [[ `${feederResult.calculos.potenciaDemandada.toFixed(2)}`, `${feederResult.dados.tensaoV}V - ${feederResult.dados.fases}`, feederBreakerText, feederResult.dados.requerDR ? 'Sim' : 'Nao', getDpsText(feederResult.dados.dpsInfo), `${feederResult.calculos.bitolaRecomendadaMm2} mm² (${feederResult.dados.tipoIsolacao})`, feederResult.calculos.dutoRecomendado ]];
+    const feederHead = [['Carga Total', 'Tensão/Fases', 'Disjuntor Geral', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
+    const feederBody = [[ `${feederResult.calculos.potenciaDemandada.toFixed(2)} W`, `${feederResult.dados.tensaoV}V - ${feederResult.dados.fases}`, feederBreakerText, feederResult.dados.requerDR ? 'Sim' : 'Nao', getDpsText(feederResult.dados.dpsInfo), `${feederResult.calculos.bitolaRecomendadaMm2} mm² (${feederResult.dados.tipoIsolacao})`, feederResult.calculos.dutoRecomendado ]];
     doc.autoTable({ startY: yPos, head: feederHead, body: feederBody, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
     yPos = doc.lastAutoTable.finalY + 10;
 
     if (circuitResults.length > 0) {
         addSection("RESUMO DOS CIRCUITOS");
-        const head = [['Ckt', 'Nome', 'Pot. Demandada (W)', 'Disjuntor', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
+        const head = [['Ckt', 'Nome', 'Pot. (W)', 'Disjuntor', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
         const body = circuitResults.map(r => {
             const circuitBreakerType = r.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
             const circuitBreakerText = `${circuitBreakerType} ${r.calculos.disjuntorRecomendado.nome}`;
-            return [ r.dados.id, r.dados.nomeCircuito, r.calculos.potenciaDemandada.toFixed(2), circuitBreakerText, r.dados.requerDR ? 'Sim' : 'Nao', getDpsText(r.dados.dpsInfo), `${r.calculos.bitolaRecomendadaMm2} mm² (${r.dados.tipoIsolacao})`, r.calculos.dutoRecomendado ];
+            return [ r.dados.id, r.dados.nomeCircuito, r.calculos.potenciaInstalada.toFixed(2), circuitBreakerText, r.dados.requerDR ? 'Sim' : 'Nao', getDpsText(r.dados.dpsInfo), `${r.calculos.bitolaRecomendadaMm2} mm² (${r.dados.tipoIsolacao})`, r.calculos.dutoRecomendado ];
         });
         doc.autoTable({ startY: yPos, head: head, body: body, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
     }
@@ -694,6 +695,7 @@ export function generatePdf(calculationResults, currentUserProfile) {
         if (dados.id !== 'Geral') { addLineItem("Tipo de Circuito:", dados.tipoCircuito); }
         addLineItem("Potência Instalada:", `${calculos.potenciaInstalada.toFixed(2)} W`);
         addLineItem("Fator de Demanda:", `${dados.fatorDemanda}%`);
+        addLineItem("Potência Demandada:", `${calculos.potenciaDemandada.toFixed(2)} W`);
         addLineItem("Fator de Potência:", dados.fatorPotencia);
         addLineItem("Sistema de Fases:", dados.fases);
         addLineItem("Tipo de Ligação:", dados.tipoLigacao);
@@ -712,7 +714,7 @@ export function generatePdf(calculationResults, currentUserProfile) {
                 addLineItem("Resist. do Solo (C.m/W):", dados.resistividadeSolo);
             }
         } else {
-             if (dados.resistividadeSolo && dados.resistividadeSolo > 0) {
+            if (dados.resistividadeSolo && dados.resistividadeSolo > 0) {
                 addLineItem("Resist. do Solo (C.m/W):", dados.resistividadeSolo);
             }
         }
