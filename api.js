@@ -100,11 +100,11 @@ export async function fetchTechnicalData() {
         { key: 'eletrodutos', name: 'eletrodutos' },
         { key: 'fatores_k1', name: 'fatores_k1_temperatura' },
         { key: 'fatores_k1_epr', name: 'fatores_k1_temperatura_epr' },
+        { key: 'fatores_k1_hepr', name: 'fatores_k1_temperatura_hepr' }, // ADICIONADO
+        { key: 'fatores_k1_lszh', name: 'fatores_k1_temperatura_lszh' }, // ADICIONADO
         { key: 'fatores_k2', name: 'fatores_k2_solo' },
         { key: 'fatores_k3', name: 'fatores_k3_agrupamento' },
-        { key: 'dps', name: 'dps' },
-        { key: 'ar_condicionado_btu', name: 'ar_condicionado_btu' }, // ADICIONADO
-        { key: 'motores_cv', name: 'motores_cv' } // ADICIONADO
+        { key: 'dps', name: 'dps' }
     ];
     console.log("Iniciando busca de dados técnicos...");
     for (const table of tablesToFetch) {

@@ -3,17 +3,32 @@
 import { ligacoes } from './utils.js';
 
 let circuitCount = 0;
-let tempOptions = { pvc: [], epr: [] };
+// Estrutura expandida para suportar os novos tipos de temperatura
+let tempOptions = { pvc: [], epr: [], hepr: [], lszh: [] };
 
 // --- PREPARAÇÃO DOS DADOS DE TEMPERATURA ---
 export function setupDynamicTemperatures(techData) {
+    // PVC (70°C)
     if (techData?.fatores_k1) {
         tempOptions.pvc = techData.fatores_k1.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
     }
+    // EPR/XLPE (90°C) - Usado como fallback
     if (techData?.fatores_k1_epr) {
         tempOptions.epr = techData.fatores_k1_epr.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
     } else {
         tempOptions.epr = tempOptions.pvc;
+    }
+    // HEPR (90°C)
+    if (techData?.fatores_k1_hepr) {
+        tempOptions.hepr = techData.fatores_k1_hepr.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
+    } else {
+        tempOptions.hepr = tempOptions.epr; // Usa EPR como fallback
+    }
+    // LSZH (90°C)
+    if (techData?.fatores_k1_lszh) {
+        tempOptions.lszh = techData.fatores_k1_lszh.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
+    } else {
+        tempOptions.lszh = tempOptions.epr; // Usa EPR como fallback
     }
 }
 
@@ -42,13 +57,8 @@ export function showAppView(userProfile) {
     document.getElementById('loginContainer').style.display = 'none';
     document.getElementById('appContainer').style.display = 'block';
     document.getElementById('resetPasswordContainer').style.display = 'none';
-    
     const isAdmin = userProfile?.is_admin || false;
-    
-    // Botões visíveis apenas para administradores
     document.getElementById('adminPanelBtn').style.display = isAdmin ? 'block' : 'none';
-    
-    // Botões visíveis para todos os usuários
     document.getElementById('manageClientsBtn').style.display = 'block';
     document.getElementById('manageProjectsBtn').style.display = 'block';
 }
@@ -87,6 +97,7 @@ export function removeCircuit(id) { document.getElementById(`circuit-${id}`)?.re
 function renumberCircuits() {
     const circuitBlocks = document.querySelectorAll('#circuits-container .circuit-block');
     circuitCount = circuitBlocks.length;
+    const props = ['id', 'htmlFor'];
     circuitBlocks.forEach((block, index) => {
         const newId = index + 1;
         const oldId = parseInt(block.dataset.id);
@@ -94,9 +105,14 @@ function renumberCircuits() {
         block.dataset.id = newId;
         block.id = `circuit-${newId}`;
         block.querySelectorAll('[id],[for],[data-circuit-id]').forEach(el => {
-            const props=['id','htmlFor'];
-            props.forEach(prop=>{ if(el[prop] && String(el[prop]).includes(`-${oldId}`)){ el[prop] = el[prop].replace(`-${oldId}`,`-${newId}`) } });
-            if (el.dataset.circuitId && el.dataset.circuitId.includes(`-${oldId}`)) { el.dataset.circuitId = el.dataset.circuitId.replace(`-${oldId}`, `-${newId}`); }
+            props.forEach(prop => {
+                if (el[prop] && String(el[prop]).includes(`-${oldId}`)) {
+                    el[prop] = el[prop].replace(`-${oldId}`, `-${newId}`);
+                }
+            });
+            if (el.dataset.circuitId && el.dataset.circuitId == oldId) {
+                el.dataset.circuitId = newId;
+            }
         });
         block.querySelector('h2').textContent = `Circuito ${newId}`;
     });
@@ -117,8 +133,22 @@ function initializeFeederListeners() {
     
     const handleInsulationChange = () => {
         const selectedInsulation = tipoIsolacao.value;
-        // Trata EPR, XLPE, HEPR e LSZH para usarem a mesma tabela de temperatura
-        const temps = (selectedInsulation === 'EPR' || selectedInsulation === 'XLPE' || selectedInsulation === 'HEPR' || selectedInsulation === 'LSZH') ? tempOptions.epr : tempOptions.pvc;
+        let temps = [];
+        switch (selectedInsulation) {
+            case 'EPR':
+            case 'XLPE':
+                temps = tempOptions.epr;
+                break;
+            case 'HEPR':
+                temps = tempOptions.hepr;
+                break;
+            case 'LSZH':
+                temps = tempOptions.lszh;
+                break;
+            default: // PVC
+                temps = tempOptions.pvc;
+                break;
+        }
         populateTemperatureDropdown(temperaturaAmbiente, temps);
     };
 
@@ -148,8 +178,22 @@ function initializeCircuitListeners(id) {
     
     const handleInsulationChange = () => {
         const selectedInsulation = tipoIsolacao.value;
-        // Trata EPR, XLPE, HEPR e LSZH para usarem a mesma tabela de temperatura
-        const temps = (selectedInsulation === 'EPR' || selectedInsulation === 'XLPE' || selectedInsulation === 'HEPR' || selectedInsulation === 'LSZH') ? tempOptions.epr : tempOptions.pvc;
+        let temps = [];
+        switch (selectedInsulation) {
+            case 'EPR':
+            case 'XLPE':
+                temps = tempOptions.epr;
+                break;
+            case 'HEPR':
+                temps = tempOptions.hepr;
+                break;
+            case 'LSZH':
+                temps = tempOptions.lszh;
+                break;
+            default: // PVC
+                temps = tempOptions.pvc;
+                break;
+        }
         populateTemperatureDropdown(temperaturaAmbiente, temps);
     };
 
@@ -169,10 +213,16 @@ function initializeCircuitListeners(id) {
     handleInsulationChange();
 }
 
+// O restante do arquivo (getCircuitHTML, populateProjectList, etc.) permanece o mesmo da versão anterior.
+// Certifique-se de que a função getCircuitHTML e as outras funções de UI estejam presentes no arquivo.
+// Omitido aqui para brevidade, pois não sofreram alterações nesta etapa.
+
 function getCircuitHTML(id){
     return `<div class="circuit-block" id="circuit-${id}" data-id="${id}"><div class="circuit-header"><h2 id="circuit-title-${id}">Circuito ${id}</h2>${id>1?`<button type="button" class="remove-btn" data-circuit-id="${id}">Remover</button>`:''}</div><div class="form-grid"><div class="form-group"><label for="nomeCircuito-${id}">Nome do Circuito</label><input type="text" id="nomeCircuito-${id}" value="Circuito ${id}"></div><div class="form-group"><label for="tipoCircuito-${id}">Tipo de Circuito</label><select id="tipoCircuito-${id}"><option value="iluminacao">Iluminacao</option><option value="tug" selected>Tomadas de Uso Geral (TUG)</option><option value="tue">Tomadas de Uso Especifico (TUE)</option><option value="aquecimento">Aquecimento</option><option value="motores">Circuito de Motores</option><option value="ar_condicionado">Ar Condicionado</option></select></div><div class="form-group" id="potenciaW_group-${id}"><label for="potenciaW-${id}">Potencia (W)</label><input type="number" id="potenciaW-${id}" value="2500"></div><div class="form-group hidden" id="potenciaCV_group-${id}"><label for="potenciaCV-${id}">Potencia do Motor (CV)</label><select id="potenciaCV-${id}"><option value="0.25">1/4</option><option value="1">1</option></select></div><div class="form-group"><label for="fatorDemanda-${id}">Fator de Demanda (%)</label><input type="number" id="fatorDemanda-${id}" value="100" step="1"></div><div class="form-group"><label for="fases-${id}">Sistema de Fases</label><select id="fases-${id}"><option value="Monofasico" selected>Monofasico</option><option value="Bifasico">Bifasico</option><option value="Trifasico">Trifasico</option></select></div><div class="form-group"><label for="tipoLigacao-${id}">Tipo de Ligacao</label><select id="tipoLigacao-${id}"></select></div><div class="form-group"><label for="tensaoV-${id}">Tensao (V)</label><select id="tensaoV-${id}"><option value="127">127 V</option><option value="220" selected>220 V</option></select></div><div class="form-group"><label for="fatorPotencia-${id}">Fator de Potencia (eficiencia)</label><input type="number" id="fatorPotencia-${id}" step="0.01" value="0.92"></div><div class="form-group"><label for="comprimentoM-${id}">Comprimento (m)</label><input type="number" id="comprimentoM-${id}" value="20"></div><div class="form-group"><label for="tipoIsolacao-${id}">Tipo de Isolacao</label><select id="tipoIsolacao-${id}"><option value="PVC" selected>PVC 70 C</option><option value="EPR">EPR 90 C</option><option value="XLPE">XLPE 90 C</option><option value="HEPR">HEPR 90 C</option><option value="LSZH">LSZH 90 C</option></select></div><div class="form-group"><label for="materialCabo-${id}">Material do Condutor</label><select id="materialCabo-${id}"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Aluminio</option></select></div><div class="form-group"><label for="metodoInstalacao-${id}">Metodo de Instalacao</label><select id="metodoInstalacao-${id}"><option value="B1" selected>B1</option></select></div><div class="form-group"><label for="temperaturaAmbienteC-${id}">Temperatura Ambiente (C)</label><select id="temperaturaAmbienteC-${id}"></select></div><div class="form-group"><label for="resistividadeSolo-${id}">Resistividade T. do Solo (C.m/W)</label><select id="resistividadeSolo-${id}"><option value="0" selected>Nao Aplicavel</option></select></div><div class="form-group"><label for="numCircuitosAgrupados-${id}">N de Circuitos Agrupados</label><select id="numCircuitosAgrupados-${id}"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div><div class="form-group"><label for="limiteQuedaTensao-${id}">Limite Queda de Tensao (%)</label><input type="number" id="limiteQuedaTensao-${id}" step="0.1" value="4.0"></div><div class="form-group"><label for="tipoDisjuntor-${id}">Tipo de Disjuntor</label><select id="tipoDisjuntor-${id}"><option value="Minidisjuntor (DIN)">Minidisjuntor (DIN)</option><option value="Caixa Moldada (MCCB)">Caixa Moldada (MCCB)</option></select></div><div class="form-group"><label for="dpsClasse-${id}">Classe DPS</label><select id="dpsClasse-${id}"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select></div><div class="checkbox-group"><input type="checkbox" id="requerDR-${id}"><label for="requerDR-${id}">Requer Protecao DR</label></div></div></div>`;
 }
 
+// ... Colar aqui o restante das funções de ui.js (populateProjectList, etc.)
+// ... (O código das funções de popular modais e gerar relatórios não muda)
 // --- PREENCHIMENTO DE DADOS ---
 export function populateProjectList(projects) {
     const select = document.getElementById('savedProjectsSelect');
