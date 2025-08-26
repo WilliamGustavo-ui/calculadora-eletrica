@@ -1,14 +1,12 @@
 // Arquivo: ui.js
 
-import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
+import { ligacoes } from './utils.js';
 
 let circuitCount = 0;
-let technicalData = null; // Armazenar todos os dados técnicos
 let tempOptions = { pvc: [], epr: [] };
 
-// --- PREPARAÇÃO DOS DADOS GERAIS ---
-export function setupDynamicData(techData) {
-    technicalData = techData; // Salva todos os dados
+// --- PREPARAÇÃO DOS DADOS DE TEMPERATURA ---
+export function setupDynamicTemperatures(techData) {
     if (techData?.fatores_k1) {
         tempOptions.pvc = techData.fatores_k1.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
     }
@@ -19,7 +17,7 @@ export function setupDynamicData(techData) {
     }
 }
 
-// --- FUNÇÕES AUXILIARES PARA POPULAR DROPDOWNS ---
+// --- FUNÇÃO AUXILIAR PARA POPULAR DROPDOWNS ---
 function populateTemperatureDropdown(selectElement, temperatures) {
     const currentValue = selectElement.value;
     selectElement.innerHTML = '';
@@ -38,55 +36,6 @@ function populateTemperatureDropdown(selectElement, temperatures) {
     }
 }
 
-function populateBtuDropdown(selectElement, btuData) {
-    selectElement.innerHTML = '';
-    if (!btuData) return;
-    btuData.sort((a,b) => a.valor_btu - b.valor_btu).forEach(item => {
-        const option = document.createElement('option');
-        option.value = item.valor_btu;
-        option.textContent = item.descricao;
-        selectElement.appendChild(option);
-    });
-}
-
-function populateCvDropdown(selectElement, cvData) {
-    selectElement.innerHTML = '';
-    if(!cvData) return;
-    cvData.sort((a,b) => a.valor_cv - b.valor_cv).forEach(item => {
-        const option = document.createElement('option');
-        option.value = item.valor_cv;
-        option.textContent = item.descricao;
-        selectElement.appendChild(option);
-    });
-}
-
-function populateSoilResistivityDropdown(selectElement, soilData) {
-    selectElement.innerHTML = '<option value="0">Não Aplicável</option>';
-    if (!soilData) return;
-    soilData.sort((a,b) => a.resistividade - b.resistividade).forEach(item => {
-        const option = document.createElement('option');
-        option.value = item.resistividade;
-        option.textContent = `${item.resistividade}`;
-        selectElement.appendChild(option);
-    });
-}
-
-// --- ATUALIZAÇÃO DOS TOTAIS DO ALIMENTADOR ---
-function updateFeederPowerDisplay() {
-    let totalInstalada = 0;
-    let totalDemandada = 0;
-    const circuitBlocks = document.querySelectorAll('#circuits-container .circuit-block');
-    circuitBlocks.forEach(block => {
-        const id = block.dataset.id;
-        const potenciaW = parseFloat(document.getElementById(`potenciaW-${id}`).value) || 0;
-        const fatorDemanda = parseFloat(document.getElementById(`fatorDemanda-${id}`).value) || 100;
-        totalInstalada += potenciaW;
-        totalDemandada += potenciaW * (fatorDemanda / 100);
-    });
-    document.getElementById('feederPotenciaInstalada').value = totalInstalada.toFixed(2);
-    document.getElementById('feederPotenciaDemandada').value = totalDemandada.toFixed(2);
-}
-
 // --- CONTROLE DE VISIBILIDADE E MODAIS ---
 export function showLoginView() { document.getElementById('loginContainer').style.display = 'block'; document.getElementById('appContainer').style.display = 'none'; document.getElementById('resetPasswordContainer').style.display = 'none'; }
 export function showAppView(userProfile) {
@@ -96,7 +45,10 @@ export function showAppView(userProfile) {
     
     const isAdmin = userProfile?.is_admin || false;
     
+    // Botões visíveis apenas para administradores
     document.getElementById('adminPanelBtn').style.display = isAdmin ? 'block' : 'none';
+    
+    // Botões visíveis para todos os usuários
     document.getElementById('manageClientsBtn').style.display = 'block';
     document.getElementById('manageProjectsBtn').style.display = 'block';
 }
@@ -126,26 +78,11 @@ export function resetForm(addFirst = true, linkedClient = null) {
     
     initializeFeederListeners();
     circuitCount = 0;
-    if (addFirst) {
-        addCircuit();
-    } else {
-        updateFeederPowerDisplay();
-    }
+    if (addFirst) addCircuit();
 }
 
-export function addCircuit() { 
-    circuitCount++; 
-    const newCircuitDiv = document.createElement('div'); 
-    newCircuitDiv.innerHTML = getCircuitHTML(circuitCount); 
-    document.getElementById('circuits-container').appendChild(newCircuitDiv.firstElementChild); 
-    initializeCircuitListeners(circuitCount); 
-    updateFeederPowerDisplay();
-}
-export function removeCircuit(id) { 
-    document.getElementById(`circuit-${id}`)?.remove(); 
-    renumberCircuits();
-    updateFeederPowerDisplay();
-}
+export function addCircuit() { circuitCount++; const newCircuitDiv = document.createElement('div'); newCircuitDiv.innerHTML = getCircuitHTML(circuitCount); document.getElementById('circuits-container').appendChild(newCircuitDiv.firstElementChild); initializeCircuitListeners(circuitCount); }
+export function removeCircuit(id) { document.getElementById(`circuit-${id}`)?.remove(); renumberCircuits(); }
 
 function renumberCircuits() {
     const circuitBlocks = document.querySelectorAll('#circuits-container .circuit-block');
@@ -170,9 +107,6 @@ function initializeFeederListeners() {
     const tipoLigacao = document.getElementById('feederTipoLigacao');
     const tipoIsolacao = document.getElementById('feederTipoIsolacao');
     const temperaturaAmbiente = document.getElementById('feederTemperaturaAmbienteC');
-    const resistividadeSolo = document.getElementById('feederResistividadeSolo');
-
-    populateSoilResistivityDropdown(resistividadeSolo, technicalData.fatores_k2);
 
     const atualizarLigacoesFeeder = () => {
         const faseSelecionada = fases.value;
@@ -183,7 +117,8 @@ function initializeFeederListeners() {
     
     const handleInsulationChange = () => {
         const selectedInsulation = tipoIsolacao.value;
-        const temps = (selectedInsulation === 'EPR' || selectedInsulation === 'XLPE') ? tempOptions.epr : tempOptions.pvc;
+        // Trata EPR, XLPE, HEPR e LSZH para usarem a mesma tabela de temperatura
+        const temps = (selectedInsulation === 'EPR' || selectedInsulation === 'XLPE' || selectedInsulation === 'HEPR' || selectedInsulation === 'LSZH') ? tempOptions.epr : tempOptions.pvc;
         populateTemperatureDropdown(temperaturaAmbiente, temps);
     };
 
@@ -200,18 +135,9 @@ function initializeCircuitListeners(id) {
     const tipoLigacao = document.getElementById(`tipoLigacao-${id}`);
     const tipoIsolacao = document.getElementById(`tipoIsolacao-${id}`);
     const temperaturaAmbiente = document.getElementById(`temperaturaAmbienteC-${id}`);
-    const fatorDemandaInput = document.getElementById(`fatorDemanda-${id}`);
-    const resistividadeSolo = document.getElementById(`resistividadeSolo-${id}`);
-
-    const potenciaWInput = document.getElementById(`potenciaW-${id}`);
-    const potenciaBTUGroup = document.getElementById(`potenciaBTU_group-${id}`);
-    const potenciaBTUSelect = document.getElementById(`potenciaBTU-${id}`);
+    const potenciaWGroup = document.getElementById(`potenciaW_group-${id}`);
     const potenciaCVGroup = document.getElementById(`potenciaCV_group-${id}`);
-    const potenciaCVSelect = document.getElementById(`potenciaCV-${id}`);
-    
-    populateBtuDropdown(potenciaBTUSelect, technicalData.ar_condicionado_btu);
-    populateCvDropdown(potenciaCVSelect, technicalData.motores_cv);
-    populateSoilResistivityDropdown(resistividadeSolo, technicalData.fatores_k2);
+    const fatorDemandaInput = document.getElementById(`fatorDemanda-${id}`);
 
     const atualizarLigacoes = () => {
         const faseSelecionada = fases.value;
@@ -222,185 +148,32 @@ function initializeCircuitListeners(id) {
     
     const handleInsulationChange = () => {
         const selectedInsulation = tipoIsolacao.value;
-        const temps = (selectedInsulation === 'EPR' || selectedInsulation === 'XLPE') ? tempOptions.epr : tempOptions.pvc;
+        // Trata EPR, XLPE, HEPR e LSZH para usarem a mesma tabela de temperatura
+        const temps = (selectedInsulation === 'EPR' || selectedInsulation === 'XLPE' || selectedInsulation === 'HEPR' || selectedInsulation === 'LSZH') ? tempOptions.epr : tempOptions.pvc;
         populateTemperatureDropdown(temperaturaAmbiente, temps);
-    };
-
-    const handleBtuSelectChange = () => {
-        const btuValue = parseFloat(potenciaBTUSelect.value) || 0;
-        potenciaWInput.value = (btuValue * BTU_TO_WATTS_FACTOR).toFixed(2);
-        updateFeederPowerDisplay();
-    };
-
-    const handleCvSelectChange = () => {
-        const cvValue = parseFloat(potenciaCVSelect.value) || 0;
-        potenciaWInput.value = (cvValue * CV_TO_WATTS_FACTOR).toFixed(2);
-        updateFeederPowerDisplay();
     };
 
     const handleCircuitTypeChange = () => {
         const selectedType = tipoCircuito.value;
-        potenciaBTUGroup.classList.add('hidden');
-        potenciaCVGroup.classList.add('hidden');
-        potenciaWInput.readOnly = false;
-        fatorDemandaInput.readOnly = false;
-
-        if (selectedType === 'ar_condicionado') {
-            potenciaBTUGroup.classList.remove('hidden');
-            potenciaWInput.readOnly = true;
-            handleBtuSelectChange();
-        } else if (selectedType === 'motores') {
-            potenciaCVGroup.classList.remove('hidden');
-            potenciaWInput.readOnly = true;
-            handleCvSelectChange();
-        } else if (selectedType === 'aquecimento') {
-            fatorDemandaInput.value = '100';
-            fatorDemandaInput.readOnly = true;
-        }
+        potenciaWGroup.classList.toggle('hidden', selectedType === 'motores');
+        potenciaCVGroup.classList.toggle('hidden', selectedType !== 'motores');
+        if (selectedType === 'aquecimento') { fatorDemandaInput.value = '100'; fatorDemandaInput.readOnly = true; } else { fatorDemandaInput.readOnly = false; }
     };
 
     tipoCircuito.addEventListener('change', handleCircuitTypeChange);
     fases.addEventListener('change', atualizarLigacoes);
     tipoIsolacao.addEventListener('change', handleInsulationChange);
-    potenciaBTUSelect.addEventListener('change', handleBtuSelectChange);
-    potenciaCVSelect.addEventListener('change', handleCvSelectChange);
-    potenciaWInput.addEventListener('input', updateFeederPowerDisplay);
-    fatorDemandaInput.addEventListener('input', updateFeederPowerDisplay);
-    
+
     atualizarLigacoes();
     handleCircuitTypeChange();
     handleInsulationChange();
 }
 
 function getCircuitHTML(id){
-    return `<div class="circuit-block" id="circuit-${id}" data-id="${id}">
-        <div class="circuit-header">
-            <h2 id="circuit-title-${id}">Circuito ${id}</h2>
-            ${id > 1 ? `<button type="button" class="remove-btn" data-circuit-id="${id}">Remover</button>` : ''}
-        </div>
-        <div class="form-grid">
-            <div class="form-group">
-                <label for="nomeCircuito-${id}">Nome do Circuito</label>
-                <input type="text" id="nomeCircuito-${id}" value="Circuito ${id}">
-            </div>
-
-            <div class="full-width potencia-group">
-                <div class="form-group">
-                    <label for="tipoCircuito-${id}">Tipo de Circuito</label>
-                    <select id="tipoCircuito-${id}">
-                        <option value="iluminacao">Iluminação</option>
-                        <option value="tug" selected>Tomadas de Uso Geral (TUG)</option>
-                        <option value="tue">Tomadas de Uso Específico (TUE)</option>
-                        <option value="aquecimento">Aquecimento</option>
-                        <option value="motores">Circuito de Motores</option>
-                        <option value="ar_condicionado">Ar Condicionado</option>
-                    </select>
-                </div>
-                <div class="form-group hidden" id="potenciaBTU_group-${id}">
-                    <label for="potenciaBTU-${id}">Potência (BTU/h)</label>
-                    <select id="potenciaBTU-${id}"></select>
-                </div>
-                <div class="form-group hidden" id="potenciaCV_group-${id}">
-                    <label for="potenciaCV-${id}">Potência do Motor (CV)</label>
-                    <select id="potenciaCV-${id}"></select>
-                </div>
-                <div class="form-group">
-                    <label for="potenciaW-${id}">Potência (W)</label>
-                    <input type="number" id="potenciaW-${id}" value="2500">
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label for="fatorDemanda-${id}">Fator de Demanda (%)</label>
-                <input type="number" id="fatorDemanda-${id}" value="100" step="1">
-            </div>
-            <div class="form-group">
-                <label for="fases-${id}">Sistema de Fases</label>
-                <select id="fases-${id}">
-                    <option value="Monofasico" selected>Monofásico</option>
-                    <option value="Bifasico">Bifásico</option>
-                    <option value="Trifasico">Trifásico</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="tipoLigacao-${id}">Tipo de Ligação</label>
-                <select id="tipoLigacao-${id}"></select>
-            </div>
-            <div class="form-group">
-                <label for="tensaoV-${id}">Tensão (V)</label>
-                <select id="tensaoV-${id}">
-                    <option value="12">12 V</option><option value="24">24 V</option><option value="36">36 V</option><option value="127">127 V</option><option value="220" selected>220 V</option><option value="380">380 V</option><option value="440">440 V</option><option value="760">760 V</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="fatorPotencia-${id}">Fator de Potência (eficiência)</label>
-                <input type="number" id="fatorPotencia-${id}" step="0.01" value="0.92">
-            </div>
-            <div class="form-group">
-                <label for="comprimentoM-${id}">Comprimento (m)</label>
-                <input type="number" id="comprimentoM-${id}" value="20">
-            </div>
-            <div class="form-group">
-                <label for="tipoIsolacao-${id}">Tipo de Isolação</label>
-                <select id="tipoIsolacao-${id}">
-                    <option value="PVC" selected>PVC 70 C</option>
-                    <option value="EPR">EPR 90 C</option>
-                    <option value="XLPE">XLPE 90 C</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="materialCabo-${id}">Material do Condutor</label>
-                <select id="materialCabo-${id}">
-                    <option value="Cobre" selected>Cobre</option>
-                    <option value="Aluminio">Alumínio</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="metodoInstalacao-${id}">Método de Instalação</label>
-                <select id="metodoInstalacao-${id}">
-                    <option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="temperaturaAmbienteC-${id}">Temperatura Ambiente (°C)</label>
-                <select id="temperaturaAmbienteC-${id}"></select>
-            </div>
-            <div class="form-group">
-                <label for="resistividadeSolo-${id}">Resistividade T. do Solo (C.m/W)</label>
-                <select id="resistividadeSolo-${id}"></select>
-            </div>
-            <div class="form-group">
-                <label for="numCircuitosAgrupados-${id}">N° de Circuitos Agrupados</label>
-                <select id="numCircuitosAgrupados-${id}">
-                    <option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="limiteQuedaTensao-${id}">Limite Queda de Tensão (%)</label>
-                <input type="number" id="limiteQuedaTensao-${id}" step="0.1" value="4.0">
-            </div>
-            <div class="form-group">
-                <label for="tipoDisjuntor-${id}">Tipo de Disjuntor</label>
-                <select id="tipoDisjuntor-${id}">
-                    <option value="Minidisjuntor (DIN)">Minidisjuntor (DIN)</option>
-                    <option value="Caixa Moldada (MCCB)">Caixa Moldada (MCCB)</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="dpsClasse-${id}">Classe DPS</label>
-                <select id="dpsClasse-${id}">
-                    <option value="">Nenhum</option><option value="I">I</option><option value="II">II</option>
-                </select>
-            </div>
-            <div class="checkbox-group">
-                <input type="checkbox" id="requerDR-${id}">
-                <label for="requerDR-${id}">Requer Proteção DR</label>
-            </div>
-        </div>
-    </div>`;
+    return `<div class="circuit-block" id="circuit-${id}" data-id="${id}"><div class="circuit-header"><h2 id="circuit-title-${id}">Circuito ${id}</h2>${id>1?`<button type="button" class="remove-btn" data-circuit-id="${id}">Remover</button>`:''}</div><div class="form-grid"><div class="form-group"><label for="nomeCircuito-${id}">Nome do Circuito</label><input type="text" id="nomeCircuito-${id}" value="Circuito ${id}"></div><div class="form-group"><label for="tipoCircuito-${id}">Tipo de Circuito</label><select id="tipoCircuito-${id}"><option value="iluminacao">Iluminacao</option><option value="tug" selected>Tomadas de Uso Geral (TUG)</option><option value="tue">Tomadas de Uso Especifico (TUE)</option><option value="aquecimento">Aquecimento</option><option value="motores">Circuito de Motores</option><option value="ar_condicionado">Ar Condicionado</option></select></div><div class="form-group" id="potenciaW_group-${id}"><label for="potenciaW-${id}">Potencia (W)</label><input type="number" id="potenciaW-${id}" value="2500"></div><div class="form-group hidden" id="potenciaCV_group-${id}"><label for="potenciaCV-${id}">Potencia do Motor (CV)</label><select id="potenciaCV-${id}"><option value="0.25">1/4</option><option value="1">1</option></select></div><div class="form-group"><label for="fatorDemanda-${id}">Fator de Demanda (%)</label><input type="number" id="fatorDemanda-${id}" value="100" step="1"></div><div class="form-group"><label for="fases-${id}">Sistema de Fases</label><select id="fases-${id}"><option value="Monofasico" selected>Monofasico</option><option value="Bifasico">Bifasico</option><option value="Trifasico">Trifasico</option></select></div><div class="form-group"><label for="tipoLigacao-${id}">Tipo de Ligacao</label><select id="tipoLigacao-${id}"></select></div><div class="form-group"><label for="tensaoV-${id}">Tensao (V)</label><select id="tensaoV-${id}"><option value="127">127 V</option><option value="220" selected>220 V</option></select></div><div class="form-group"><label for="fatorPotencia-${id}">Fator de Potencia (eficiencia)</label><input type="number" id="fatorPotencia-${id}" step="0.01" value="0.92"></div><div class="form-group"><label for="comprimentoM-${id}">Comprimento (m)</label><input type="number" id="comprimentoM-${id}" value="20"></div><div class="form-group"><label for="tipoIsolacao-${id}">Tipo de Isolacao</label><select id="tipoIsolacao-${id}"><option value="PVC" selected>PVC 70 C</option><option value="EPR">EPR 90 C</option><option value="XLPE">XLPE 90 C</option><option value="HEPR">HEPR 90 C</option><option value="LSZH">LSZH 90 C</option></select></div><div class="form-group"><label for="materialCabo-${id}">Material do Condutor</label><select id="materialCabo-${id}"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Aluminio</option></select></div><div class="form-group"><label for="metodoInstalacao-${id}">Metodo de Instalacao</label><select id="metodoInstalacao-${id}"><option value="B1" selected>B1</option></select></div><div class="form-group"><label for="temperaturaAmbienteC-${id}">Temperatura Ambiente (C)</label><select id="temperaturaAmbienteC-${id}"></select></div><div class="form-group"><label for="resistividadeSolo-${id}">Resistividade T. do Solo (C.m/W)</label><select id="resistividadeSolo-${id}"><option value="0" selected>Nao Aplicavel</option></select></div><div class="form-group"><label for="numCircuitosAgrupados-${id}">N de Circuitos Agrupados</label><select id="numCircuitosAgrupados-${id}"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div><div class="form-group"><label for="limiteQuedaTensao-${id}">Limite Queda de Tensao (%)</label><input type="number" id="limiteQuedaTensao-${id}" step="0.1" value="4.0"></div><div class="form-group"><label for="tipoDisjuntor-${id}">Tipo de Disjuntor</label><select id="tipoDisjuntor-${id}"><option value="Minidisjuntor (DIN)">Minidisjuntor (DIN)</option><option value="Caixa Moldada (MCCB)">Caixa Moldada (MCCB)</option></select></div><div class="form-group"><label for="dpsClasse-${id}">Classe DPS</label><select id="dpsClasse-${id}"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select></div><div class="checkbox-group"><input type="checkbox" id="requerDR-${id}"><label for="requerDR-${id}">Requer Protecao DR</label></div></div></div>`;
 }
 
-// --- PREENCHIMENTO DE DADOS (CARREGAR PROJETO) ---
+// --- PREENCHIMENTO DE DADOS ---
 export function populateProjectList(projects) {
     const select = document.getElementById('savedProjectsSelect');
     select.innerHTML = '<option value="">-- Selecione uma obra --</option>';
@@ -448,79 +221,200 @@ export function populateFormWithProjectData(project) {
             addCircuit();
             const currentId = circuitCount;
             Object.keys(savedCircuitData).forEach(savedId => {
-                if (savedId === 'id' || savedId.endsWith('_value')) return; 
+                if (savedId === 'id') return;
                 const newId = savedId.replace(`-${savedCircuitData.id}`, `-${currentId}`);
                 const element = document.getElementById(newId);
                 if (element) {
-                    if (element.type === 'checkbox') { element.checked = savedCircuitData[savedId]; } 
-                    else { element.value = savedCircuitData[savedId]; }
+                    if (element.type === 'checkbox') { element.checked = savedCircuitData[savedId]; } else { element.value = savedCircuitData[savedId]; }
                 }
             });
-            const tipoCircuitoEl = document.getElementById(`tipoCircuito-${currentId}`);
-            if (savedCircuitData.tipoCircuito === 'ar_condicionado' && savedCircuitData.potenciaBTU_value) {
-                document.getElementById(`potenciaBTU-${currentId}`).value = savedCircuitData.potenciaBTU_value;
-            } else if (savedCircuitData.tipoCircuito === 'motores' && savedCircuitData.potenciaCV_value) {
-                document.getElementById(`potenciaCV-${currentId}`).value = savedCircuitData.potenciaCV_value;
-            }
             document.getElementById(`fases-${currentId}`).dispatchEvent(new Event('change'));
             document.getElementById(`tipoLigacao-${currentId}`).value = savedCircuitData[`tipoLigacao-${savedCircuitData.id}`];
-            tipoCircuitoEl.dispatchEvent(new Event('change'));
+            document.getElementById(`tipoCircuito-${currentId}`).dispatchEvent(new Event('change'));
             document.getElementById(`tipoIsolacao-${currentId}`).dispatchEvent(new Event('change'));
         });
     }
 }
 
-// --- PAINEL DE ADMINISTRAÇÃO E CLIENTES ---
+// --- PAINEL DE ADMINISTRAÇÃO ---
 export function populateUsersPanel(users) {
     const list = document.getElementById('adminUserList');
     list.innerHTML = '';
-    if (!users || users.length === 0) { list.innerHTML = '<li>Nenhum usuário encontrado.</li>'; return; }
+    if (!users || users.length === 0) {
+        list.innerHTML = '<li>Nenhum usuário encontrado.</li>';
+        return;
+    }
     users.forEach(user => {
         const li = document.createElement('li');
-        li.innerHTML = `<span><strong>${user.nome || 'Nome não preenchido'}</strong><br><small>${user.email}</small></span><div class="admin-user-actions">${!user.is_approved ? `<button class="approve-user-btn btn-success" data-user-id="${user.id}">Aprovar</button>` : ''}<button class="edit-user-btn btn-secondary" data-user-id="${user.id}">Editar</button><button class="remove-user-btn btn-danger" data-user-id="${user.id}">Remover</button></div>`;
+        li.innerHTML = `
+            <span>
+                <strong>${user.nome || 'Nome não preenchido'}</strong><br>
+                <small>${user.email}</small>
+            </span>
+            <div class="admin-user-actions">
+                ${!user.is_approved ? `<button class="approve-user-btn btn-success" data-user-id="${user.id}">Aprovar</button>` : ''}
+                <button class="edit-user-btn btn-secondary" data-user-id="${user.id}">Editar</button>
+                <button class="remove-user-btn btn-danger" data-user-id="${user.id}">Remover</button>
+            </div>
+        `;
         list.appendChild(li);
     });
 }
-export function populateEditUserModal(userData) { document.getElementById('editUserId').value = userData.id; document.getElementById('editNome').value = userData.nome || ''; document.getElementById('editEmail').value = userData.email || ''; document.getElementById('editCpf').value = userData.cpf || ''; document.getElementById('editTelefone').value = userData.telefone || ''; document.getElementById('editCrea').value = userData.crea || ''; openModal('editUserModalOverlay'); }
+export function populateEditUserModal(userData) {
+    document.getElementById('editUserId').value = userData.id;
+    document.getElementById('editNome').value = userData.nome || '';
+    document.getElementById('editEmail').value = userData.email || '';
+    document.getElementById('editCpf').value = userData.cpf || '';
+    document.getElementById('editTelefone').value = userData.telefone || '';
+    document.getElementById('editCrea').value = userData.crea || '';
+    openModal('editUserModalOverlay');
+}
+
 export function populateProjectsPanel(projects, clients, users, currentUserProfile) {
     const tableBody = document.getElementById('adminProjectsTableBody');
     const tableHead = document.querySelector('#adminProjectsTable thead tr');
+
     const isAdmin = currentUserProfile?.is_admin || false;
-    tableHead.innerHTML = `<th>Código</th><th>Obra</th><th>Dono (Login)</th><th>Cliente Vinculado</th><th>Ações</th>`;
+
+    // Atualiza o cabeçalho da tabela
+    tableHead.innerHTML = `
+        <th>Código</th>
+        <th>Obra</th>
+        <th>Dono (Login)</th>
+        <th>Cliente Vinculado</th>
+        <th>Ações</th>
+    `;
+
     tableBody.innerHTML = '';
     projects.forEach(project => {
         const row = document.createElement('tr');
         const ownerName = project.owner?.nome || project.owner?.email || 'Desconhecido';
+
+        // HTML para as ações (pode ser complexo, então construímos em partes)
         let actionsHtml = `<div class="action-cell">`;
-        const clientOptions = clients.map(c => `<option value="${c.id}" ${c.id === project.client_id ? 'selected' : ''}>${c.nome}</option>`).join('');
-        actionsHtml += `<div class="action-group"><label>Cliente:</label><select class="transfer-client-select" data-project-id="${project.id}"><option value="">-- Desvincular --</option>${clientOptions}</select><button class="transfer-client-btn btn-success" data-project-id="${project.id}">Salvar</button></div>`;
+
+        // Ação 1: Transferir Cliente (visível para todos)
+        const clientOptions = clients.map(c => 
+            `<option value="${c.id}" ${c.id === project.client_id ? 'selected' : ''}>${c.nome}</option>`
+        ).join('');
+        actionsHtml += `
+            <div class="action-group">
+                <label>Cliente:</label>
+                <select class="transfer-client-select" data-project-id="${project.id}">
+                    <option value="">-- Desvincular --</option>
+                    ${clientOptions}
+                </select>
+                <button class="transfer-client-btn btn-success" data-project-id="${project.id}">Salvar</button>
+            </div>
+        `;
+
+        // Ação 2: Transferir Dono (visível apenas para Admins)
         if (isAdmin) {
-            const ownerOptions = users.map(u => `<option value="${u.id}" ${u.id === project.owner_id ? 'selected' : ''}>${u.nome || u.email}</option>`).join('');
-            actionsHtml += `<div class="action-group"><label>Transferir Dono:</label><select class="transfer-owner-select" data-project-id="${project.id}">${ownerOptions}</select><button class="transfer-owner-btn btn-secondary" data-project-id="${project.id}">Transferir</button></div>`;
+            const ownerOptions = users.map(u => 
+                `<option value="${u.id}" ${u.id === project.owner_id ? 'selected' : ''}>${u.nome || u.email}</option>`
+            ).join('');
+            actionsHtml += `
+                <div class="action-group">
+                    <label>Transferir Dono:</label>
+                    <select class="transfer-owner-select" data-project-id="${project.id}">
+                        ${ownerOptions}
+                    </select>
+                    <button class="transfer-owner-btn btn-secondary" data-project-id="${project.id}">Transferir</button>
+                </div>
+            `;
         }
-        actionsHtml += `</div>`;
-        row.innerHTML = `<td>${project.project_code || 'S/C'}</td><td>${project.project_name}</td><td>${ownerName}</td><td>${project.client?.nome || 'Nenhum'}</td><td>${actionsHtml}</td>`;
+
+        actionsHtml += `</div>`; // Fecha action-cell
+        
+        row.innerHTML = `
+            <td>${project.project_code || 'S/C'}</td>
+            <td>${project.project_name}</td>
+            <td>${ownerName}</td>
+            <td>${project.client?.nome || 'Nenhum'}</td>
+            <td>${actionsHtml}</td>
+        `;
         tableBody.appendChild(row);
     });
 }
+
+// --- GERENCIAMENTO DE CLIENTES ---
 export function populateClientManagementModal(clients) {
     const list = document.getElementById('clientList');
     list.innerHTML = '';
-    if (clients.length === 0) { list.innerHTML = '<li>Nenhum cliente cadastrado.</li>'; return; }
+    if (clients.length === 0) {
+        list.innerHTML = '<li>Nenhum cliente cadastrado.</li>';
+        return;
+    }
     clients.forEach(client => {
         const hasProjects = client.projects && client.projects.length > 0;
         const li = document.createElement('li');
-        li.innerHTML = `<span><strong>${client.nome}</strong> (${client.client_code || 'S/C'})<br><small>${client.documento_valor || 'Sem documento'} - ${client.email || 'Sem email'}</small></span><div class="client-actions"><button class="edit-client-btn btn-secondary" data-client-id="${client.id}">Editar</button><button class="delete-client-btn btn-danger" data-client-id="${client.id}" ${hasProjects ? 'disabled title="Cliente possui obras vinculadas"' : ''}>Excluir</button></div>`;
+        li.innerHTML = `
+            <span>
+                <strong>${client.nome}</strong> (${client.client_code || 'S/C'})<br>
+                <small>${client.documento_valor || 'Sem documento'} - ${client.email || 'Sem email'}</small>
+            </span>
+            <div class="client-actions">
+                <button class="edit-client-btn btn-secondary" data-client-id="${client.id}">Editar</button>
+                <button class="delete-client-btn btn-danger" data-client-id="${client.id}" ${hasProjects ? 'disabled title="Cliente possui obras vinculadas"' : ''}>Excluir</button>
+            </div>
+        `;
         list.appendChild(li);
     });
 }
-export function resetClientForm() { const form = document.getElementById('clientForm'); form.reset(); document.getElementById('clientId').value = ''; document.getElementById('clientFormTitle').textContent = 'Cadastrar Novo Cliente'; document.getElementById('clientFormSubmitBtn').textContent = 'Salvar Cliente'; document.getElementById('clientFormCancelBtn').style.display = 'none'; }
-export function openEditClientForm(client) { document.getElementById('clientId').value = client.id; document.getElementById('clientNome').value = client.nome; document.getElementById('clientDocumentoTipo').value = client.documento_tipo; document.getElementById('clientDocumentoValor').value = client.documento_valor; document.getElementById('clientEmail').value = client.email; document.getElementById('clientCelular').value = client.celular; document.getElementById('clientTelefone').value = client.telefone; document.getElementById('clientEndereco').value = client.endereco; document.getElementById('clientFormTitle').textContent = 'Editar Cliente'; document.getElementById('clientFormSubmitBtn').textContent = 'Atualizar Cliente'; document.getElementById('clientFormCancelBtn').style.display = 'inline-block'; }
-export function populateSelectClientModal(clients, isChange = false) { const select = document.getElementById('clientSelectForNewProject'); select.innerHTML = '<option value="">-- Selecione um cliente --</option>'; clients.forEach(client => { const option = document.createElement('option'); option.value = client.id; option.textContent = `${client.nome} (${client.client_code})`; option.dataset.client = JSON.stringify(client); select.appendChild(option); }); const title = document.querySelector('#selectClientModalOverlay h3'); const confirmBtn = document.getElementById('confirmClientSelectionBtn'); if (isChange) { title.textContent = 'Vincular / Alterar Cliente da Obra'; confirmBtn.textContent = 'Confirmar Alteração'; } else { title.textContent = 'Vincular Cliente à Nova Obra'; confirmBtn.textContent = 'Vincular e Continuar'; } openModal('selectClientModalOverlay'); }
+
+export function resetClientForm() {
+    const form = document.getElementById('clientForm');
+    form.reset();
+    document.getElementById('clientId').value = '';
+    document.getElementById('clientFormTitle').textContent = 'Cadastrar Novo Cliente';
+    document.getElementById('clientFormSubmitBtn').textContent = 'Salvar Cliente';
+    document.getElementById('clientFormCancelBtn').style.display = 'none';
+}
+
+export function openEditClientForm(client) {
+    document.getElementById('clientId').value = client.id;
+    document.getElementById('clientNome').value = client.nome;
+    document.getElementById('clientDocumentoTipo').value = client.documento_tipo;
+    document.getElementById('clientDocumentoValor').value = client.documento_valor;
+    document.getElementById('clientEmail').value = client.email;
+    document.getElementById('clientCelular').value = client.celular;
+    document.getElementById('clientTelefone').value = client.telefone;
+    document.getElementById('clientEndereco').value = client.endereco;
+    document.getElementById('clientFormTitle').textContent = 'Editar Cliente';
+    document.getElementById('clientFormSubmitBtn').textContent = 'Atualizar Cliente';
+    document.getElementById('clientFormCancelBtn').style.display = 'inline-block';
+}
+
+export function populateSelectClientModal(clients, isChange = false) {
+    const select = document.getElementById('clientSelectForNewProject');
+    select.innerHTML = '<option value="">-- Selecione um cliente --</option>';
+    clients.forEach(client => {
+        const option = document.createElement('option');
+        option.value = client.id;
+        option.textContent = `${client.nome} (${client.client_code})`;
+        option.dataset.client = JSON.stringify(client);
+        select.appendChild(option);
+    });
+
+    const title = document.querySelector('#selectClientModalOverlay h3');
+    const confirmBtn = document.getElementById('confirmClientSelectionBtn');
+    if (isChange) {
+        title.textContent = 'Vincular / Alterar Cliente da Obra';
+        confirmBtn.textContent = 'Confirmar Alteração';
+    } else {
+        title.textContent = 'Vincular Cliente à Nova Obra';
+        confirmBtn.textContent = 'Vincular e Continuar';
+    }
+
+    openModal('selectClientModalOverlay');
+}
 
 // --- RELATÓRIOS E PDF ---
-function getDpsText(dpsInfo) { if (!dpsInfo) return 'Nao'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
-
+// Funções renderReport e generatePdf permanecem inalteradas...
+function getDpsText(dpsInfo) {
+    if (!dpsInfo) return 'Nao';
+    return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`;
+}
 export function renderReport(calculationResults){
     if(!calculationResults) return;
     const { feederResult, circuitResults } = calculationResults;
@@ -554,55 +448,47 @@ export function renderReport(calculationResults){
     }
 
     reportText += `\n-- QUADRO DE CARGAS RESUMIDO --\n`;
-    reportText += `- Alimentador Geral\n`;
+    reportText += `${formatLine(`Alimentador Geral`, `Carga Total: ${feederResult.calculos.potenciaDemandada.toFixed(2)} W`)}\n`;
     circuitResults.forEach(result => {
-        const { id, nomeCircuito, tensaoV, fases, tipoLigacao } = result.dados;
-        reportText += `${formatLine(`- Ckt ${id}: ${nomeCircuito}`, `(${tensaoV}V, ${fases} - ${tipoLigacao})`)}\n`;
+        reportText += `${formatLine(`Circuito ${result.dados.id}`, `${result.dados.nomeCircuito} - ${result.calculos.potenciaDemandada.toFixed(2)} W`)}\n`;
     });
 
     const allCalculations = [feederResult, ...circuitResults];
     allCalculations.forEach(result => {
         const { dados, calculos } = result;
         const title = dados.id === 'Geral' ? 'ALIMENTADOR GERAL' : `CIRCUITO ${dados.id}`;
-        
-        const potenciaDemandadaVA = dados.fatorPotencia > 0 ? (calculos.potenciaDemandada / dados.fatorPotencia) : 0;
-        const correnteCorrigidaTexto = isFinite(calculos.correnteCorrigidaA) ? `${calculos.correnteCorrigidaA.toFixed(2)} A` : "Incalculável";
+        const correnteCorrigidaTexto = isFinite(calculos.correnteCorrigidaA) ? `${calculos.correnteCorrigidaA.toFixed(2)} A` : "Incalculável (Fator de Correção Zero)";
         
         reportText += `\n\n======================================================\n==           MEMORIAL DE CALCULO - ${title.padEnd(16, ' ')} ==\n======================================================\n`;
-        reportText += `\n-- PARÂMETROS DE ENTRADA --\n`;
-        if (dados.id !== 'Geral') { reportText += `${formatLine('Nome do Circuito', dados.nomeCircuito)}\n`; reportText += `${formatLine('Tipo de Circuito', dados.tipoCircuito)}\n`; }
+        reportText += `\n-- IDENTIFICACAO DO CIRCUITO --\n`;
+        reportText += `${formatLine('Nome do Circuito', dados.nomeCircuito)}\n`;
+        reportText += `\n-- CARGA E DEMANDA --\n`;
         reportText += `${formatLine('Potencia Instalada', `${calculos.potenciaInstalada.toFixed(2)} W`)}\n`;
+        reportText += `${formatLine('Corrente Instalada', `${calculos.correnteInstalada.toFixed(2)} A`)}\n`;
         reportText += `${formatLine('Fator de Demanda Aplicado (%)', `${dados.fatorDemanda}%`)}\n`;
-        reportText += `${formatLine('Potencia Demandada', `${potenciaDemandadaVA.toFixed(2)} VA`)}\n`;
-        reportText += `${formatLine('Fator de Potência', dados.fatorPotencia)}\n`;
+        reportText += `${formatLine('Potencia Demandada', `${calculos.potenciaDemandada.toFixed(2)} W`)}\n`;
+        reportText += `${formatLine('Corrente Demandada (Ib)', `${calculos.correnteDemandada.toFixed(2)} A`)}\n`;
+        
+        reportText += `\n-- ESPECIFICACOES DO CABO E CORRECOES --\n`;
         reportText += `${formatLine('Sistema de Fases', dados.fases)}\n`;
         reportText += `${formatLine('Tipo de Ligação', dados.tipoLigacao)}\n`;
         reportText += `${formatLine('Tensão (V)', `${dados.tensaoV} V`)}\n`;
-        reportText += `${formatLine('Comprimento (m)', `${dados.comprimentoM} m`)}\n`;
-        reportText += `${formatLine('Limite Queda de Tensão (%)', `${dados.limiteQuedaTensao} %`)}\n`;
-
-        reportText += `\n-- ESPECIFICACOES DE INSTALAÇÃO E CORREÇÕES --\n`;
         reportText += `${formatLine('Material / Isolacao', `${dados.materialCabo} / ${dados.tipoIsolacao}`)}\n`;
         reportText += `${formatLine('Metodo de Instalacao', dados.metodoInstalacao)}\n`;
+        reportText += `${formatLine('Comprimento (m)', `${dados.comprimentoM} m`)}\n`;
         reportText += `${formatLine('Temperatura Ambiente', `${dados.temperaturaAmbienteC}°C`)}\n`;
         if (dados.id !== 'Geral') {
              reportText += `${formatLine('Circuitos Agrupados', dados.numCircuitosAgrupados)}\n`;
-             if (dados.resistividadeSolo && dados.resistividadeSolo > 0) { reportText += formatLine('Resist. do Solo (C.m/W)', dados.resistividadeSolo) + '\n'; }
-        } else {
-             if (dados.resistividadeSolo && dados.resistividadeSolo > 0) { reportText += formatLine('Resist. do Solo (C.m/W)', dados.resistividadeSolo) + '\n'; }
         }
-        if(calculos.fatorK1) {
+        if(dados.id !== 'Geral' && calculos.fatorK1) {
            reportText += `${formatLine('Fatores de Correcao', `K1=${calculos.fatorK1.toFixed(2)}, K2=${calculos.fatorK2.toFixed(2)}, K3=${calculos.fatorK3.toFixed(2)}`)}\n`;
         }
-        
-        reportText += `\n-- RESULTADOS DE CÁLCULO E DIMENSIONAMENTO --\n`;
-        reportText += `${formatLine('Corrente de Projeto', `${calculos.correnteInstalada.toFixed(2)} A`)}\n`;
-        reportText += `${formatLine('Corrente Demandada (Ib)', `${calculos.correnteDemandada.toFixed(2)} A`)}\n`;
-        reportText += `${formatLine('Corrente Corrigida (I\')', correnteCorrigidaTexto)}\n`;
-        reportText += `${formatLine('Bitola Recomendada', `${calculos.bitolaRecomendadaMm2} mm²`)}\n`;
-        reportText += `${formatLine('Queda de Tensao (DV)', `${calculos.quedaTensaoCalculada.toFixed(2)} % (Limite: ${dados.limiteQuedaTensao} %)`)}\n`;
-        reportText += `${formatLine('Corrente Max. Cabo (Iz)', `${calculos.correnteMaximaCabo.toFixed(2)} A`)}\n`;
+        reportText += `${formatLine('Corrente p/ Dimensionar', correnteCorrigidaTexto)}\n`;
 
+        reportText += `\n-- RESULTADOS DE DIMENSIONAMENTO --\n`;
+        reportText += `${formatLine('Bitola Recomendada', `${calculos.bitolaRecomendadaMm2} mm²`)}\n`;
+        reportText += `${formatLine('Queda de Tensao (DV)', `${calculos.quedaTensaoCalculada.toFixed(2)} %`)}\n`;
+        reportText += `${formatLine('Corrente Max. Cabo (Iz)', `${calculos.correnteMaximaCabo.toFixed(2)} A`)}\n`;
         reportText += `\n-- PROTECOES RECOMENDADAS --\n`;
         reportText += `${formatLine(`Disjuntor (${dados.tipoDisjuntor})`, `${calculos.disjuntorRecomendado.nome} (Icc: ${calculos.disjuntorRecomendado.icc} kA)`)}\n`;
         reportText += `${formatLine('Protecao DR 30mA', dados.requerDR ? `Sim (usar ${calculos.disjuntorRecomendado.nome.replace('A','')}A / 30mA)` : 'Nao')}\n`;
@@ -611,10 +497,10 @@ export function renderReport(calculationResults){
     });
     document.getElementById('report').textContent = reportText.trim();
 }
-
 export function generatePdf(calculationResults, currentUserProfile) {
     if (!calculationResults) return;
     const { feederResult, circuitResults } = calculationResults;
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'mm', 'a4');
     let yPos = 20;
@@ -666,19 +552,35 @@ export function generatePdf(calculationResults, currentUserProfile) {
     addSection("RESUMO DA ALIMENTAÇÃO GERAL");
     const feederBreakerType = feederResult.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
     const feederBreakerText = `${feederBreakerType} ${feederResult.calculos.disjuntorRecomendado.nome}`;
-    const feederHead = [['Tensão/Fases', 'Disjuntor Geral', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
-    const feederBody = [[ `${feederResult.dados.tensaoV}V - ${feederResult.dados.fases}`, feederBreakerText, feederResult.dados.requerDR ? 'Sim' : 'Nao', getDpsText(feederResult.dados.dpsInfo), `${feederResult.calculos.bitolaRecomendadaMm2} mm² (${feederResult.dados.tipoIsolacao})`, feederResult.calculos.dutoRecomendado ]];
+    const feederHead = [['Carga Total', 'Tensão/Fases', 'Disjuntor Geral', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
+    const feederBody = [[
+        `${feederResult.calculos.potenciaDemandada.toFixed(2)} W`,
+        `${feederResult.dados.tensaoV}V - ${feederResult.dados.fases}`,
+        feederBreakerText,
+        feederResult.dados.requerDR ? 'Sim' : 'Nao',
+        getDpsText(feederResult.dados.dpsInfo),
+        `${feederResult.calculos.bitolaRecomendadaMm2} mm² (${feederResult.dados.tipoIsolacao})`,
+        feederResult.calculos.dutoRecomendado
+    ]];
     doc.autoTable({ startY: yPos, head: feederHead, body: feederBody, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
     yPos = doc.lastAutoTable.finalY + 10;
 
     if (circuitResults.length > 0) {
         addSection("RESUMO DOS CIRCUITOS");
-        const head = [['Ckt', 'Nome', 'Tensão/Fases', 'Disjuntor', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
+        const head = [['Ckt', 'Nome', 'Pot. (W)', 'Disjuntor', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
         const body = circuitResults.map(r => {
             const circuitBreakerType = r.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
             const circuitBreakerText = `${circuitBreakerType} ${r.calculos.disjuntorRecomendado.nome}`;
-            const tensaoFasesText = `${r.dados.tensaoV}V / ${r.dados.fases} / ${r.dados.tipoLigacao}`;
-            return [ r.dados.id, r.dados.nomeCircuito, tensaoFasesText, circuitBreakerText, r.dados.requerDR ? 'Sim' : 'Nao', getDpsText(r.dados.dpsInfo), `${r.calculos.bitolaRecomendadaMm2} mm² (${r.dados.tipoIsolacao})`, r.calculos.dutoRecomendado ];
+            return [
+                r.dados.id,
+                r.dados.nomeCircuito,
+                r.calculos.potenciaDemandada.toFixed(2),
+                circuitBreakerText,
+                r.dados.requerDR ? 'Sim' : 'Nao',
+                getDpsText(r.dados.dpsInfo),
+                `${r.calculos.bitolaRecomendadaMm2} mm² (${r.dados.tipoIsolacao})`,
+                r.calculos.dutoRecomendado
+            ];
         });
         doc.autoTable({ startY: yPos, head: head, body: body, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
     }
@@ -688,7 +590,6 @@ export function generatePdf(calculationResults, currentUserProfile) {
         doc.addPage();
         yPos = 20;
         const { dados, calculos } = result;
-        const potenciaDemandadaVA = dados.fatorPotencia > 0 ? (calculos.potenciaDemandada / dados.fatorPotencia) : 0;
         const correnteCorrigidaTexto = isFinite(calculos.correnteCorrigidaA) ? `${calculos.correnteCorrigidaA.toFixed(2)} A` : "Incalculável";
 
         const title = dados.id === 'Geral' 
@@ -696,43 +597,26 @@ export function generatePdf(calculationResults, currentUserProfile) {
             : `MEMORIAL DE CÁLCULO - CIRCUITO ${dados.id}: ${dados.nomeCircuito}`;
 
         addTitle(title);
-        
-        addSection("-- PARÂMETROS DE ENTRADA --");
-        if (dados.id !== 'Geral') { addLineItem("Tipo de Circuito:", dados.tipoCircuito); }
+        addSection("-- CARGA E DEMANDA --");
         addLineItem("Potência Instalada:", `${calculos.potenciaInstalada.toFixed(2)} W`);
-        addLineItem("Fator de Demanda:", `${dados.fatorDemanda}%`);
-        addLineItem("Potência Demandada:", `${potenciaDemandadaVA.toFixed(2)} VA`);
-        addLineItem("Fator de Potência:", dados.fatorPotencia);
+        addLineItem("Fator de Demanda (%):", `${dados.fatorDemanda}%`);
+        addLineItem("Potência Demandada:", `${calculos.potenciaDemandada.toFixed(2)} W`);
+        addLineItem("Corrente Demandada:", `${calculos.correnteDemandada.toFixed(2)} A`);
+        addLineItem("Corrente Corrigida (I'):", correnteCorrigidaTexto);
+        addLineItem("Queda de Tensão:", `${calculos.quedaTensaoCalculada.toFixed(2)}% (Limite: ${dados.limiteQuedaTensao}%)`);
+        yPos += 5;
+
+        addSection("-- DIMENSIONAMENTO DE INFRA --");
         addLineItem("Sistema de Fases:", dados.fases);
         addLineItem("Tipo de Ligação:", dados.tipoLigacao);
         addLineItem("Tensão (V):", `${dados.tensaoV} V`);
-        addLineItem("Comprimento:", `${dados.comprimentoM} m`);
-        addLineItem("Limite Queda de Tensão:", `${dados.limiteQuedaTensao}%`);
-        yPos += 5;
-
-        addSection("-- ESPECIFICAÇÕES DE INSTALAÇÃO E CORREÇÕES --");
         addLineItem("Material / Isolação:", `${dados.materialCabo} / ${dados.tipoIsolacao}`);
         addLineItem("Método de Instalação:", dados.metodoInstalacao);
+        addLineItem("Distância:", `${dados.comprimentoM} m`);
         addLineItem("Temperatura Ambiente:", `${dados.temperaturaAmbienteC}°C`);
         if (dados.id !== 'Geral') {
             addLineItem("Circuitos Agrupados:", dados.numCircuitosAgrupados);
-            if (dados.resistividadeSolo && dados.resistividadeSolo > 0) {
-                addLineItem("Resist. do Solo (C.m/W):", dados.resistividadeSolo);
-            }
-        } else {
-             if (dados.resistividadeSolo && dados.resistividadeSolo > 0) {
-                addLineItem("Resist. do Solo (C.m/W):", dados.resistividadeSolo);
-            }
         }
-        yPos += 5;
-        
-        addSection("-- RESULTADOS DE CÁLCULO E DIMENSIONAMENTO --");
-        addLineItem("Corrente de Projeto:", `${calculos.correnteInstalada.toFixed(2)} A`);
-        addLineItem("Corrente Demandada (Ib):", `${calculos.correnteDemandada.toFixed(2)} A`);
-        addLineItem("Corrente Corrigida (I'):", correnteCorrigidaTexto);
-        addLineItem("Bitola Recomendada:", `${calculos.bitolaRecomendadaMm2} mm²`);
-        addLineItem("Queda de Tensão (DV):", `${calculos.quedaTensaoCalculada.toFixed(2)}%`);
-        addLineItem("Corrente Máx. Cabo (Iz):", `${calculos.correnteMaximaCabo.toFixed(2)} A`);
         yPos += 5;
 
         addSection("-- PROTEÇÕES RECOMENDADAS --");
