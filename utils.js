@@ -1,8 +1,6 @@
 // Arquivo: utils.js
 
 export const ligacoes = { Monofasico: [{value:'FN', text:'Fase-Neutro (FN)'}, {value:'FF', text:'Fase-Fase (FF)'}], Bifasico: [{value:'FF', text:'Fase-Fase (FF)'}, {value:'FFN', text:'Fase-Fase-Neutro (FFN)'}], Trifasico: [{value:'FFF', text:'Fase-Fase-Fase (FFF)'}, {value:'FFFN', text:'Fase-Fase-Fase-Neutro (FFFN)'}] };
-export const BTU_TO_WATTS_FACTOR = 0.293071;
-export const CV_TO_WATTS_FACTOR = 735.5;
 
 // --- FUNÇÕES DE MÁSCARA ---
 export function mascaraCPF(event){event.target.value=event.target.value.replace(/\D/g,"").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2")}
@@ -88,8 +86,6 @@ function _calcularAlimentadorGeral(technicalData, potenciaTotal, maxCircuitBreak
         materialCabo: document.getElementById('feederMaterialCabo').value,
         metodoInstalacao: document.getElementById('feederMetodoInstalacao').value,
         temperaturaAmbienteC: parseInt(document.getElementById('feederTemperaturaAmbienteC').value),
-        resistividadeSolo: parseFloat(document.getElementById('feederResistividadeSolo').value),
-        numCircuitosAgrupados: 1, // Removido do formulário, fixado em 1
         limiteQuedaTensao: parseFloat(document.getElementById('feederLimiteQuedaTensao').value),
         tipoDisjuntor: document.getElementById('feederTipoDisjuntor').value,
         requerDR: document.getElementById('feederRequerDR').checked,
@@ -121,6 +117,7 @@ function _calcularCircuitosIndividuais(technicalData, clientProfile = null){
             nomeCircuito:document.getElementById(`nomeCircuito-${id}`).value,
             tipoCircuito:document.getElementById(`tipoCircuito-${id}`).value,
             potenciaW:parseFloat(document.getElementById(`potenciaW-${id}`).value) || 0,
+            potenciaCV:parseFloat(document.getElementById(`potenciaCV-${id}`).value) || 0,
             fatorDemanda: parseFloat(document.getElementById(`fatorDemanda-${id}`).value) || 100,
             fases:document.getElementById(`fases-${id}`).value,
             tipoLigacao:document.getElementById(`tipoLigacao-${id}`).value,
@@ -140,6 +137,7 @@ function _calcularCircuitosIndividuais(technicalData, clientProfile = null){
         };
         
         dados.dpsInfo = findDps(technicalData.dps, dados.dpsClasse);
+        if (dados.tipoCircuito === 'motores') dados.potenciaW = dados.potenciaCV * 735.5;
         
         const potenciaInstalada = dados.potenciaW;
         const potenciaDemandada = potenciaInstalada * (dados.fatorDemanda / 100.0);
@@ -169,11 +167,10 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
     const correnteInstalada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * dados.fatorPotencia)) : 0;
     const correnteDemandada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * dados.fatorPotencia)) : 0;
     
-    const tempTable = (dados.tipoIsolacao === 'PVC') ? technicalData.fatores_k1 : technicalData.fatores_k1_epr;
-    const fatorK1_obj = tempTable?.find(f => f.temperatura_c === dados.temperaturaAmbienteC);
+    const fatorK1_obj = technicalData.fatores_k1?.find(f => f.temperatura_c === dados.temperaturaAmbienteC);
     const fatorK1 = fatorK1_obj ? fatorK1_obj.fator : 1.0;
     
-    const fatorK2 = (dados.resistividadeSolo > 0 && technicalData.fatores_k2) ? (technicalData.fatores_k2.find(f => f.resistividade == dados.resistividadeSolo)?.fator || 1.0) : 1.0;
+    const fatorK2 = (dados.resistividadeSolo > 0 && technicalData.fatores_k2) ? (technicalData.fatores_k2.find(f => f.resistividade === dados.resistividadeSolo)?.fator || 1.0) : 1.0;
     
     let fatorK3 = 1.0;
     if (dados.numCircuitosAgrupados > 1 && technicalData.fatores_k3) {
@@ -206,7 +203,7 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
         
         for (const cabo of tabelaCaboSelecionada) {
             const capacidadeConducao = cabo[`capacidade_${dados.metodoInstalacao.toLowerCase()}`] || 0;
-            const Iz = capacidadeConducao * fatorDeCorrecaoTotal;
+            const Iz = capacidadeConducao * fatorK1 * fatorK2 * fatorK3;
             
             if (Iz >= disjuntorCandidato.corrente_a) {
                 const resistividade = (dados.materialCabo === 'Cobre') ? 0.0172 : 0.0282;
