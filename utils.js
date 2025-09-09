@@ -1,238 +1,73 @@
-// Arquivo: utils.js
-
+// CONSTANTES E TABELAS DE DADOS
 export const ligacoes = { Monofasico: [{value:'FN', text:'Fase-Neutro (FN)'}, {value:'FF', text:'Fase-Fase (FF)'}], Bifasico: [{value:'FF', text:'Fase-Fase (FF)'}, {value:'FFN', text:'Fase-Fase-Neutro (FFN)'}], Trifasico: [{value:'FFF', text:'Fase-Fase-Fase (FFF)'}, {value:'FFFN', text:'Fase-Fase-Fase-Neutro (FFFN)'}] };
+const tabelasDeCabos = { Cobre: { PVC: [ { secao: 1.5, capacidade: { A1: 13.5, A2: 13, B1: 15.5, B2: 15, C: 17.5, D: 18 } }, { secao: 2.5, capacidade: { A1: 18, A2: 17.5, B1: 21, B2: 20, C: 24, D: 24 } }, { secao: 4, capacidade: { A1: 24, A2: 23, B1: 28, B2: 27, C: 32, D: 31 } }, { secao: 6, capacidade: { A1: 31, A2: 29, B1: 36, B2: 24, C: 41, D: 39 } }, { secao: 10, capacidade: { A1: 45, A2: 39, B1: 50, B2: 46, C: 57, D: 52 } }, { secao: 16, capacidade: { A1: 56, A2: 52, B1: 68, B2: 62, C: 76, D: 67 } }, { secao: 25, capacidade: { A1: 73, A2: 68, B1: 89, B2: 80, C: 96, D: 86 } }, { secao: 35, capacidade: { A1: 89, A2: 83, B1: 110, B2: 99, C: 119, D: 103 } }, { secao: 50, capacidade: { A1: 108, A2: 99, B1: 134, B2: 118, C: 144, D: 122 } }, { secao: 70, capacidade: { A1: 136, A2: 125, B1: 171, B2: 149, C: 184, D: 151 } }, { secao: 95, capacidade: { A1: 164, A2: 150, B1: 207, B2: 179, C: 223, D: 179 } }, { secao: 120, capacidade: { A1: 188, A2: 172, B1: 239, B2: 206, C: 259, D: 203 } }, { secao: 150, capacidade: { A1: 216, A2: 196, B1: 275, B2: 236, C: 299, D: 230 } }, { secao: 185, capacidade: { A1: 245, A2: 223, B1: 314, B2: 268, C: 341, D: 258 } }, { secao: 240, capacidade: { A1: 286, A2: 261, B1: 370, B2: 313, C: 403, D: 297 } }, { secao: 300, capacidade: { A1: 328, A2: 298, B1: 426, B2: 358, C: 464, D: 336 } }, { secao: 400, capacidade: { A1: 390, A2: 355, B1: 510, B2: 425, C: 557, D: 394 } }, { secao: 500, capacidade: { A1: 447, A2: 406, B1: 587, B2: 486, C: 642, D: 445 } }, { secao: 630, capacidade: { A1: 514, A2: 467, B1: 678, B2: 559, C: 743, D: 506 } }, { secao: 800, capacidade: { A1: 593, A2: 540, B1: 788, B2: 645, C: 865, D: 652 } } ], EPR: [ { secao: 1.5, capacidade: { A1: 17, A2: 16.5, B1: 22, B2: 19.5, C: 22, D: 24 } }, { secao: 2.5, capacidade: { A1: 23, A2: 22, B1: 28, B2: 26, C: 30, D: 29 } }, { secao: 4, capacidade: { A1: 31, A2: 30, B1: 37, B2: 35, C: 40, D: 37 } }, { secao: 6, capacidade: { A1: 40, A2: 38, B1: 48, B2: 44, C: 52, D: 46 } }, { secao: 10, capacidade: { A1: 54, A2: 51, B1: 66, B2: 60, C: 71, D: 61 } }, { secao: 16, capacidade: { A1: 73, A2: 68, B1: 88, B2: 80, C: 96, D: 79 } }, { secao: 25, capacidade: { A1: 95, A2: 89, B1: 117, B2: 105, C: 119, D: 101 } }, { secao: 35, capacidade: { A1: 117, A2: 109, B1: 144, B2: 128, C: 147, D: 122 } }, { secao: 50, capacidade: { A1: 141, A2: 130, B1: 175, B2: 154, C: 179, D: 144 } }, { secao: 70, capacidade: { A1: 179, A2: 164, B1: 222, B2: 194, C: 229, D: 178 } }, { secao: 95, capacidade: { A1: 216, A2: 197, B1: 269, B2: 233, C: 278, D: 211 } }, { secao: 120, capacidade: { A1: 249, A2: 227, B1: 312, B2: 268, C: 322, D: 240 } }, { secao: 150, capacidade: { A1: 285, A2: 259, B1: 358, B2: 307, C: 371, D: 271 } }, { secao: 185, capacidade: { A1: 324, A2: 295, B1: 408, B2: 348, C: 424, D: 304 } }, { secao: 240, capacidade: { A1: 380, A2: 346, B1: 481, B2: 407, C: 500, D: 351 } }, { secao: 300, capacidade: { A1: 435, A2: 396, B1: 553, B2: 465, C: 576, D: 396 } }, { secao: 400, capacidade: { A1: 519, A2: 472, B1: 661, B2: 552, C: 692, D: 464 } }, { secao: 500, capacidade: { A1: 595, A2: 541, B1: 760, B2: 631, C: 797, D: 525 } }, { secao: 630, capacidade: { A1: 685, A2: 623, B1: 879, B2: 725, C: 923, D: 596 } }, { secao: 800, capacidade: { A1: 792, A2: 721, B1: 1020, B2: 837, C: 1074, D: 677 } } ] }, Aluminio: { PVC: [ { secao: 10, capacidade: { A1: 31, A2: 29, B1: 39, B2: 38, C: 41, D: 46 } }, { secao: 16, capacidade: { A1: 41, A2: 39, B1: 52, B2: 51, C: 55, D: 60 } }, { secao: 25, capacidade: { A1: 55, A2: 51, B1: 68, B2: 66, C: 73, D: 77 } }, { secao: 35, capacidade: { A1: 68, A2: 63, B1: 85, B2: 83, C: 91, D: 93 } }, { secao: 50, capacidade: { A1: 81, A2: 76, B1: 104, B2: 100, C: 110, D: 111 } }, { secao: 70, capacidade: { A1: 105, A2: 98, B1: 134, B2: 128, C: 141, D: 138 } }, { secao: 95, capacidade: { A1: 128, A2: 119, B1: 162, B2: 155, C: 171, D: 163 } }, { secao: 120, capacidade: { A1: 147, A2: 137, B1: 186, B2: 178, C: 197, D: 183 } }, { secao: 150, capacidade: { A1: 168, A2: 156, B1: 213, B2: 203, C: 226, D: 206 } }, { secao: 185, capacidade: { A1: 192, A2: 179, B1: 243, B2: 231, C: 258, D: 232 } }, { secao: 240, capacidade: { A1: 228, A2: 213, B1: 289, B2: 275, C: 306, D: 270 } }, { secao: 300, capacidade: { A1: 262, A2: 244, B1: 332, B2: 316, C: 353, D: 305 } }, { secao: 400, capacidade: { A1: 312, A2: 291, B1: 397, B2: 378, C: 423, D: 358 } }, { secao: 500, capacidade: { A1: 361, A2: 336, B1: 460, B2: 439, C: 491, D: 405 } }, { secao: 630, capacidade: { A1: 423, A2: 395, B1: 542, B2: 518, C: 579, D: 465 } }, { secao: 800, capacidade: { A1: 500, A2: 468, B1: 643, B2: 616, C: 687, D: 536 } } ], EPR: [ { secao: 10, capacidade: { A1: 40, A2: 37, B1: 50, B2: 49, C: 53, D: 59 } }, { secao: 16, capacidade: { A1: 53, A2: 50, B1: 67, B2: 65, C: 71, D: 77 } }, { secao: 25, capacidade: { A1: 70, A2: 66, B1: 88, B2: 85, C: 94, D: 99 } }, { secao: 35, capacidade: { A1: 87, A2: 81, B1: 109, B2: 106, C: 117, D: 120 } }, { secao: 50, capacidade: { A1: 105, A2: 98, B1: 134, B2: 129, C: 142, D: 142 } }, { secao: 70, capacidade: { A1: 135, A2: 126, B1: 172, B2: 165, C: 182, D: 177 } }, { secao: 95, capacidade: { A1: 165, A2: 153, B1: 208, B2: 200, C: 220, D: 210 } }, { secao: 120, capacity: { A1: 189, A2: 176, B1: 239, B2: 229, C: 253, D: 236 } }, { secao: 150, capacidade: { A1: 216, A2: 201, B1: 274, B2: 261, C: 290, D: 265 } }, { secao: 185, capacidade: { A1: 247, A2: 230, B1: 312, B2: 297, C: 331, D: 298 } }, { secao: 240, capacidade: { A1: 293, A2: 274, B1: 372, B2: 354, C: 394, D: 347 } }, { secao: 300, capacidade: { A1: 336, A2: 314, B1: 426, B2: 406, C: 453, D: 393 } }, { secao: 400, capacidade: { A1: 401, A2: 375, B1: 511, B2: 486, C: 544, D: 461 } }, { secao: 500, capacidade: { A1: 464, A2: 434, B1: 591, B2: 564, C: 631, D: 521 } }, { secao: 630, capacidade: { A1: 544, A2: 509, B1: 697, B2: 666, C: 745, D: 600 } }, { secao: 800, capacidade: { A1: 643, A2: 603, B1: 827, B2: 792, C: 885, D: 691 } } ] } };
+const tabelaK1_temp = { 10: 1.08, 15: 1.04, 20: 1.00, 25: 0.96, 30: 0.91, 35: 0.87, 40: 0.82, 45: 0.76, 50: 0.71 };
+const tabelaK2_solo = { 0.7: 1.29, 0.8: 1.23, 1.0: 1.18, 1.5: 1.05, 2.0: 0.96, 2.5: 0.89, 3.0: 0.83 };
+const tabelaK3_agrupamento = { 1: [1.00, 1.00, 1.00, 1.00, 1.00, 1.00], 2: [0.80, 0.85, 0.88, 0.94, 0.82, 0.79], 3: [0.70, 0.76, 0.80, 0.88, 0.73, 0.69], 4: [0.65, 0.70, 0.75, 0.84, 0.67, 0.63], 5: [0.60, 0.66, 0.70, 0.80, 0.63, 0.58], 6: [0.57, 0.62, 0.67, 0.77, 0.59, 0.54] };
+const metodoParaColunaK3 = { "A1": 2, "A2": 2, "B1": 2, "B2": 2, "C": 0, "D": 0 };
+const tabelaDutos = { 2: { 1.5: "20mm (1/2\")", 2.5: "20mm (1/2\")", 4.0: "25mm (3/4\")", 6.0: "25mm (3/4\")", 10.0: "32mm (1\")", 16: "32mm (1\")", 25: "40mm (1 1/4\")", 35: "40mm (1 1/4\")", 50: "50mm (1 1/2\")", 70: "60mm (2\")", 95: "60mm (2\")" }, 3: { 1.5: "20mm (1/2\")", 2.5: "25mm (3/4\")", 4.0: "25mm (3/4\")", 6.0: "32mm (1\")", 10.0: "32mm (1\")", 16: "40mm (1 1/4\")", 25: "50mm (1 1/2\")", 35: "50mm (1 1/2\")", 50: "60mm (2\")", 70: "75mm (2 1/2\")", 95: "75mm (2 1/2\")" }, 4: { 1.5: "25mm (3/4\")", 2.5: "25mm (3/4\")", 4.0: "32mm (1\")", 6: "32mm (1\")", 10: "40mm (1 1/4\")", 16: "50mm (1 1/2\")", 25: "50mm (1 1/2\")", 35: "60mm (2\")", 50: "60mm (2\")", 70: "75mm (2 1/2\")", 95: "85mm (3\")" } };
+const tabelaDisjuntores = { "Minidisjuntor (DIN)": [ { corrente: 10, nome: "10A", icc: 2 }, { corrente: 16, nome: "16A", icc: 2 }, { corrente: 20, nome: "20A", icc: 2 }, { corrente: 25, nome: "25A", icc: 3 }, { corrente: 32, nome: "32A", icc: 3 }, { corrente: 40, nome: "40A", icc: 4 }, { corrente: 50, nome: "50A", icc: 5 }, { corrente: 63, nome: "63A", icc: 6 }, { corrente: 80, nome: "80A", icc: 7 }, { corrente: 100, nome: "100A", icc: 8 }, { corrente: 125, nome: "125A", icc: 10 } ], "Caixa Moldada (MCCB)": [ { corrente: 70, nome: "70A", icc: 5 }, { corrente: 80, nome: "80A", icc: 6 }, { corrente: 100, nome: "100A", icc: 8 }, { corrente: 125, nome: "125A", icc: 10 }, { corrente: 160, nome: "160A", icc: 12 }, { corrente: 200, nome: "200A", icc: 15 }, { corrente: 250, nome: "250A", icc: 20 }, { corrente: 320, nome: "320A", icc: 25 }, { corrente: 400, nome: "400A", icc: 30 }, { corrente: 500, nome: "500A", icc: 40 }, { corrente: 630, nome: "630A", icc: 50 }, { corrente: 800, nome: "800A", icc: 60 }, { corrente: 1000, nome: "1000A", icc: 80 } ] };
 
-// --- FUNÇÕES DE MÁSCARA ---
+// FUNÇÕES DE MÁSCARA
 export function mascaraCPF(event){event.target.value=event.target.value.replace(/\D/g,"").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2")}
 export function mascaraCelular(event){event.target.value=event.target.value.replace(/\D/g,'').replace(/^(\d{2})(\d)/g,'($1) $2').replace(/(\d{5})(\d{4})$/,'$1-$2')}
 export function mascaraTelefone(event){event.target.value=event.target.value.replace(/\D/g,'').replace(/^(\d{2})(\d)/g,'($1) $2').replace(/(\d{4})(\d)/,'$1-$2')}
-export function aplicarMascara(event, tipoDoc) { const doc = tipoDoc || document.getElementById('tipoDocumento').value; let value = event.target.value.replace(/\D/g,""); if(doc==='CPF'){value=value.slice(0,11).replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2")}else{value=value.slice(0,14).replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2')} event.target.value=value}
+export function aplicarMascara(event){const tipoDoc=document.getElementById('tipoDocumento').value;let value=event.target.value.replace(/\D/g,"");if(tipoDoc==='CPF'){value=value.slice(0,11).replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2")}else{value=value.slice(0,14).replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2')}
+event.target.value=value}
 export function atualizarMascaraDocumento(){const tipoDoc=document.getElementById('tipoDocumento').value;const inputDoc=document.getElementById('documento');inputDoc.value='';if(tipoDoc==='CPF'){inputDoc.placeholder='000.000.000-00';inputDoc.maxLength=14}else{inputDoc.placeholder='00.000.000/0000-00';inputDoc.maxLength=18}}
 
-// --- FUNÇÃO PRINCIPAL DE CÁLCULO ---
-export function calcularProjetoCompleto(technicalData, clientProfile = null) {
-    if (!technicalData) {
-        alert("Os dados técnicos não foram carregados. Verifique a conexão com o banco de dados.");
+// FUNÇÕES DE CÁLCULO
+export function calcularTodosCircuitos(){
+    const allResults=[];
+    const circuitBlocks=document.querySelectorAll('.circuit-block');
+    if(circuitBlocks.length===0){
+        alert("Adicione pelo menos um circuito para calcular.");
         return null;
     }
-
-    const circuitResults = _calcularCircuitosIndividuais(technicalData, clientProfile);
-    if (!circuitResults) {
-        const feederResult = _calcularAlimentadorGeral(technicalData, 0, 0, clientProfile);
-        return { feederResult, circuitResults: [] };
-    };
-
-    let maxCircuitBreakerAmps = 0;
-    if (circuitResults.length > 0) {
-        maxCircuitBreakerAmps = Math.max(...circuitResults.map(r => {
-            const breakerName = r.calculos.disjuntorRecomendado.nome;
-            return parseInt(breakerName, 10) || 0;
-        }));
-    }
-
-    const totalPotenciaDemandadaCircuitos = circuitResults.reduce((sum, result) => sum + result.calculos.potenciaDemandada, 0);
-
-    const feederResult = _calcularAlimentadorGeral(technicalData, totalPotenciaDemandadaCircuitos, maxCircuitBreakerAmps, clientProfile);
-    if (!feederResult) return null;
-    
-    return { feederResult, circuitResults };
-}
-
-function getProjectFormData() {
-    return {
-        projectCode: document.getElementById('project_code').value,
-        obra: document.getElementById('obra').value,
-        cidadeObra: document.getElementById('cidadeObra').value,
-        enderecoObra: document.getElementById('enderecoObra').value,
-        areaObra: document.getElementById('areaObra').value,
-        unidadesResidenciais: document.getElementById('unidadesResidenciais').value,
-        unidadesComerciais: document.getElementById('unidadesComerciais').value,
-        observacoes: document.getElementById('observacoes').value
-    };
-}
-
-function getClientFormData(clientProfile) {
-    if (!clientProfile) return {};
-    return {
-        cliente: clientProfile.nome,
-        tipoDocumento: clientProfile.documento_tipo,
-        documento: clientProfile.documento_valor,
-        celular: clientProfile.celular,
-        telefone: clientProfile.telefone,
-        email: clientProfile.email,
-        enderecoCliente: clientProfile.endereco
-    };
-}
-
-
-// --- FUNÇÕES AUXILIARES DE CÁLCULO ---
-
-function _calcularAlimentadorGeral(technicalData, potenciaTotal, maxCircuitBreakerAmps, clientProfile = null) {
-    const projectData = getProjectFormData();
-    const clientData = getClientFormData(clientProfile);
-
-    const dados = {
-        ...projectData,
-        ...clientData,
-        id: 'Geral',
-        nomeCircuito: "Alimentador Geral",
-        fatorDemanda: parseFloat(document.getElementById('feederFatorDemanda').value) || 100,
-        fases: document.getElementById('feederFases').value,
-        tipoLigacao: document.getElementById('feederTipoLigacao').value,
-        tensaoV: parseFloat(document.getElementById('feederTensaoV').value),
-        fatorPotencia: parseFloat(document.getElementById('feederFatorPotencia').value),
-        comprimentoM: parseFloat(document.getElementById('feederComprimentoM').value),
-        tipoIsolacao: document.getElementById('feederTipoIsolacao').value,
-        materialCabo: document.getElementById('feederMaterialCabo').value,
-        metodoInstalacao: document.getElementById('feederMetodoInstalacao').value,
-        temperaturaAmbienteC: parseInt(document.getElementById('feederTemperaturaAmbienteC').value),
-        limiteQuedaTensao: parseFloat(document.getElementById('feederLimiteQuedaTensao').value),
-        tipoDisjuntor: document.getElementById('feederTipoDisjuntor').value,
-        requerDR: document.getElementById('feederRequerDR').checked,
-        dpsClasse: document.getElementById('feederDpsClasse').value,
-    };
-
-    dados.dpsInfo = findDps(technicalData.dps, dados.dpsClasse, 'highest');
-    const potenciaInstalada = potenciaTotal;
-    const potenciaDemandada = potenciaInstalada * (dados.fatorDemanda / 100);
-    
-    return performCalculation(dados, potenciaInstalada, potenciaDemandada, technicalData, maxCircuitBreakerAmps);
-}
-
-function _calcularCircuitosIndividuais(technicalData, clientProfile = null){
-    const allResults=[];
-    const circuitBlocks=document.querySelectorAll('#circuits-container .circuit-block');
-    if(circuitBlocks.length === 0) return [];
-    
-    const projectData = getProjectFormData();
-    const clientData = getClientFormData(clientProfile);
-
-    for (const block of circuitBlocks) {
-        const id = block.dataset.id;
-        
-        const dados = {
-            ...projectData,
-            ...clientData,
-            id:id,
-            nomeCircuito:document.getElementById(`nomeCircuito-${id}`).value,
-            tipoCircuito:document.getElementById(`tipoCircuito-${id}`).value,
-            potenciaW:parseFloat(document.getElementById(`potenciaW-${id}`).value) || 0,
-            potenciaCV:parseFloat(document.getElementById(`potenciaCV-${id}`).value) || 0,
-            fatorDemanda: parseFloat(document.getElementById(`fatorDemanda-${id}`).value) || 100,
-            fases:document.getElementById(`fases-${id}`).value,
-            tipoLigacao:document.getElementById(`tipoLigacao-${id}`).value,
-            tensaoV:parseFloat(document.getElementById(`tensaoV-${id}`).value),
-            fatorPotencia:parseFloat(document.getElementById(`fatorPotencia-${id}`).value),
-            comprimentoM:parseFloat(document.getElementById(`comprimentoM-${id}`).value),
-            tipoIsolacao:document.getElementById(`tipoIsolacao-${id}`).value,
-            materialCabo:document.getElementById(`materialCabo-${id}`).value,
-            metodoInstalacao:document.getElementById(`metodoInstalacao-${id}`).value,
-            temperaturaAmbienteC:parseInt(document.getElementById(`temperaturaAmbienteC-${id}`).value),
-            resistividadeSolo:parseFloat(document.getElementById(`resistividadeSolo-${id}`).value),
-            numCircuitosAgrupados:parseInt(document.getElementById(`numCircuitosAgrupados-${id}`).value),
-            limiteQuedaTensao:parseFloat(document.getElementById(`limiteQuedaTensao-${id}`).value),
-            tipoDisjuntor:document.getElementById(`tipoDisjuntor-${id}`).value,
-            requerDR:document.getElementById(`requerDR-${id}`).checked,
-            dpsClasse: document.getElementById(`dpsClasse-${id}`).value,
-        };
-        
-        dados.dpsInfo = findDps(technicalData.dps, dados.dpsClasse);
-        if (dados.tipoCircuito === 'motores') dados.potenciaW = dados.potenciaCV * 735.5;
-        
-        const potenciaInstalada = dados.potenciaW;
-        const potenciaDemandada = potenciaInstalada * (dados.fatorDemanda / 100.0);
-        
-        const result = performCalculation(dados, potenciaInstalada, potenciaDemandada, technicalData);
-        allResults.push(result);
-    }
-    return allResults;
-}
-
-function findDps(dpsList, dpsClasse, preference = 'lowest') {
-    if (!dpsClasse || !dpsList) return null;
-    
-    const suitableDps = dpsList
-        .filter(d => d.classe === dpsClasse)
-        .sort((a, b) => {
-            if (preference === 'highest') {
-                return b.corrente_ka - a.corrente_ka;
-            }
-            return a.corrente_ka - b.corrente_ka;
-        });
-        
-    return suitableDps.length > 0 ? suitableDps[0] : null;
-}
-
-function performCalculation(dados, potenciaInstalada, potenciaDemandada, technicalData, maxDownstreamBreakerAmps = 0) {
-    const correnteInstalada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * dados.fatorPotencia)) : 0;
-    const correnteDemandada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * dados.fatorPotencia)) : 0;
-    
-    const fatorK1_obj = technicalData.fatores_k1?.find(f => f.temperatura_c === dados.temperaturaAmbienteC);
-    const fatorK1 = fatorK1_obj ? fatorK1_obj.fator : 1.0;
-    
-    const fatorK2 = (dados.resistividadeSolo > 0 && technicalData.fatores_k2) ? (technicalData.fatores_k2.find(f => f.resistividade === dados.resistividadeSolo)?.fator || 1.0) : 1.0;
-    
-    let fatorK3 = 1.0;
-    if (dados.numCircuitosAgrupados > 1 && technicalData.fatores_k3) {
-        const fatorK3_obj = technicalData.fatores_k3.find(f => f.num_circuitos === dados.numCircuitosAgrupados);
-        if (fatorK3_obj) {
-            const metodo = dados.metodoInstalacao;
-            if (metodo.startsWith('A') || metodo.startsWith('B')) fatorK3 = fatorK3_obj.fator_metodo_a_b;
-            else if (metodo.startsWith('C') || metodo.startsWith('D')) fatorK3 = fatorK3_obj.fator_metodo_c_d;
-        }
-    }
-    
-    const fatorDeCorrecaoTotal = fatorK1 * fatorK2 * fatorK3;
-    const correnteCorrigidaA = (fatorDeCorrecaoTotal > 0) ? (correnteDemandada / fatorDeCorrecaoTotal) : Infinity;
-
-    let bitolaRecomendadaMm2="Nao encontrada", quedaTensaoCalculada=0, correnteMaximaCabo=0, disjuntorRecomendado={nome:"Coord. Inadequada",icc:0};
-    
-    const disjuntorCandidato = technicalData.disjuntores
-        ?.filter(d =>
-            d.tipo === dados.tipoDisjuntor &&
-            d.corrente_a >= correnteDemandada &&
-            d.corrente_a >= maxDownstreamBreakerAmps
-        )
-        .sort((a,b) => a.corrente_a - b.corrente_a)[0];
-
-    if (disjuntorCandidato && technicalData.cabos) {
-        let bitolaMinima = (dados.tipoCircuito === 'iluminacao') ? 1.5 : (dados.tipoCircuito ? 2.5 : 0);
-        if (dados.id === 'Geral') bitolaMinima = 0;
-
-        const tabelaCaboSelecionada = technicalData.cabos.filter(c => c.material === dados.materialCabo && c.isolacao === dados.tipoIsolacao && c.secao_mm2 >= bitolaMinima);
-        
-        for (const cabo of tabelaCaboSelecionada) {
-            const capacidadeConducao = cabo[`capacidade_${dados.metodoInstalacao.toLowerCase()}`] || 0;
-            const Iz = capacidadeConducao * fatorK1 * fatorK2 * fatorK3;
-            
-            if (Iz >= disjuntorCandidato.corrente_a) {
-                const resistividade = (dados.materialCabo === 'Cobre') ? 0.0172 : 0.0282;
-                const quedaVolts = (cabo.secao_mm2 > 0) ? ((dados.fases === 'Trifasico') ? ((1.732 * resistividade * dados.comprimentoM * correnteDemandada) / cabo.secao_mm2) : ((2 * resistividade * dados.comprimentoM * correnteDemandada) / cabo.secao_mm2)) : 0;
-                const quedaPercentual = (dados.tensaoV > 0) ? (quedaVolts / dados.tensaoV) * 100.0 : 0;
-                
-                if (quedaPercentual <= dados.limiteQuedaTensao) {
-                    bitolaRecomendadaMm2 = cabo.secao_mm2.toString();
-                    quedaTensaoCalculada = quedaPercentual;
-                    correnteMaximaCabo = Iz;
-                    disjuntorRecomendado = { nome: disjuntorCandidato.nome, icc: disjuntorCandidato.icc_ka };
-                    break;
+    circuitBlocks.forEach(block=>{
+        const id=block.dataset.id;
+        const dados={id:id,cliente:document.getElementById('cliente').value,tipoDocumento:document.getElementById('tipoDocumento').value,documento:document.getElementById('documento').value,telefone:document.getElementById('telefone').value,celular:document.getElementById('celular').value,email:document.getElementById('email').value,obra:document.getElementById('obra').value,endereco:document.getElementById('endereco').value,areaObra:document.getElementById('areaObra').value,nomeCircuito:document.getElementById(`nomeCircuito-${id}`).value,tipoCircuito:document.getElementById(`tipoCircuito-${id}`).value,potenciaW:parseFloat(document.getElementById(`potenciaW-${id}`).value),potenciaCV:parseFloat(document.getElementById(`potenciaCV-${id}`).value),fatorDemanda:parseFloat(document.getElementById(`fatorDemanda-${id}`).value),fases:document.getElementById(`fases-${id}`).value,tipoLigacao:document.getElementById(`tipoLigacao-${id}`).value,tensaoV:parseFloat(document.getElementById(`tensaoV-${id}`).value),fatorPotencia:parseFloat(document.getElementById(`fatorPotencia-${id}`).value),comprimentoM:parseFloat(document.getElementById(`comprimentoM-${id}`).value),tipoIsolacao:document.getElementById(`tipoIsolacao-${id}`).value,materialCabo:document.getElementById(`materialCabo-${id}`).value,metodoInstalacao:document.getElementById(`metodoInstalacao-${id}`).value,temperaturaAmbienteC:parseInt(document.getElementById(`temperaturaAmbienteC-${id}`).value),resistividadeSolo:parseFloat(document.getElementById(`resistividadeSolo-${id}`).value),numCircuitosAgrupados:parseInt(document.getElementById(`numCircuitosAgrupados-${id}`).value),limiteQuedaTensao:parseFloat(document.getElementById(`limiteQuedaTensao-${id}`).value),tipoDisjuntor:document.getElementById(`tipoDisjuntor-${id}`).value,requerDR:document.getElementById(`requerDR-${id}`).checked,classeDPS:document.getElementById(`classeDPS-${id}`).value,};
+        if(dados.tipoCircuito==='motores')dados.potenciaW=dados.potenciaCV*735.5;
+        const potenciaInstalada=dados.potenciaW;
+        const potenciaDemandada=potenciaInstalada*dados.fatorDemanda;
+        const correnteInstalada=(dados.fases==='Trifasico')?(potenciaInstalada/(dados.tensaoV*1.732*dados.fatorPotencia)):(potenciaInstalada/(dados.tensaoV*dados.fatorPotencia));
+        const correnteDemandada=(dados.fases==='Trifasico')?(potenciaDemandada/(dados.tensaoV*1.732*dados.fatorPotencia)):(potenciaDemandada/(dados.tensaoV*dados.fatorPotencia));
+        const fatorK1=tabelaK1_temp[dados.temperaturaAmbienteC]||1.0;
+        const fatorK2=(dados.resistividadeSolo>0&&tabelaK2_solo[dados.resistividadeSolo])?tabelaK2_solo[dados.resistividadeSolo]:1.0;
+        let fatorK3=1.0;
+        if(tabelaK3_agrupamento[dados.numCircuitosAgrupados]){const colunaIdx=metodoParaColunaK3[dados.metodoInstalacao];if(colunaIdx!==undefined){fatorK3=tabelaK3_agrupamento[dados.numCircuitosAgrupados][colunaIdx]||1.0}}
+        const correnteCorrigidaA=correnteDemandada/(fatorK1*fatorK2*fatorK3);
+        let bitolaRecomendadaMm2="Nao encontrada",quedaTensaoCalculada=0,resistenciaCabo=0,correnteMaximaCabo=0,disjuntorRecomendado={nome:"Coord. Inadequada",icc:0};
+        const listaDisjuntores=tabelaDisjuntores[dados.tipoDisjuntor]||[];
+        let disjuntorCandidato=null;
+        for(const disjuntor of listaDisjuntores){if(disjuntor.corrente>=correnteDemandada){disjuntorCandidato=disjuntor;break}}
+        if(disjuntorCandidato){
+            let bitolaMinima=0;
+            if(dados.tipoCircuito==='iluminacao')bitolaMinima=1.5;
+            if(dados.tipoCircuito==='tug'||dados.tipoCircuito==='tue'||dados.tipoCircuito==='ar_condicionado')bitolaMinima=2.5;
+            const tabelaCaboSelecionada=tabelasDeCabos[dados.materialCabo][dados.tipoIsolacao];
+            const startIndex=tabelaCaboSelecionada.findIndex(c=>c.secao>=bitolaMinima);
+            if(startIndex!==-1){
+                for(let i=startIndex;i<tabelaCaboSelecionada.length;i++){
+                    const cabo=tabelaCaboSelecionada[i];
+                    const capacidadeConducao=cabo.capacidade[dados.metodoInstalacao]||0;
+                    const Iz=capacidadeConducao*fatorK1*fatorK2*fatorK3;
+                    if(Iz>=disjuntorCandidato.corrente){
+                        const resistividade=(dados.materialCabo==='Cobre')?0.0172:0.0282;
+                        let quedaVolts=(dados.fases==='Trifasico')?((1.732*resistividade*dados.comprimentoM*correnteDemandada)/cabo.secao):((2*resistividade*dados.comprimentoM*correnteDemandada)/cabo.secao);
+                        const quedaPercentual=(quedaVolts/dados.tensaoV)*100.0;
+                        if(quedaPercentual<=dados.limiteQuedaTensao){bitolaRecomendadaMm2=cabo.secao.toString();quedaTensaoCalculada=quedaPercentual;resistenciaCabo=(resistividade*dados.comprimentoM)/cabo.secao;correnteMaximaCabo=Iz;disjuntorRecomendado=disjuntorCandidato;break}
+                    }
                 }
             }
         }
-    }
-
-    let numCondutores=0;
-    if(dados.fases==='Monofasico'){numCondutores=2}else if(dados.fases==='Bifasico'){if(dados.tipoLigacao==='FF')numCondutores=2;else if(dados.tipoLigacao==='FFN')numCondutores=3}else if(dados.fases==='Trifasico'){if(dados.tipoLigacao==='FFF')numCondutores=3;else if(dados.tipoLigacao==='FFFN')numCondutores=4}
-    
-    let dutoRecomendado = "Nao encontrado";
-    const bitolaNum = parseFloat(bitolaRecomendadaMm2);
-    if (bitolaNum && technicalData.eletrodutos) {
-        const duto_obj = technicalData.eletrodutos.find(e => e.num_condutores === numCondutores && e.secao_cabo_mm2 === bitolaNum);
-        if (duto_obj) {
-            dutoRecomendado = duto_obj.tamanho_nominal;
-        }
-    }
-
-    const calculos = { potenciaInstalada, correnteInstalada, potenciaDemandada, correnteDemandada, fatorK1, fatorK2, fatorK3, correnteCorrigidaA, bitolaRecomendadaMm2, quedaTensaoCalculada, correnteMaximaCabo, disjuntorRecomendado, numCondutores, dutoRecomendado };
-    return { dados, calculos };
+        const potenciaMaximaCabo=(dados.fases==='Trifasico')?(dados.tensaoV*correnteMaximaCabo*1.732*dados.fatorPotencia):(dados.tensaoV*correnteMaximaCabo*dados.fatorPotencia);
+        let numCondutores=0;
+        if(dados.fases==='Monofasico'){numCondutores=2}else if(dados.fases==='Bifasico'){if(dados.tipoLigacao==='FF')numCondutores=2;else if(dados.tipoLigacao==='FFN')numCondutores=3}else if(dados.fases==='Trifasico'){if(dados.tipoLigacao==='FFF')numCondutores=3;else if(dados.tipoLigacao==='FFFN')numCondutores=4}
+        let dutoRecomendado="Nao encontrado";
+        const bitolaNum=parseFloat(bitolaRecomendadaMm2);
+        if(tabelaDutos[numCondutores]&&tabelaDutos[numCondutores][bitolaNum]){dutoRecomendado=tabelaDutos[numCondutores][bitolaNum]}
+        allResults.push({dados,calculos:{potenciaInstalada,correnteInstalada,potenciaDemandada,correnteDemandada,fatorK1,fatorK2,fatorK3,correnteCorrigidaA,bitolaRecomendadaMm2,resistenciaCabo,quedaTensaoCalculada,correnteMaximaCabo,potenciaMaximaCabo,disjuntorRecomendado,numCondutores,dutoRecomendado}});
+    });
+    return allResults;
 }
