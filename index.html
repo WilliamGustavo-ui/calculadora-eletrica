@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Projetos Eletricos v15.2 - Final</title>
+    <title>Calculadora de Projetos Eletricos v16.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-customfonts/1.0.4/roboto-normal.js"></script>
@@ -13,117 +13,114 @@
 
     <div id="registerModalOverlay" class="modal-overlay">
         <div class="modal-content">
-            <form id="registerForm">
-                <h3>Cadastrar Novo Usuário</h3>
-                <p>Após o cadastro, um administrador precisará aprovar seu acesso.</p>
-                <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+            <h2>Registrar Novo Usuário</h2>
+            <form id="registerForm" autocomplete="off">
+                <div class="form-grid">
                     <div class="form-group"><label for="regNome">Nome Completo</label><input type="text" id="regNome" required></div>
-                    <div class="form-group"><label for="regCpf">CPF</label><input type="text" id="regCpf" required maxlength="14"></div>
-                    <div class="form-group"><label for="regTelefone">Celular</label><input type="text" id="regTelefone" required maxlength="15"></div>
-                    <div class="form-group"><label for="regEmail">E-mail (para login)</label><input type="email" id="regEmail" required></div>
-                    <div class="form-group"><label for="regCrea">CREA</label><input type="text" id="regCrea" required></div>
-                    <div class="form-group"><label for="regPassword">Senha</label><input type="password" id="regPassword" required></div>
+                    <div class="form-group"><label for="regEmail">E-mail</label><input type="email" id="regEmail" required></div>
+                    <div class="form-group"><label for="regPassword">Senha (mín. 6 caracteres)</label><input type="password" id="regPassword" required></div>
+                    <div class="form-group"><label for="regCpf">CPF</label><input type="text" id="regCpf"></div>
+                    <div class="form-group"><label for="regTelefone">Celular</label><input type="text" id="regTelefone"></div>
+                    <div class="form-group"><label for="regCrea">CREA</label><input type="text" id="regCrea"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="close-modal-btn" data-modal-id="registerModalOverlay" style="background-color: var(--text-color);">Fechar</button>
-                    <button type="submit" style="background-color: var(--success-color);">Cadastrar</button>
+                    <button type="submit">Registrar</button>
+                    <button type="button" class="close-modal-btn" data-modal-id="registerModalOverlay">Cancelar</button>
                 </div>
             </form>
         </div>
     </div>
+
+    <div id="forgotPasswordModalOverlay" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Redefinir Senha</h2>
+            <form id="forgotPasswordForm" autocomplete="off">
+                <div class="form-group">
+                    <label for="forgotEmail">Digite seu e-mail para receber o link de redefinição:</label>
+                    <input type="email" id="forgotEmail" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit">Enviar Link</button>
+                    <button type="button" class="close-modal-btn" data-modal-id="forgotPasswordModalOverlay">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="adminPanelModalOverlay" class="modal-overlay">
         <div class="modal-content">
             <h3>Painel de Administrador - Gerenciar Usuários</h3>
             <ul id="adminUserList"></ul>
             <div class="modal-footer">
-                <button type="button" class="close-modal-btn" data-modal-id="adminPanelModalOverlay" style="background-color: var(--text-color);">Fechar</button>
+                <button type="button" class="close-modal-btn" data-modal-id="adminPanelModalOverlay">Fechar</button>
             </div>
         </div>
     </div>
+    
     <div id="editUserModalOverlay" class="modal-overlay">
         <div class="modal-content">
-            <form id="editUserForm">
-                <h3>Editar Usuário</h3>
+            <h3>Editar Usuário</h3>
+            <form id="editUserForm" autocomplete="off">
                 <input type="hidden" id="editUserId">
-                <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
-                    <div class="form-group"><label for="editNome">Nome Completo</label><input type="text" id="editNome" required></div>
-                    <div class="form-group"><label for="editCpf">CPF</label><input type="text" id="editCpf" required maxlength="14"></div>
-                    <div class="form-group"><label for="editTelefone">Celular</label><input type="text" id="editTelefone" required maxlength="15"></div>
-                    <div class="form-group"><label for="editEmail">E-mail</label><input type="email" id="editEmail" readonly></div>
-                    <div class="form-group"><label for="editCrea">CREA</label><input type="text" id="editCrea" required></div>
+                <div class="form-grid">
+                    <div class="form-group"><label for="editNome">Nome</label><input type="text" id="editNome"></div>
+                    <div class="form-group"><label for="editEmail">Email</label><input type="email" id="editEmail" readonly></div>
+                    <div class="form-group"><label for="editCpf">CPF</label><input type="text" id="editCpf"></div>
+                    <div class="form-group"><label for="editTelefone">Telefone</label><input type="text" id="editTelefone"></div>
+                    <div class="form-group"><label for="editCrea">CREA</label><input type="text" id="editCrea"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="close-modal-btn" data-modal-id="editUserModalOverlay" style="background-color: var(--text-color);">Cancelar</button>
-                    <button type="submit" style="background-color: var(--success-color);">Salvar Alterações</button>
+                    <button type="submit">Salvar Alterações</button>
+                    <button type="button" class="close-modal-btn" data-modal-id="editUserModalOverlay">Cancelar</button>
                 </div>
             </form>
         </div>
     </div>
+
     <div id="manageProjectsModalOverlay" class="modal-overlay">
-        <div class="modal-content">
+        <div class="modal-content large">
             <h3>Painel de Administrador - Gerenciar Obras</h3>
             <table id="adminProjectsTable">
                 <thead>
                     <tr>
                         <th>Obra</th>
-                        <th>Proprietário Atual</th>
+                        <th>Proprietário (Usuário)</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody id="adminProjectsTableBody"></tbody>
             </table>
             <div class="modal-footer">
-                <button type="button" class="close-modal-btn" data-modal-id="manageProjectsModalOverlay" style="background-color: var(--text-color);">Fechar</button>
+                <button type="button" class="close-modal-btn" data-modal-id="manageProjectsModalOverlay">Fechar</button>
             </div>
         </div>
     </div>
-    <div id="forgotPasswordModalOverlay" class="modal-overlay">
-        <div class="modal-content" style="max-width: 400px;">
-            <form id="forgotPasswordForm">
-                <h3>Redefinir Senha</h3>
-                <p>Digite seu e-mail e enviaremos um link para você criar uma nova senha.</p>
-                <div class="form-grid" style="grid-template-columns: 1fr;">
-                    <div class="form-group">
-                        <label for="forgotEmail">E-mail</label>
-                        <input type="email" id="forgotEmail" required placeholder="seu@email.com">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="close-modal-btn" data-modal-id="forgotPasswordModalOverlay" style="background-color: var(--text-color);">Cancelar</button>
-                    <button type="submit" style="background-color: var(--success-color);">Enviar Link</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
+    
     <div id="loginContainer" class="container">
         <h2>Login</h2>
-        <div class="form-grid" style="grid-template-columns: 1fr;">
-            <div class="form-group"><label for="emailLogin">Email</label><input type="email" id="emailLogin" placeholder="seu@email.com"></div>
-            <div class="form-group"><label for="password">Senha</label><input type="password" id="password" placeholder="Sua senha"></div>
+        <div class="form-group">
+            <label for="emailLogin">Email</label>
+            <input type="email" id="emailLogin" required>
         </div>
-        <div class="button-container" style="margin-top: 20px;">
-            <button id="loginBtn" style="background-color: var(--success-color); font-size: 1.2rem;">Entrar</button>
-            <button id="registerBtn" style="background-color: var(--secondary-color); font-size: 1.2rem;">Cadastrar</button>
+        <div class="form-group">
+            <label for="password">Senha</label>
+            <input type="password" id="password" required>
         </div>
-        <div style="text-align: center; margin-top: 15px;">
-            <a href="#" id="forgotPasswordLink">Esqueci minha senha</a>
-        </div>
+        <button id="loginBtn" style="width:100%; margin-top: 10px; background-color: var(--success-color);">Entrar</button>
+        <button id="registerBtn" style="width:100%; margin-top: 10px; background-color: var(--secondary-color);">Registrar-se</button>
+        <p style="text-align: center; margin-top: 15px;">
+            <a href="#" id="forgotPasswordLink">Esqueceu a senha?</a>
+        </p>
     </div>
     
     <div id="resetPasswordContainer" class="container" style="display: none; max-width: 450px;">
         <h2>Crie sua Nova Senha</h2>
-        <p>Você foi autenticado através do link de redefinição. Por favor, digite sua nova senha abaixo.</p>
-        <form id="resetPasswordForm">
-            <div class="form-grid" style="grid-template-columns: 1fr;">
-                <div class="form-group">
-                    <label for="newPassword">Nova Senha</label>
-                    <input type="password" id="newPassword" required>
-                </div>
+        <form id="resetPasswordForm" autocomplete="off">
+            <div class="form-group">
+                <label for="newPassword">Nova Senha (mínimo 6 caracteres)</label>
+                <input type="password" id="newPassword" required>
             </div>
-            <div class="button-container" style="grid-template-columns: 1fr; margin-top: 20px;">
-                <button type="submit" style="background-color: var(--success-color);">Salvar Nova Senha</button>
-            </div>
+            <button type="submit">Salvar Nova Senha</button>
         </form>
     </div>
 
@@ -134,47 +131,62 @@
             <button id="logoutBtn">Sair</button>
         </div>
         <h1>Calculadora de Projetos Elétricos</h1>
+        
         <div id="project-controls">
-            <h2>Gerenciar Obras</h2>
+            <h2>Gerenciamento de Obras</h2>
             <div class="controls-grid">
-                <div class="form-group"><label for="searchInput">Pesquisar Obra/Cliente</label><input type="text" id="searchInput" placeholder="Digite nome, CPF/CNPJ ou obra..."></div>
-                <div class="form-group"><label for="savedProjectsSelect">Obras Salvas</label><select id="savedProjectsSelect"></select></div>
+                <div class="form-group">
+                    <label for="searchInput">Buscar Obra por Nome</label>
+                    <input type="text" id="searchInput" placeholder="Digite para buscar...">
+                </div>
                 <div class="button-wrapper">
-                     <button id="loadBtn" style="background-color: var(--success-color);">Carregar Obra</button>
-                     <button id="saveBtn" style="background-color: var(--secondary-color);">Salvar/Atualizar</button>
-                     <button id="deleteBtn" style="background-color: var(--danger-color);">Excluir Obra</button>
-                     <button id="newBtn" style="background-color: var(--warning-color);">Nova Obra</button>
+                    <div class="form-group" style="flex-grow: 1;">
+                        <label for="savedProjectsSelect">Carregar Obra Salva</label>
+                        <select id="savedProjectsSelect">
+                            <option value="">-- Nenhuma obra encontrada --</option>
+                        </select>
+                    </div>
+                    <button id="loadBtn" style="background-color: var(--secondary-color);">Carregar</button>
+                </div>
+                <div class="button-wrapper">
+                    <button id="newBtn" style="background-color: var(--primary-color);">Nova Obra</button>
+                    <button id="saveBtn" style="background-color: var(--success-color);">Salvar / Atualizar Obra</button>
+                    <button id="deleteBtn" style="background-color: var(--danger-color);">Excluir Obra</button>
                 </div>
             </div>
         </div>
-        <form id="main-form">
+
+        <form id="main-form" autocomplete="off">
             <input type="hidden" id="currentProjectId">
             <h2>Informações da Obra/Cliente</h2>
             <div class="form-grid">
-                <div class="form-group"><label for="codigoCliente">Código do Cliente</label><input type="text" id="codigoCliente" readonly placeholder="Será gerado ao salvar"></div>
-                <div class="form-group"><label for="cliente">Cliente</label><input type="text" id="cliente" placeholder="Nome do cliente"></div>
-                <div class="form-group"><label for="tipoDocumento">Documento</label><div class="document-group"><select id="tipoDocumento"><option value="CPF">CPF</option><option value="CNPJ">CNPJ</option></select><input type="text" id="documento" placeholder="000.000.000-00" maxlength="18"></div></div>
-                <div class="form-group"><label for="telefone">Telefone</label><input type="text" id="telefone" placeholder="(00) 0000-0000" maxlength="14"></div>
-                <div class="form-group"><label for="celular">Celular</label><input type="text" id="celular" placeholder="(00) 00000-0000" maxlength="15"></div>
-                <div class="form-group"><label for="email">E-mail</label><input type="email" id="email" placeholder="contato@email.com"></div>
-                <div class="form-group"><label for="obra">Obra (Nome do Projeto)</label><input type="text" id="obra" placeholder="Residência Unifamiliar - Usado para salvar"></div>
-                <div class="form-group"><label for="endereco">Endereço</label><input type="text" id="endereco" placeholder="Rua, N°, Bairro, Cidade - UF"></div>
-                <div class="form-group"><label for="areaObra">Área da Obra (m²)</label><input type="number" id="areaObra" placeholder="150"></div>
+                <div class="form-group"><label for="projectCode">Código da Obra</label><input type="text" id="projectCode" placeholder="Opcional"></div>
+                <div class="form-group"><label for="cliente">Nome do Cliente / Razão Social</label><input type="text" id="cliente"></div>
+                <div class="form-group"><label for="documento">Documento</label><div class="document-group"><select id="tipoDocumento"><option value="CPF">CPF</option><option value="CNPJ">CNPJ</option></select><input type="text" id="documento"></div></div>
+                <div class="form-group"><label for="telefone">Telefone</label><input type="text" id="telefone"></div>
+                <div class="form-group"><label for="celular">Celular</label><input type="text" id="celular"></div>
+                <div class="form-group"><label for="email">E-mail</label><input type="email" id="email"></div>
+                <div class="form-group"><label for="obra">Obra (Nome do Projeto)</label><input type="text" id="obra"></div>
+                <div class="form-group"><label for="endereco">Endereço</label><input type="text" id="endereco"></div>
+                <div class="form-group"><label for="areaObra">Área da Obra (m²)</label><input type="number" id="areaObra"></div>
             </div>
         </form>
+
         <div id="circuits-container"></div>
-        <button id="addCircuitBtn" style="background-color: var(--secondary-color); font-size: 1rem; padding: 12px; margin-bottom: 20px;">Adicionar Circuito</button>
-        <form id="tech-form">
-            <h2>Informações do Responsável Técnico</h2>
+        <button id="addCircuitBtn" style="background-color: var(--primary-color); width: 100%; margin-top: 20px;">Adicionar Circuito</button>
+        
+        <form id="tech-form" autocomplete="off">
+            <h2>Responsável Técnico</h2>
             <div class="form-grid">
-                <div class="form-group"><label for="respTecnico">Responsável Técnico</label><input type="text" id="respTecnico" placeholder="Nome do profissional"></div>
-                <div class="form-group"><label for="titulo">Título</label><input type="text" id="titulo" placeholder="Engenheiro Eletricista"></div>
-                <div class="form-group"><label for="crea">CREA</label><input type="text" id="crea" placeholder="XXXXXXXX-X"></div>
+                <div class="form-group"><label for="respTecnico">Nome</label><input type="text" id="respTecnico"></div>
+                <div class="form-group"><label for="titulo">Título</label><input type="text" id="titulo"></div>
+                <div class="form-group"><label for="crea">CREA</label><input type="text" id="crea"></div>
             </div>
         </form>
+
         <div class="button-container">
-            <button id="calculateBtn" style="background-color: var(--success-color);">Calcular e Gerar Relatório</button>
-            <button id="pdfBtn" style="background-color: #c0392b;">Gerar PDF do Relatório</button>
+             <button id="calculateBtn" style="background-color: var(--secondary-color);">Gerar Memorial Descritivo</button>
+             <button id="pdfBtn" style="background-color: var(--success-color);">Gerar PDF</button>
         </div>
         <pre id="report">O relatório aparecerá aqui.</pre>
     </div>

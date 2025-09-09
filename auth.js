@@ -3,18 +3,33 @@
 import { supabase } from './supabaseClient.js';
 
 /**
- * Função signInUser NOVA E CORRIGIDA.
- * A única responsabilidade dela agora é autenticar o usuário.
- * A busca do perfil e a verificação de 'is_approved' serão feitas
- * exclusivamente pelo 'onAuthStateChange' em main.js, eliminando a condição de corrida.
+ * VERSÃO FINAL DA FUNÇÃO signInUser
+ * Agora ela retorna o perfil do usuário se o login e a busca forem bem-sucedidos.
  */
 export async function signInUser(email, password) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-        // O erro 400 (senha incorreta) ainda será mostrado aqui.
-        alert('Erro no login: ' + error.message);
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (authError) {
+        alert('Erro no login: ' + authError.message);
+        return null;
     }
-    // Não retornamos nada, pois o onAuthStateChange cuidará do resto.
+
+    if (authData.user) {
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', authData.user.id)
+            .single();
+
+        if (profileError) {
+            alert('Erro ao buscar perfil do usuário: ' + profileError.message);
+            // Mesmo com erro de perfil, deslogamos para garantir um estado limpo.
+            await supabase.auth.signOut();
+            return null;
+        }
+        return profile; // Retorna o perfil completo em caso de sucesso
+    }
+    return null;
 }
 
 export async function signUpUser(email, password, details) {
@@ -41,7 +56,6 @@ export async function getSession() {
     if (error || !session) {
         return null;
     }
-    // Esta função agora é a única fonte da verdade para o perfil do usuário logado.
     const { data: profile } = await supabase
         .from('profiles')
         .select('*')
@@ -52,10 +66,6 @@ export async function getSession() {
 }
 
 // --- FUNÇÕES DE REDEFINIÇÃO DE SENHA ---
-
-/**
- * Envia o e-mail de redefinição de senha para o usuário.
- */
 export async function sendPasswordResetEmail(email) {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: 'https://williamguto0911-design.github.io/calculadora-eletrica/index.html',
@@ -63,9 +73,6 @@ export async function sendPasswordResetEmail(email) {
     return { error };
 }
 
-/**
- * Atualiza a senha do usuário logado (autenticado pelo link de redefinição).
- */
 export async function updatePassword(newPassword) {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     return { error };
