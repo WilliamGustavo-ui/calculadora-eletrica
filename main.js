@@ -171,37 +171,36 @@ async function showAdminPanel() { const users = await api.fetchAllUsers(); ui.po
 async function handleAdminUserActions(event) { const target = event.target; const userId = target.dataset.userId; if (target.classList.contains('approve-user-btn')) { await api.approveUser(userId); await showAdminPanel(); } if (target.classList.contains('edit-user-btn')) { const user = await api.fetchUserById(userId); if(user) ui.populateEditUserModal(user); } if (target.classList.contains('remove-user-btn')) { /* ... */ } }
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
-function setupEventListeners() {
-    document.getElementById('loginBtn').addEventListener('click', handleLogin);
-    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-    document.getElementById('registerBtn').addEventListener('click', () => ui.openModal('registerModalOverlay'));
-    document.getElementById('registerForm').addEventListener('submit', handleRegister);
-    document.getElementById('forgotPasswordLink').addEventListener('click', (e) => { e.preventDefault(); ui.openModal('forgotPasswordModalOverlay'); });
-    document.getElementById('forgotPasswordForm').addEventListener('submit', handleForgotPassword);
-    document.getElementById('resetPasswordForm').addEventListener('submit', handleResetPassword);
-    document.querySelectorAll('.close-modal-btn').forEach(btn => { btn.addEventListener('click', (e) => ui.closeModal(e.target.dataset.modalId)); });
-    document.getElementById('saveBtn').addEventListener('click', handleSaveProject);
-    document.getElementById('loadBtn').addEventListener('click', handleLoadProject);
-    document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
-    document.getElementById('newBtn').addEventListener('click', () => handleNewProject(true));
-    document.getElementById('searchInput').addEventListener('input', (e) => handleSearch(e.target.value));
-    document.getElementById('addCircuitBtn').addEventListener('click', () => ui.addCircuit());
-    document.getElementById('circuits-container').addEventListener('click', e => { if (e.target.classList.contains('remove-btn')) { ui.removeCircuit(e.target.dataset.circuitId); } });
-    document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
-    document.getElementById('pdfBtn').addEventListener('click', handleGeneratePdf);
-    document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
-    document.getElementById('adminProjectsTableBody').addEventListener('click', handleProjectPanelClick);
-    document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
-    document.getElementById('adminUserList').addEventListener('click', handleAdminUserActions);
-    document.getElementById('editUserForm').addEventListener('submit', handleUpdateUser);
-    document.getElementById('manageClientsBtn').addEventListener('click', handleOpenClientManagement);
-    document.getElementById('clientForm').addEventListener('submit', handleClientFormSubmit);
-    document.getElementById('clientList').addEventListener('click', handleClientListClick);
-    document.getElementById('clientFormCancelBtn').addEventListener('click', ui.resetClientForm);
-    document.getElementById('confirmClientSelectionBtn').addEventListener('click', () => handleConfirmClientSelection(true));
-    document.getElementById('continueWithoutClientBtn').addEventListener('click', handleContinueWithoutClient);
-    document.getElementById('addNewClientFromSelectModalBtn').addEventListener('click', () => { ui.closeModal('selectClientModalOverlay'); handleOpenClientManagement(); });
-    document.getElementById('changeClientBtn').addEventListener('click', async () => { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients, true); });
+async function handleLogin() {
+    console.log("1. Tentando fazer login...");
+    const email = document.getElementById('emailLogin').value;
+    const password = document.getElementById('password').value;
+    const userProfile = await auth.signInUser(email, password);
+    console.log("2. Resposta do signInUser recebida:", userProfile);
+
+    if (userProfile) {
+        console.log("3. Perfil do usuário válido.");
+        if (userProfile.is_approved) {
+            console.log("4. Usuário aprovado. Configurando a aplicação...");
+            currentUserProfile = userProfile;
+            ui.showAppView(currentUserProfile);
+            technicalData = await api.fetchTechnicalData();
+            console.log("5. Dados técnicos recebidos:", technicalData);
+            if (technicalData) {
+                ui.setupDynamicData(technicalData);
+                await handleNewProject(false);
+                await handleSearch();
+            }
+            console.log("6. Login concluído com sucesso.");
+        } else {
+            console.error("ERRO: Usuário não aprovado.");
+            alert('Seu cadastro ainda não foi aprovado por um administrador.');
+            await auth.signOutUser();
+        }
+    } else {
+        console.error("ERRO: userProfile é nulo ou inválido após a tentativa de login.");
+    }
+}
 
     // Máscaras
     document.getElementById('regCpf').addEventListener('input', utils.mascaraCPF);
