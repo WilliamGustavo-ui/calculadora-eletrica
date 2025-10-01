@@ -229,13 +229,13 @@ function initializeCircuitListeners(id) {
     const handleBtuSelectChange = () => {
         const btuValue = parseFloat(potenciaBTUSelect.value) || 0;
         potenciaWInput.value = (btuValue * BTU_TO_WATTS_FACTOR).toFixed(2);
-        updateFeederPowerDisplay();
+        // updateFeederPowerDisplay(); // <<-- CORREÇÃO: REMOVIDO DAQUI
     };
 
     const handleCvSelectChange = () => {
         const cvValue = parseFloat(potenciaCVSelect.value) || 0;
         potenciaWInput.value = (cvValue * CV_TO_WATTS_FACTOR).toFixed(2);
-        updateFeederPowerDisplay();
+        // updateFeederPowerDisplay(); // <<-- CORREÇÃO: REMOVIDO DAQUI
     };
 
     const handleCircuitTypeChange = () => {
@@ -468,6 +468,9 @@ export function populateFormWithProjectData(project) {
             document.getElementById(`tipoIsolacao-${currentId}`).dispatchEvent(new Event('change'));
         });
     }
+
+    // <<-- CORREÇÃO: ADICIONADA AQUI PARA ATUALIZAR UMA ÚNICA VEZ -->>
+    updateFeederPowerDisplay();
 }
 
 // --- PAINEL DE ADMINISTRAÇÃO E CLIENTES ---
