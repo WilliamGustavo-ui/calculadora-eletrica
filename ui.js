@@ -276,7 +276,7 @@ function initializeCircuitListeners(id) {
         potenciaBTUGroup.classList.add('hidden');
         potenciaCVGroup.classList.add('hidden');
         potenciaWInput.readOnly = false;
-        fatorDemandaInput.readOnly = false;
+        fatorDemandaInput.readOnly = false; // Garante que não está bloqueado
 
         if (selectedType === 'ar_condicionado') {
             potenciaBTUGroup.classList.remove('hidden');
@@ -286,9 +286,6 @@ function initializeCircuitListeners(id) {
             potenciaCVGroup.classList.remove('hidden');
             potenciaWInput.readOnly = true;
             handleCvSelectChange();
-        } else if (selectedType === 'aquecimento') {
-            fatorDemandaInput.value = '100';
-            fatorDemandaInput.readOnly = true;
         }
     };
 
@@ -298,7 +295,6 @@ function initializeCircuitListeners(id) {
     addTrackedListener(potenciaBTUSelect, 'change', handleBtuSelectChange);
     addTrackedListener(potenciaCVSelect, 'change', handleCvSelectChange);
     
-    // <<-- CORREÇÃO PRINCIPAL: TROCADO 'input' POR 'change' -->>
     addTrackedListener(potenciaWInput, 'change', updateFeederPowerDisplay);
     addTrackedListener(fatorDemandaInput, 'change', updateFeederPowerDisplay);
 
@@ -408,6 +404,12 @@ function getCircuitHTML(id) {
                 <label for="numCircuitosAgrupados-${id}">N° de Circuitos Agrupados</label>
                 <select id="numCircuitosAgrupados-${id}">
                     <option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="numRamais-${id}">Quantidade de Ramais</label>
+                <select id="numRamais-${id}">
+                    <option value="1">1x</option><option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option>
                 </select>
             </div>
             <div class="form-group">
@@ -602,7 +604,8 @@ export function renderReport(calculationResults){
         
         const potenciaDemandadaVA = dados.fatorPotencia > 0 ? (calculos.potenciaDemandada / dados.fatorPotencia).toFixed(2) : "0.00";
         const correnteCorrigidaTexto = isFinite(calculos.correnteCorrigidaA) ? `${calculos.correnteCorrigidaA.toFixed(2)} A` : "Incalculável";
-        
+        const dutoTexto = calculos.numRamais > 1 ? `${calculos.dutoRecomendado} (por ramal)` : `${calculos.dutoRecomendado} (${calculos.numCondutores} condutores)`;
+
         reportText += `\n\n======================================================\n==           MEMORIAL DE CALCULO - ${title.padEnd(16, ' ')} ==\n======================================================\n`;
         reportText += `\n-- PARÂMETROS DE ENTRADA --\n`;
         if (dados.id !== 'Geral') { reportText += `${formatLine('Nome do Circuito', dados.nomeCircuito)}\n`; reportText += `${formatLine('Tipo de Circuito', dados.tipoCircuito)}\n`; }
@@ -614,6 +617,7 @@ export function renderReport(calculationResults){
         reportText += `${formatLine('Tipo de Ligação', dados.tipoLigacao)}\n`;
         reportText += `${formatLine('Tensão (V)', `${dados.tensaoV} V`)}\n`;
         reportText += `${formatLine('Comprimento (m)', `${dados.comprimentoM} m`)}\n`;
+        reportText += `${formatLine('Quantidade de Ramais', `${calculos.numRamais}x`)}\n`;
         reportText += `${formatLine('Limite Queda de Tensão (%)', `${dados.limiteQuedaTensao} %`)}\n`;
 
         reportText += `\n-- ESPECIFICACOES DE INSTALAÇÃO E CORREÇÕES --\n`;
@@ -632,9 +636,12 @@ export function renderReport(calculationResults){
         
         reportText += `\n-- RESULTADOS DE CÁLCULO E DIMENSIONAMENTO --\n`;
         reportText += `${formatLine('Corrente de Projeto', `${calculos.correnteInstalada.toFixed(2)} A`)}\n`;
-        reportText += `${formatLine('Corrente Demandada (Ib)', `${calculos.correnteDemandada.toFixed(2)} A`)}\n`;
+        reportText += `${formatLine('Corrente Demandada Total (Ib)', `${calculos.correnteDemandada.toFixed(2)} A`)}\n`;
+        if (calculos.numRamais > 1) {
+            reportText += `${formatLine('Corrente por Ramal', `${calculos.correntePorRamal.toFixed(2)} A`)}\n`;
+        }
         reportText += `${formatLine('Corrente Corrigida (I\')', correnteCorrigidaTexto)}\n`;
-        reportText += `${formatLine('Bitola Recomendada', `${calculos.bitolaRecomendadaMm2} mm²`)}\n`;
+        reportText += `${formatLine('Bitola Recomendada (por ramal)', `${calculos.bitolaRecomendadaMm2} mm²`)}\n`;
         reportText += `${formatLine('Queda de Tensao (DV)', `${calculos.quedaTensaoCalculada.toFixed(2)} % (Limite: ${dados.limiteQuedaTensao} %)`)}\n`;
         reportText += `${formatLine('Corrente Max. Cabo (Iz)', `${calculos.correnteMaximaCabo.toFixed(2)} A`)}\n`;
 
@@ -642,7 +649,8 @@ export function renderReport(calculationResults){
         reportText += `${formatLine(`Disjuntor (${dados.tipoDisjuntor})`, `${calculos.disjuntorRecomendado.nome} (Icc: ${calculos.disjuntorRecomendado.icc} kA)`)}\n`;
         reportText += `${formatLine('Protecao DR 30mA', dados.requerDR ? `Sim (usar ${calculos.disjuntorRecomendado.nome.replace('A','')}A / 30mA)` : 'Nao')}\n`;
         reportText += `${formatLine('Protecao DPS', getDpsText(dados.dpsInfo))}\n`;
-        reportText += `${formatLine('Eletroduto (aprox.)', `${calculos.dutoRecomendado} (${calculos.numCondutores} condutores)`)}\n`;
+        reportText += `${formatLine('Eletroduto (aprox.)', dutoTexto)}\n`;
+        reportText += `${formatLine('Total de Condutores', calculos.numCondutores)}\n`;
     });
     document.getElementById('report').textContent = reportText.trim();
 }
@@ -701,8 +709,10 @@ export function generatePdf(calculationResults, currentUserProfile) {
     addSection("RESUMO DA ALIMENTAÇÃO GERAL");
     const feederBreakerType = feederResult.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
     const feederBreakerText = `${feederBreakerType} ${feederResult.calculos.disjuntorRecomendado.nome}`;
+    const feederCableText = `${feederResult.calculos.numRamais}x ${feederResult.calculos.bitolaRecomendadaMm2} mm² (${feederResult.dados.tipoIsolacao})`;
+    const feederDutoText = feederResult.calculos.numRamais > 1 ? `${feederResult.calculos.dutoRecomendado} (por ramal)` : feederResult.calculos.dutoRecomendado;
     const feederHead = [['Tensão/Fases', 'Disjuntor Geral', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
-    const feederBody = [[ `${feederResult.dados.tensaoV}V - ${feederResult.dados.fases}`, feederBreakerText, feederResult.dados.requerDR ? 'Sim' : 'Nao', getDpsText(feederResult.dados.dpsInfo), `${feederResult.calculos.bitolaRecomendadaMm2} mm² (${feederResult.dados.tipoIsolacao})`, feederResult.calculos.dutoRecomendado ]];
+    const feederBody = [[ `${feederResult.dados.tensaoV}V - ${feederResult.dados.fases}`, feederBreakerText, feederResult.dados.requerDR ? 'Sim' : 'Nao', getDpsText(feederResult.dados.dpsInfo), feederCableText, feederDutoText ]];
     doc.autoTable({ startY: yPos, head: feederHead, body: feederBody, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
     yPos = doc.lastAutoTable.finalY + 10;
 
@@ -712,7 +722,9 @@ export function generatePdf(calculationResults, currentUserProfile) {
         const body = circuitResults.map(r => {
             const circuitBreakerType = r.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
             const circuitBreakerText = `${circuitBreakerType} ${r.calculos.disjuntorRecomendado.nome}`;
-            return [ r.dados.id, r.dados.nomeCircuito, circuitBreakerText, r.dados.requerDR ? 'Sim' : 'Nao', getDpsText(r.dados.dpsInfo), `${r.calculos.bitolaRecomendadaMm2} mm² (${r.dados.tipoIsolacao})`, r.calculos.dutoRecomendado ];
+            const circuitCableText = `${r.calculos.numRamais}x ${r.calculos.bitolaRecomendadaMm2} mm² (${r.dados.tipoIsolacao})`;
+            const circuitDutoText = r.calculos.numRamais > 1 ? `${r.calculos.dutoRecomendado} (por ramal)` : r.calculos.dutoRecomendado;
+            return [ r.dados.id, r.dados.nomeCircuito, circuitBreakerText, r.dados.requerDR ? 'Sim' : 'Nao', getDpsText(r.dados.dpsInfo), circuitCableText, circuitDutoText ];
         });
         doc.autoTable({ startY: yPos, head: head, body: body, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
     }
@@ -741,6 +753,7 @@ export function generatePdf(calculationResults, currentUserProfile) {
         addLineItem("Tipo de Ligação:", dados.tipoLigacao);
         addLineItem("Tensão (V):", `${dados.tensaoV} V`);
         addLineItem("Comprimento:", `${dados.comprimentoM} m`);
+        addLineItem("Quantidade de Ramais:", `${calculos.numRamais}x`);
         addLineItem("Limite Queda de Tensão:", `${dados.limiteQuedaTensao}%`);
         yPos += 5;
 
@@ -762,9 +775,12 @@ export function generatePdf(calculationResults, currentUserProfile) {
         
         addSection("-- RESULTADOS DE CÁLCULO E DIMENSIONAMENTO --");
         addLineItem("Corrente de Projeto:", `${calculos.correnteInstalada.toFixed(2)} A`);
-        addLineItem("Corrente Demandada (Ib):", `${calculos.correnteDemandada.toFixed(2)} A`);
+        addLineItem("Corrente Demandada Total (Ib):", `${calculos.correnteDemandada.toFixed(2)} A`);
+        if (calculos.numRamais > 1) {
+            addLineItem("Corrente por Ramal:", `${calculos.correntePorRamal.toFixed(2)} A`);
+        }
         addLineItem("Corrente Corrigida (I'):", correnteCorrigidaTexto);
-        addLineItem("Bitola Recomendada:", `${calculos.bitolaRecomendadaMm2} mm²`);
+        addLineItem("Bitola Recomendada (por ramal):", `${calculos.bitolaRecomendadaMm2} mm²`);
         addLineItem("Queda de Tensão (DV):", `${calculos.quedaTensaoCalculada.toFixed(2)}%`);
         addLineItem("Corrente Máx. Cabo (Iz):", `${calculos.correnteMaximaCabo.toFixed(2)} A`);
         yPos += 5;
@@ -773,6 +789,7 @@ export function generatePdf(calculationResults, currentUserProfile) {
         addLineItem("Disjuntor:", `${dados.tipoDisjuntor}: ${calculos.disjuntorRecomendado.nome} (Icc: ${calculos.disjuntorRecomendado.icc} kA)`);
         addLineItem("Proteção DR:", dados.requerDR ? `Sim (${calculos.disjuntorRecomendado.nome.replace('A','')}A / 30mA)` : 'Não');
         addLineItem("Proteção DPS:", getDpsText(dados.dpsInfo));
+        addLineItem("Total de Condutores:", calculos.numCondutores);
     });
 
     doc.save(`Relatorio_${document.getElementById('obra').value || 'Projeto'}.pdf`);

@@ -89,6 +89,7 @@ function _calcularAlimentadorGeral(technicalData, potenciaTotal, maxCircuitBreak
         temperaturaAmbienteC: parseInt(document.getElementById('feederTemperaturaAmbienteC').value),
         resistividadeSolo: parseFloat(document.getElementById('feederResistividadeSolo').value),
         numCircuitosAgrupados: 1,
+        numRamais: parseInt(document.getElementById('feederNumRamais').value) || 1, // NOVO
         limiteQuedaTensao: parseFloat(document.getElementById('feederLimiteQuedaTensao').value),
         tipoDisjuntor: document.getElementById('feederTipoDisjuntor').value,
         requerDR: document.getElementById('feederRequerDR').checked,
@@ -132,6 +133,7 @@ function _calcularCircuitosIndividuais(technicalData, clientProfile = null){
             temperaturaAmbienteC:parseInt(document.getElementById(`temperaturaAmbienteC-${id}`).value),
             resistividadeSolo:parseFloat(document.getElementById(`resistividadeSolo-${id}`).value),
             numCircuitosAgrupados:parseInt(document.getElementById(`numCircuitosAgrupados-${id}`).value),
+            numRamais: parseInt(document.getElementById(`numRamais-${id}`).value) || 1, // NOVO
             limiteQuedaTensao:parseFloat(document.getElementById(`limiteQuedaTensao-${id}`).value),
             tipoDisjuntor:document.getElementById(`tipoDisjuntor-${id}`).value,
             requerDR:document.getElementById(`requerDR-${id}`).checked,
@@ -165,9 +167,14 @@ function findDps(dpsList, dpsClasse, preference = 'lowest') {
 }
 
 function performCalculation(dados, potenciaInstalada, potenciaDemandada, technicalData, maxDownstreamBreakerAmps = 0) {
+    const numRamais = dados.numRamais || 1;
+    
     const correnteInstalada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaInstalada / (dados.tensaoV * dados.fatorPotencia)) : 0;
     const correnteDemandada = (dados.fases === 'Trifasico' && dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * 1.732 * dados.fatorPotencia)) : (dados.tensaoV > 0 && dados.fatorPotencia > 0) ? (potenciaDemandada / (dados.tensaoV * dados.fatorPotencia)) : 0;
     
+    // Corrente por ramal é a base para o dimensionamento do cabo e disjuntor
+    const correntePorRamal = correnteDemandada / numRamais;
+
     const tempTable = (dados.tipoIsolacao === 'PVC') ? technicalData.fatores_k1 : technicalData.fatores_k1_epr;
     const fatorK1_obj = tempTable?.find(f => f.temperatura_c === dados.temperaturaAmbienteC);
     const fatorK1 = fatorK1_obj ? fatorK1_obj.fator : 1.0;
@@ -185,14 +192,14 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
     }
     
     const fatorDeCorrecaoTotal = fatorK1 * fatorK2 * fatorK3;
-    const correnteCorrigidaA = (fatorDeCorrecaoTotal > 0) ? (correnteDemandada / fatorDeCorrecaoTotal) : Infinity;
+    const correnteCorrigidaA = (fatorDeCorrecaoTotal > 0) ? (correntePorRamal / fatorDeCorrecaoTotal) : Infinity;
 
     let bitolaRecomendadaMm2="Nao encontrada", quedaTensaoCalculada=0, correnteMaximaCabo=0, disjuntorRecomendado={nome:"Coord. Inadequada",icc:0};
     
     const disjuntorCandidato = technicalData.disjuntores
         ?.filter(d =>
             d.tipo === dados.tipoDisjuntor &&
-            d.corrente_a >= correnteDemandada &&
+            d.corrente_a >= correntePorRamal && // Usa corrente por ramal
             d.corrente_a >= maxDownstreamBreakerAmps
         )
         .sort((a,b) => a.corrente_a - b.corrente_a)[0];
@@ -209,7 +216,8 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
             
             if (Iz >= disjuntorCandidato.corrente_a) {
                 const resistividade = (dados.materialCabo === 'Cobre') ? 0.0172 : 0.0282;
-                const quedaVolts = (cabo.secao_mm2 > 0) ? ((dados.fases === 'Trifasico') ? ((1.732 * resistividade * dados.comprimentoM * correnteDemandada) / cabo.secao_mm2) : ((2 * resistividade * dados.comprimentoM * correnteDemandada) / cabo.secao_mm2)) : 0;
+                // Queda de tensão também usa a corrente por ramal
+                const quedaVolts = (cabo.secao_mm2 > 0) ? ((dados.fases === 'Trifasico') ? ((1.732 * resistividade * dados.comprimentoM * correntePorRamal) / cabo.secao_mm2) : ((2 * resistividade * dados.comprimentoM * correntePorRamal) / cabo.secao_mm2)) : 0;
                 const quedaPercentual = (dados.tensaoV > 0) ? (quedaVolts / dados.tensaoV) * 100.0 : 0;
                 
                 if (quedaPercentual <= dados.limiteQuedaTensao) {
@@ -223,19 +231,24 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
         }
     }
 
-    let numCondutores=0;
-    if(dados.fases==='Monofasico'){numCondutores=2}else if(dados.fases==='Bifasico'){if(dados.tipoLigacao==='FF')numCondutores=2;else if(dados.tipoLigacao==='FFN')numCondutores=3}else if(dados.fases==='Trifasico'){if(dados.tipoLigacao==='FFF')numCondutores=3;else if(dados.tipoLigacao==='FFFN')numCondutores=4}
+    // Calcula número de condutores por ramal
+    let numCondutoresPorRamal=0;
+    if(dados.fases==='Monofasico'){numCondutoresPorRamal=2}else if(dados.fases==='Bifasico'){if(dados.tipoLigacao==='FF')numCondutoresPorRamal=2;else if(dados.tipoLigacao==='FFN')numCondutoresPorRamal=3}else if(dados.fases==='Trifasico'){if(dados.tipoLigacao==='FFF')numCondutoresPorRamal=3;else if(dados.tipoLigacao==='FFFN')numCondutoresPorRamal=4}
     
+    // Calcula o número total de condutores
+    const numCondutoresTotal = numCondutoresPorRamal * numRamais;
+
     let dutoRecomendado = "Nao encontrado";
     const bitolaNum = parseFloat(bitolaRecomendadaMm2);
     if (bitolaNum && technicalData.eletrodutos) {
-        const duto_obj = technicalData.eletrodutos.find(e => e.num_condutores === numCondutores && e.secao_cabo_mm2 === bitolaNum);
+        // O duto é calculado com base nos condutores de UM ramal
+        const duto_obj = technicalData.eletrodutos.find(e => e.num_condutores === numCondutoresPorRamal && e.secao_cabo_mm2 === bitolaNum);
         if (duto_obj) {
             dutoRecomendado = duto_obj.tamanho_nominal;
         }
     }
 
-    const calculos = { potenciaInstalada, correnteInstalada, potenciaDemandada, correnteDemandada, fatorK1, fatorK2, fatorK3, correnteCorrigidaA, bitolaRecomendadaMm2, quedaTensaoCalculada, correnteMaximaCabo, disjuntorRecomendado, numCondutores, dutoRecomendado };
+    const calculos = { potenciaInstalada, correnteInstalada, potenciaDemandada, correnteDemandada, correntePorRamal, fatorK1, fatorK2, fatorK3, correnteCorrigidaA, bitolaRecomendadaMm2, quedaTensaoCalculada, correnteMaximaCabo, disjuntorRecomendado, numCondutores: numCondutoresTotal, numRamais, dutoRecomendado };
     return { dados, calculos };
 }
 

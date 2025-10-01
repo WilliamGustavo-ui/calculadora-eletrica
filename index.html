@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Projetos Eletricos v18.2</title>
+    <title>Calculadora de Projetos Eletricos v18.3</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-customfonts/1.0.4/roboto-normal.js"></script>
@@ -263,6 +263,12 @@
                     <div class="form-group"><label for="feederMetodoInstalacao">Metodo de Instalacao</label><select id="feederMetodoInstalacao"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select></div>
                     <div class="form-group"><label for="feederTemperaturaAmbienteC">Temperatura Ambiente (C)</label><select id="feederTemperaturaAmbienteC"></select></div>
                     <div class="form-group"><label for="feederResistividadeSolo">Resistividade T. do Solo (C.m/W)</label><select id="feederResistividadeSolo"></select></div>
+                    <div class="form-group">
+                        <label for="feederNumRamais">Quantidade de Ramais</label>
+                        <select id="feederNumRamais">
+                            <option value="1">1x</option><option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option>
+                        </select>
+                    </div>
                     <div class="form-group"><label for="feederLimiteQuedaTensao">Limite Queda de Tensao (%)</label><input type="number" id="feederLimiteQuedaTensao" step="0.1" value="5.0"></div>
                     <div class="form-group"><label for="feederTipoDisjuntor">Tipo de Disjuntor</label><select id="feederTipoDisjuntor"><option value="Minidisjuntor (DIN)">Minidisjuntor (DIN)</option><option value="Caixa Moldada (MCCB)" selected>Caixa Moldada (MCCB)</option></select></div>
                     <div class="form-group"><label for="feederDpsClasse">Classe DPS</label><select id="feederDpsClasse"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select></div>
@@ -293,5 +299,3 @@
     <script type="module" src="main.js"></script>
 </body>
 </html>
-
-// William G. Salini
