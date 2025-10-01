@@ -1,4 +1,4 @@
-// Arquivo: utils.js
+// Arquivo: utils.js (CORRIGIDO)
 
 export const ligacoes = { Monofasico: [{value:'FN', text:'Fase-Neutro (FN)'}, {value:'FF', text:'Fase-Fase (FF)'}], Bifasico: [{value:'FF', text:'Fase-Fase (FF)'}, {value:'FFN', text:'Fase-Fase-Neutro (FFN)'}], Trifasico: [{value:'FFF', text:'Fase-Fase-Fase (FFF)'}, {value:'FFFN', text:'Fase-Fase-Fase-Neutro (FFFN)'}] };
 export const BTU_TO_WATTS_FACTOR = 0.293071;
@@ -68,7 +68,6 @@ function getClientFormData(clientProfile) {
 
 
 // --- FUNÇÕES AUXILIARES DE CÁLCULO ---
-
 function _calcularAlimentadorGeral(technicalData, potenciaTotal, maxCircuitBreakerAmps, clientProfile = null) {
     const projectData = getProjectFormData();
     const clientData = getClientFormData(clientProfile);
@@ -89,7 +88,7 @@ function _calcularAlimentadorGeral(technicalData, potenciaTotal, maxCircuitBreak
         metodoInstalacao: document.getElementById('feederMetodoInstalacao').value,
         temperaturaAmbienteC: parseInt(document.getElementById('feederTemperaturaAmbienteC').value),
         resistividadeSolo: parseFloat(document.getElementById('feederResistividadeSolo').value),
-        numCircuitosAgrupados: 1, // Removido do formulário, fixado em 1
+        numCircuitosAgrupados: 1,
         limiteQuedaTensao: parseFloat(document.getElementById('feederLimiteQuedaTensao').value),
         tipoDisjuntor: document.getElementById('feederTipoDisjuntor').value,
         requerDR: document.getElementById('feederRequerDR').checked,
@@ -238,6 +237,9 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
 
     const calculos = { potenciaInstalada, correnteInstalada, potenciaDemandada, correnteDemandada, fatorK1, fatorK2, fatorK3, correnteCorrigidaA, bitolaRecomendadaMm2, quedaTensaoCalculada, correnteMaximaCabo, disjuntorRecomendado, numCondutores, dutoRecomendado };
     return { dados, calculos };
+}
+
+// FUNÇÃO ADICIONADA PARA OTIMIZAR A BUSCA
 export function debounce(func, delay) {
     let timeout;
     return function(...args) {
