@@ -125,6 +125,10 @@ export function resetForm(addFirst = true, linkedClient = null) {
     document.getElementById('circuits-container').innerHTML = '';
     document.getElementById('report').textContent = 'O relatório aparecerá aqui.';
     document.getElementById('searchInput').value = '';
+    // Limpa também o container do diagrama
+    const unifilarContainer = document.getElementById('unifilar-drawing');
+    if(unifilarContainer) unifilarContainer.innerHTML = '';
+
 
     const clientLinkDisplay = document.getElementById('clientLinkDisplay');
     const currentClientIdInput = document.getElementById('currentClientId');
@@ -777,3 +781,5 @@ export function generatePdf(calculationResults, currentUserProfile) {
 
     doc.save(`Relatorio_${document.getElementById('obra').value || 'Projeto'}.pdf`);
 }
+}
+o código que você me enviou está incompleto. Ajuste e me envie o código completo de todos os arquivos, incluindo o arquivo `utils.js`.

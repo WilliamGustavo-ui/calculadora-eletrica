@@ -9,6 +9,7 @@ import { supabase } from './supabaseClient.js';
 let currentUserProfile = null;
 let technicalData = null;
 let allClients = [];
+let lastCalculationResults = null; // Armazena o último resultado do cálculo
 
 async function handleLogin() {
     console.log("1. Tentando fazer login...");
@@ -55,13 +56,39 @@ async function handleSaveProject() { if (!currentUserProfile) { alert("Você pre
 async function handleLoadProject() { const projectId = document.getElementById('savedProjectsSelect').value; if (!projectId) return; const project = await api.fetchProjectById(projectId); if (project) { ui.populateFormWithProjectData(project); alert(`Obra "${project.project_name}" carregada.`); } }
 async function handleDeleteProject() { const projectId = document.getElementById('savedProjectsSelect').value; const projectName = document.getElementById('savedProjectsSelect').options[document.getElementById('savedProjectsSelect').selectedIndex].text; if (!projectId || !confirm(`Tem certeza que deseja excluir a obra "${projectName}"?`)) return; const { error } = await api.deleteProject(projectId); if (error) { alert('Erro ao excluir obra: ' + error.message); } else { alert("Obra excluída."); ui.resetForm(true, null); await handleSearch(); } }
 async function handleSearch(term = '') { if (!currentUserProfile) return; const projects = await api.fetchProjects(term); ui.populateProjectList(projects); }
-function handleCalculate() { const currentClientId = document.getElementById('currentClientId').value; const currentClient = allClients.find(c => c.id == currentClientId) || null; const results = utils.calcularProjetoCompleto(technicalData, currentClient); if (results) { ui.renderReport(results); } }
-function handleGeneratePdf() { const currentClientId = document.getElementById('currentClientId').value; const currentClient = allClients.find(c => c.id == currentClientId) || null; const results = utils.calcularProjetoCompleto(technicalData, currentClient); if (results) { ui.generatePdf(results, currentUserProfile); } }
 async function showManageProjectsPanel() { const projects = await api.fetchProjects(''); allClients = await api.fetchClients(); const allUsers = await api.fetchAllUsers(); ui.populateProjectsPanel(projects, allClients, allUsers, currentUserProfile); ui.openModal('manageProjectsModalOverlay'); }
 async function handleProjectPanelClick(event) { const target = event.target; const projectId = target.dataset.projectId; if (target.classList.contains('transfer-client-btn')) { const select = target.parentElement.querySelector('.transfer-client-select'); const newClientId = select.value || null; const { error } = await api.transferProjectClient(projectId, newClientId); if (error) { alert('Erro ao transferir cliente: ' + error.message); } else { alert('Cliente da obra atualizado com sucesso!'); await showManageProjectsPanel(); } } if (target.classList.contains('transfer-owner-btn')) { const select = target.parentElement.querySelector('.transfer-owner-select'); const newOwnerId = select.value; if (newOwnerId && confirm('Tem certeza que deseja transferir a propriedade desta obra? Você perderá o acesso a ela se transferir para outro usuário.')) { const { error } = await api.transferProjectOwner(projectId, newOwnerId); if (error) { alert('Erro ao transferir propriedade: ' + error.message); } else { alert('Propriedade da obra transferida com sucesso!'); await showManageProjectsPanel(); } } } }
 async function showAdminPanel() { const users = await api.fetchAllUsers(); ui.populateUsersPanel(users); ui.openModal('adminPanelOverlay'); }
 async function handleAdminUserActions(event) { const target = event.target; const userId = target.dataset.userId; if (target.classList.contains('approve-user-btn')) { await api.approveUser(userId); await showAdminPanel(); } if (target.classList.contains('edit-user-btn')) { const user = await api.fetchUserById(userId); if (user) ui.populateEditUserModal(user); } if (target.classList.contains('remove-user-btn')) { /* ... */ } }
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
+
+function handleCalculate() {
+    const currentClientId = document.getElementById('currentClientId').value;
+    const currentClient = allClients.find(c => c.id == currentClientId) || null;
+    const results = utils.calcularProjetoCompleto(technicalData, currentClient);
+    if (results) {
+        lastCalculationResults = results; // Salva os resultados para usar depois
+        ui.renderReport(results);
+        ui.renderUnifilarDiagram(results); // Nova chamada para desenhar o diagrama na tela
+        alert("Memorial de Cálculo e Diagrama Unifilar gerados na tela. Agora você pode salvá-los como PDF.");
+    }
+}
+
+function handleGenerateMemorialPdf() {
+    if (lastCalculationResults) {
+        ui.generateMemorialPdf(lastCalculationResults, currentUserProfile);
+    } else {
+        alert("Por favor, gere o cálculo primeiro clicando em '1. Gerar Memorial e Diagrama'.");
+    }
+}
+
+function handleGenerateUnifilarPdf() {
+    if (lastCalculationResults) {
+        ui.generateUnifilarPdf(); // A função de unifilar pega o SVG direto da tela
+    } else {
+        alert("Por favor, gere o cálculo primeiro clicando em '1. Gerar Memorial e Diagrama'.");
+    }
+}
 
 function setupEventListeners() {
     document.getElementById('loginBtn').addEventListener('click', handleLogin);
@@ -82,8 +109,11 @@ function setupEventListeners() {
 
     document.getElementById('addCircuitBtn').addEventListener('click', () => ui.addCircuit());
     document.getElementById('circuits-container').addEventListener('click', e => { if (e.target.classList.contains('remove-btn')) { ui.removeCircuit(e.target.dataset.circuitId); } });
+    
     document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
-    document.getElementById('pdfBtn').addEventListener('click', handleGeneratePdf);
+    document.getElementById('memorialPdfBtn').addEventListener('click', handleGenerateMemorialPdf);
+    document.getElementById('unifilarPdfBtn').addEventListener('click', handleGenerateUnifilarPdf);
+
     document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
     document.getElementById('adminProjectsTableBody').addEventListener('click', handleProjectPanelClick);
     document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
