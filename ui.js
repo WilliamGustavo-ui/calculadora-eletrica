@@ -1,4 +1,5 @@
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
+import { Canvg } from 'https://cdn.jsdelivr.net/npm/canvg@4.0.1/lib/index.es.js';
 
 let circuitCount = 0;
 let technicalData = null;
@@ -869,32 +870,26 @@ export async function generateUnifilarPdf() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('l', 'mm', 'a3'); 
 
-    // 1. Criar um elemento <canvas> temporário
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
-    // 2. Obter o código SVG e as dimensões
     const svgString = new XMLSerializer().serializeToString(svgElement);
     const width = svgElement.width.baseVal.value;
     const height = svgElement.height.baseVal.value;
 
-    // 3. Usar a biblioteca canvg para renderizar o SVG no canvas
-    const v = await window.canvg.Canvg.fromString(ctx, svgString);
+    const v = await Canvg.fromString(ctx, svgString);
     await v.render();
 
-    // 4. Obter a imagem do canvas como um Data URL (PNG)
     const imgData = canvas.toDataURL('image/png');
 
-    // 5. Adicionar a imagem ao PDF A3
-    const pdfWidth = 420; // Largura do A3 em paisagem
-    const pdfHeight = 297; // Altura do A3 em paisagem
+    const pdfWidth = 420; 
+    const pdfHeight = 297; 
     const margin = 15;
 
     const imgWidth = pdfWidth - (margin * 2);
     const imgHeight = (height / width) * imgWidth;
     
     let finalY = margin;
-    // Centraliza a imagem verticalmente se houver espaço
     if (imgHeight < (pdfHeight - (margin * 2))) {
         finalY = (pdfHeight - imgHeight) / 2;
     }
