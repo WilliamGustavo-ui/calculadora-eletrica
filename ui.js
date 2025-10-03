@@ -1,5 +1,5 @@
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
-import { Canvg } from 'https://cdn.jsdelivr.net/npm/canvg@4.0.1/lib/index.es.js';
+import { Canvg } from 'https://cdn.skypack.dev/canvg';
 
 let circuitCount = 0;
 let technicalData = null;
@@ -897,3 +897,5 @@ export async function generateUnifilarPdf() {
     doc.addImage(imgData, 'PNG', margin, finalY, imgWidth, imgHeight);
     doc.save(`Unifilar_${document.getElementById('obra').value || 'Projeto'}.pdf`);
 }
+}
+o sistema não está fazendo login, investigue e corrija
