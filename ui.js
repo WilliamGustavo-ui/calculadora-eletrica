@@ -680,7 +680,10 @@ function drawCircuitLine(canvas, result, x, y) {
 }
 
 export function generateMemorialPdf(calculationResults, currentUserProfile) {
-    if (!calculationResults) return;
+    if (!calculationResults) {
+        alert("Por favor, gere o cálculo primeiro.");
+        return;
+    }
     const { feederResult, circuitResults } = calculationResults;
     const { jsPDF } = window.jspdf;
     
@@ -812,7 +815,7 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
     doc.save(`Memorial_${document.getElementById('obra').value || 'Projeto'}.pdf`);
 }
 
-export function generateUnifilarPdf() {
+export async function generateUnifilarPdf() {
     const svgElement = document.querySelector('#unifilar-drawing svg');
     if (!svgElement) {
         alert("O diagrama unifilar não foi encontrado. Por favor, gere o cálculo primeiro.");
@@ -822,30 +825,37 @@ export function generateUnifilarPdf() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('l', 'mm', 'a3'); 
 
+    // 1. Criar um elemento <canvas> temporário
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // 2. Obter o código SVG e as dimensões
     const svgString = new XMLSerializer().serializeToString(svgElement);
-    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(svgBlob);
+    const width = svgElement.width.baseVal.value;
+    const height = svgElement.height.baseVal.value;
 
-    const img = new Image();
-    img.onload = () => {
-        const pdfWidth = 420;
-        const pdfHeight = 297;
-        const margin = 10;
-        
-        const canvasWidth = svgElement.width.baseVal.value;
-        const canvasHeight = svgElement.height.baseVal.value;
+    // 3. Usar a biblioteca canvg para renderizar o SVG no canvas
+    // Acessando 'canvg' do objeto global 'window'
+    const v = await window.canvg.Canvg.fromString(ctx, svgString);
+    await v.render();
 
-        const imgWidth = pdfWidth - (margin * 2);
-        const imgHeight = (canvasHeight / canvasWidth) * imgWidth;
-        
-        let finalY = margin;
-        if (imgHeight < (pdfHeight - (margin * 2))) {
-            finalY = (pdfHeight - imgHeight) / 2;
-        }
+    // 4. Obter a imagem do canvas como um Data URL (PNG)
+    const imgData = canvas.toDataURL('image/png');
 
-        doc.addImage(img, 'PNG', margin, finalY, imgWidth, imgHeight);
-        doc.save(`Unifilar_${document.getElementById('obra').value || 'Projeto'}.pdf`);
-        URL.revokeObjectURL(url);
-    };
-    img.src = url;
+    // 5. Adicionar a imagem ao PDF A3
+    const pdfWidth = 420; // Largura do A3 em paisagem
+    const pdfHeight = 297; // Altura do A3 em paisagem
+    const margin = 15;
+
+    const imgWidth = pdfWidth - (margin * 2);
+    const imgHeight = (height / width) * imgWidth;
+    
+    let finalY = margin;
+    // Centraliza a imagem verticalmente se houver espaço
+    if (imgHeight < (pdfHeight - (margin * 2))) {
+        finalY = (pdfHeight - imgHeight) / 2;
+    }
+
+    doc.addImage(imgData, 'PNG', margin, finalY, imgWidth, imgHeight);
+    doc.save(`Unifilar_${document.getElementById('obra').value || 'Projeto'}.pdf`);
 }
