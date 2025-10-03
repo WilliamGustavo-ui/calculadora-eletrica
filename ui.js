@@ -1,14 +1,10 @@
-// Arquivo: ui.js (VERSÃO FINAL CORRIGIDA)
-
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 
 let circuitCount = 0;
 let technicalData = null;
 let tempOptions = { pvc: [], epr: [] };
-// Objeto para rastrear os event listeners de cada circuito
 const circuitListeners = {};
 
-// --- FUNÇÃO DE LIMPEZA ---
 function cleanupCircuitListeners(id) {
     if (!circuitListeners[id]) return;
     circuitListeners[id].forEach(({ element, event, handler }) => {
@@ -19,7 +15,6 @@ function cleanupCircuitListeners(id) {
     delete circuitListeners[id];
 }
 
-// --- PREPARAÇÃO DOS DADOS GERAIS ---
 export function setupDynamicData(techData) {
     technicalData = techData;
     if (techData?.fatores_k1) {
@@ -32,7 +27,6 @@ export function setupDynamicData(techData) {
     }
 }
 
-// --- FUNÇÕES AUXILIARES PARA POPULAR DROPDOWNS ---
 function populateTemperatureDropdown(selectElement, temperatures) {
     const currentValue = selectElement.value;
     selectElement.innerHTML = '';
@@ -84,7 +78,6 @@ function populateSoilResistivityDropdown(selectElement, soilData) {
     });
 }
 
-// --- ATUALIZAÇÃO DOS TOTAIS DO ALIMENTADOR ---
 function updateFeederPowerDisplay() {
     let totalInstalada = 0;
     let totalDemandada = 0;
@@ -100,7 +93,6 @@ function updateFeederPowerDisplay() {
     document.getElementById('feederPotenciaDemandada').value = totalDemandada.toFixed(2);
 }
 
-// --- CONTROLE DE VISIBILIDADE E MODAIS ---
 export function showLoginView() { document.getElementById('loginContainer').style.display = 'block'; document.getElementById('appContainer').style.display = 'none'; document.getElementById('resetPasswordContainer').style.display = 'none'; }
 export function showAppView(userProfile) {
     document.getElementById('loginContainer').style.display = 'none';
@@ -115,7 +107,6 @@ export function showResetPasswordView() { document.getElementById('loginContaine
 export function openModal(modalId) { document.getElementById(modalId).style.display = 'flex'; }
 export function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
 
-// --- MANIPULAÇÃO DO FORMULÁRIO PRINCIPAL E CIRCUITOS ---
 export function resetForm(addFirst = true, linkedClient = null) {
     document.getElementById('main-form').reset();
     document.getElementById('tech-form').reset();
@@ -125,10 +116,8 @@ export function resetForm(addFirst = true, linkedClient = null) {
     document.getElementById('circuits-container').innerHTML = '';
     document.getElementById('report').textContent = 'O relatório aparecerá aqui.';
     document.getElementById('searchInput').value = '';
-    // Limpa também o container do diagrama
     const unifilarContainer = document.getElementById('unifilar-drawing');
     if(unifilarContainer) unifilarContainer.innerHTML = '';
-
 
     const clientLinkDisplay = document.getElementById('clientLinkDisplay');
     const currentClientIdInput = document.getElementById('currentClientId');
@@ -157,6 +146,7 @@ export function addCircuit() {
     initializeCircuitListeners(circuitCount);
     updateFeederPowerDisplay();
 }
+
 export function removeCircuit(id) {
     cleanupCircuitListeners(id);
     document.getElementById(`circuit-${id}`)?.remove();
@@ -301,8 +291,6 @@ function initializeCircuitListeners(id) {
     addTrackedListener(tipoIsolacao, 'change', handleInsulationChange);
     addTrackedListener(potenciaBTUSelect, 'change', handleBtuSelectChange);
     addTrackedListener(potenciaCVSelect, 'change', handleCvSelectChange);
-    
-    // <<-- CORREÇÃO APLICADA AQUI -->>
     addTrackedListener(potenciaWInput, 'change', updateFeederPowerDisplay);
     addTrackedListener(fatorDemandaInput, 'change', updateFeederPowerDisplay);
 
@@ -322,7 +310,6 @@ function getCircuitHTML(id) {
                 <label for="nomeCircuito-${id}">Nome do Circuito</label>
                 <input type="text" id="nomeCircuito-${id}" value="Circuito ${id}">
             </div>
-
             <div class="full-width potencia-group">
                 <div class="form-group">
                     <label for="tipoCircuito-${id}">Tipo de Circuito</label>
@@ -348,7 +335,6 @@ function getCircuitHTML(id) {
                     <input type="number" id="potenciaW-${id}" value="2500">
                 </div>
             </div>
-            
             <div class="form-group">
                 <label for="fatorDemanda-${id}">Fator de Demanda (%)</label>
                 <input type="number" id="fatorDemanda-${id}" value="100" step="1">
@@ -367,9 +353,7 @@ function getCircuitHTML(id) {
             </div>
             <div class="form-group">
                 <label for="tensaoV-${id}">Tensão (V)</label>
-                <select id="tensaoV-${id}">
-                    <option value="12">12 V</option><option value="24">24 V</option><option value="36">36 V</option><option value="127">127 V</option><option value="220" selected>220 V</option><option value="380">380 V</option><option value="440">440 V</option><option value="760">760 V</option>
-                </select>
+                <select id="tensaoV-${id}"><option value="12">12 V</option><option value="24">24 V</option><option value="36">36 V</option><option value="127">127 V</option><option value="220" selected>220 V</option><option value="380">380 V</option><option value="440">440 V</option><option value="760">760 V</option></select>
             </div>
             <div class="form-group">
                 <label for="fatorPotencia-${id}">Fator de Potência (eficiência)</label>
@@ -381,24 +365,15 @@ function getCircuitHTML(id) {
             </div>
             <div class="form-group">
                 <label for="tipoIsolacao-${id}">Tipo de Isolação</label>
-                <select id="tipoIsolacao-${id}">
-                    <option value="PVC" selected>PVC 70 C</option>
-                    <option value="EPR">EPR 90 C</option>
-                    <option value="XLPE">XLPE 90 C</option>
-                </select>
+                <select id="tipoIsolacao-${id}"><option value="PVC" selected>PVC 70 C</option><option value="EPR">EPR 90 C</option><option value="XLPE">XLPE 90 C</option></select>
             </div>
             <div class="form-group">
                 <label for="materialCabo-${id}">Material do Condutor</label>
-                <select id="materialCabo-${id}">
-                    <option value="Cobre" selected>Cobre</option>
-                    <option value="Aluminio">Alumínio</option>
-                </select>
+                <select id="materialCabo-${id}"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Alumínio</option></select>
             </div>
             <div class="form-group">
                 <label for="metodoInstalacao-${id}">Método de Instalação</label>
-                <select id="metodoInstalacao-${id}">
-                    <option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option>
-                </select>
+                <select id="metodoInstalacao-${id}"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select>
             </div>
             <div class="form-group">
                 <label for="temperaturaAmbienteC-${id}">Temperatura Ambiente (°C)</label>
@@ -410,9 +385,7 @@ function getCircuitHTML(id) {
             </div>
             <div class="form-group">
                 <label for="numCircuitosAgrupados-${id}">N° de Circuitos Agrupados</label>
-                <select id="numCircuitosAgrupados-${id}">
-                    <option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
-                </select>
+                <select id="numCircuitosAgrupados-${id}"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select>
             </div>
             <div class="form-group">
                 <label for="limiteQuedaTensao-${id}">Limite Queda de Tensão (%)</label>
@@ -420,26 +393,19 @@ function getCircuitHTML(id) {
             </div>
             <div class="form-group">
                 <label for="tipoDisjuntor-${id}">Tipo de Disjuntor</label>
-                <select id="tipoDisjuntor-${id}">
-                    <option value="Minidisjuntor (DIN)">Minidisjuntor (DIN)</option>
-                    <option value="Caixa Moldada (MCCB)">Caixa Moldada (MCCB)</option>
-                </select>
+                <select id="tipoDisjuntor-${id}"><option value="Minidisjuntor (DIN)">Minidisjuntor (DIN)</option><option value="Caixa Moldada (MCCB)">Caixa Moldada (MCCB)</option></select>
             </div>
             <div class="form-group">
                 <label for="dpsClasse-${id}">Classe DPS</label>
-                <select id="dpsClasse-${id}">
-                    <option value="">Nenhum</option><option value="I">I</option><option value="II">II</option>
-                </select>
+                <select id="dpsClasse-${id}"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select>
             </div>
             <div class="checkbox-group">
-                <input type="checkbox" id="requerDR-${id}">
-                <label for="requerDR-${id}">Requer Proteção DR</label>
+                <input type="checkbox" id="requerDR-${id}"><label for="requerDR-${id}">Requer Proteção DR</label>
             </div>
         </div>
     </div>`;
 }
 
-// --- PREENCHIMENTO DE DADOS (CARREGAR PROJETO) ---
 export function populateProjectList(projects) {
     const select = document.getElementById('savedProjectsSelect');
     select.innerHTML = '<option value="">-- Selecione uma obra --</option>';
@@ -509,7 +475,6 @@ export function populateFormWithProjectData(project) {
     updateFeederPowerDisplay();
 }
 
-// --- PAINEL DE ADMINISTRAÇÃO E CLIENTES ---
 export function populateUsersPanel(users) {
     const list = document.getElementById('adminUserList');
     list.innerHTML = '';
@@ -557,8 +522,6 @@ export function resetClientForm() { const form = document.getElementById('client
 export function openEditClientForm(client) { document.getElementById('clientId').value = client.id; document.getElementById('clientNome').value = client.nome; document.getElementById('clientDocumentoTipo').value = client.documento_tipo; document.getElementById('clientDocumentoValor').value = client.documento_valor; document.getElementById('clientEmail').value = client.email; document.getElementById('clientCelular').value = client.celular; document.getElementById('clientTelefone').value = client.telefone; document.getElementById('clientEndereco').value = client.endereco; document.getElementById('clientFormTitle').textContent = 'Editar Cliente'; document.getElementById('clientFormSubmitBtn').textContent = 'Atualizar Cliente'; document.getElementById('clientFormCancelBtn').style.display = 'inline-block'; }
 export function populateSelectClientModal(clients, isChange = false) { const select = document.getElementById('clientSelectForNewProject'); select.innerHTML = '<option value="">-- Selecione um cliente --</option>'; clients.forEach(client => { const option = document.createElement('option'); option.value = client.id; option.textContent = `${client.nome} (${client.client_code})`; option.dataset.client = JSON.stringify(client); select.appendChild(option); }); const title = document.querySelector('#selectClientModalOverlay h3'); const confirmBtn = document.getElementById('confirmClientSelectionBtn'); if (isChange) { title.textContent = 'Vincular / Alterar Cliente da Obra'; confirmBtn.textContent = 'Confirmar Alteração'; } else { title.textContent = 'Vincular Cliente à Nova Obra'; confirmBtn.textContent = 'Vincular e Continuar'; } openModal('selectClientModalOverlay'); }
 
-// --- RELATÓRIOS E PDF ---
-// Funções de relatório e PDF permanecem inalteradas
 function getDpsText(dpsInfo) { if (!dpsInfo) return 'Nao'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
 
 export function renderReport(calculationResults){
@@ -651,11 +614,78 @@ export function renderReport(calculationResults){
     document.getElementById('report').textContent = reportText.trim();
 }
 
-export function generatePdf(calculationResults, currentUserProfile) {
+export function renderUnifilarDiagram(calculationResults) {
+    const container = document.getElementById('unifilar-drawing');
+    container.innerHTML = ''; 
+    if (!calculationResults || !calculationResults.circuitResults) {
+        container.innerHTML = '<p>Dados insuficientes para gerar o diagrama.</p>';
+        return;
+    }
+
+    const { feederResult, circuitResults } = calculationResults;
+    const canvas = SVG().addTo(container).size('100%', 1200);
+
+    const drCircuits = circuitResults.filter(c => c.dados.requerDR);
+    const nonDrCircuits = circuitResults.filter(c => !c.dados.requerDR);
+    
+    let y = 100;
+    const xStart = 50;
+    const xBar = 250;
+
+    canvas.line(xStart, 20, xStart, y).stroke({ width: 2 });
+    canvas.text(`${feederResult.calculos.disjuntorRecomendado.nome}`).move(xStart + 10, y - 40).font({ anchor: 'start', size: 12 });
+    canvas.rect(20, 20).move(xStart - 10, y - 30).stroke({ width: 1 }).fill('white');
+    canvas.text(`${feederResult.dados.fases.substring(0,1)}F`).move(xStart - 8, y-28).font({size:8});
+
+    const barHeight = (circuitResults.length * 40) + 40;
+    canvas.line(xBar, y - 20, xBar, y + barHeight).stroke({ width: 4 });
+
+    if (drCircuits.length > 0) {
+        const drCurrent = drCircuits.some(c => c.dados.tipoCircuito.includes('chuveiro') || c.dados.potenciaW > 4000) ? '63 A' : '40 A';
+        canvas.rect(30, 30).move(xBar - 15, y - 15).stroke({ width: 1.5, color: '#3498db' }).fill('white');
+        canvas.text('DR').move(xBar-10, y-12).font({size:12, weight:'bold', fill:'#3498db'});
+
+        drCircuits.forEach(result => {
+            drawCircuitLine(canvas, result, xBar, y);
+            y += 40;
+        });
+    }
+
+    if (nonDrCircuits.length > 0) {
+         if (drCircuits.length > 0) y += 20; 
+         nonDrCircuits.forEach(result => {
+            drawCircuitLine(canvas, result, xBar, y);
+            y += 40;
+        });
+    }
+
+    canvas.height(y + 50);
+}
+
+function drawCircuitLine(canvas, result, x, y) {
+    const { dados, calculos } = result;
+    const xCircuit = x + 50;
+    
+    canvas.line(x, y, xCircuit, y).stroke({ width: 1 });
+
+    canvas.rect(20, 20).move(xCircuit, y - 10).stroke({ width: 1 }).fill('white');
+    canvas.text(`${calculos.disjuntorRecomendado.nome.replace(' A', '')}`).move(xCircuit + 2, y - 8).font({ size: 10 });
+    
+    const lineEndX = xCircuit + 250;
+    canvas.line(xCircuit + 20, y, lineEndX, y).stroke({ width: 1 });
+
+    const infoText = `${dados.potenciaW} W | PVC ${calculos.bitolaRecomendadaMm2}mm²`;
+    canvas.text(infoText).move(lineEndX + 10, y - 15).font({ anchor: 'start', size: 12 });
+    canvas.text(`${dados.id} - ${dados.nomeCircuito}`).move(lineEndX + 10, y + 5).font({ anchor: 'start', size: 12, weight: 'bold' });
+}
+
+export function generateMemorialPdf(calculationResults, currentUserProfile) {
     if (!calculationResults) return;
     const { feederResult, circuitResults } = calculationResults;
     const { jsPDF } = window.jspdf;
+    
     const doc = new jsPDF('p', 'mm', 'a4');
+
     let yPos = 20;
     const leftMargin = 15;
     const valueMargin = 75; 
@@ -779,7 +809,43 @@ export function generatePdf(calculationResults, currentUserProfile) {
         addLineItem("Proteção DPS:", getDpsText(dados.dpsInfo));
     });
 
-    doc.save(`Relatorio_${document.getElementById('obra').value || 'Projeto'}.pdf`);
+    doc.save(`Memorial_${document.getElementById('obra').value || 'Projeto'}.pdf`);
 }
+
+export function generateUnifilarPdf() {
+    const svgElement = document.querySelector('#unifilar-drawing svg');
+    if (!svgElement) {
+        alert("O diagrama unifilar não foi encontrado. Por favor, gere o cálculo primeiro.");
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'mm', 'a3'); 
+
+    const svgString = new XMLSerializer().serializeToString(svgElement);
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+
+    const img = new Image();
+    img.onload = () => {
+        const pdfWidth = 420;
+        const pdfHeight = 297;
+        const margin = 10;
+        
+        const canvasWidth = svgElement.width.baseVal.value;
+        const canvasHeight = svgElement.height.baseVal.value;
+
+        const imgWidth = pdfWidth - (margin * 2);
+        const imgHeight = (canvasHeight / canvasWidth) * imgWidth;
+        
+        let finalY = margin;
+        if (imgHeight < (pdfHeight - (margin * 2))) {
+            finalY = (pdfHeight - imgHeight) / 2;
+        }
+
+        doc.addImage(img, 'PNG', margin, finalY, imgWidth, imgHeight);
+        doc.save(`Unifilar_${document.getElementById('obra').value || 'Projeto'}.pdf`);
+        URL.revokeObjectURL(url);
+    };
+    img.src = url;
 }
-o código que você me enviou está incompleto. Ajuste e me envie o código completo de todos os arquivos, incluindo o arquivo `utils.js`.
