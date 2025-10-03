@@ -298,7 +298,7 @@ function initializeCircuitListeners(id) {
     addTrackedListener(potenciaBTUSelect, 'change', handleBtuSelectChange);
     addTrackedListener(potenciaCVSelect, 'change', handleCvSelectChange);
     
-    // <<-- CORREÇÃO PRINCIPAL: TROCADO 'input' POR 'change' -->>
+    // <<-- CORREÇÃO APLICADA AQUI -->>
     addTrackedListener(potenciaWInput, 'change', updateFeederPowerDisplay);
     addTrackedListener(fatorDemandaInput, 'change', updateFeederPowerDisplay);
 
