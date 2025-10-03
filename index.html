@@ -285,10 +285,17 @@
         </form>
 
         <div class="button-container">
-             <button id="calculateBtn" class="btn-secondary">Gerar Memorial Descritivo</button>
-             <button id="pdfBtn" class="btn-success">Gerar PDF</button>
+             <button id="calculateBtn" class="btn-primary">1. Gerar Memorial e Diagrama</button>
+             <button id="memorialPdfBtn" class="btn-success">2. Salvar Memorial (A4)</button>
+             <button id="unifilarPdfBtn" class="btn-success">3. Salvar Unifilar (A3)</button>
         </div>
-        <pre id="report">O relatório aparecerá aqui.</pre>
+
+        <pre id="report">O memorial descritivo aparecerá aqui.</pre>
+
+        <div id="unifilar-container" class="diagram-container">
+            <h2>Diagrama Unifilar</h2>
+            <div id="unifilar-drawing"></div>
+        </div>
     </div>
 
     <script type="module" src="main.js"></script>

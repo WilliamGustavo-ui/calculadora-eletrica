@@ -1,5 +1,3 @@
-// Arquivo: main.js (VERSÃO FINAL COM DEBOUNCE)
-
 import * as auth from './auth.js';
 import * as ui from './ui.js';
 import * as api from './api.js';
@@ -110,6 +108,7 @@ function setupEventListeners() {
     document.getElementById('addCircuitBtn').addEventListener('click', () => ui.addCircuit());
     document.getElementById('circuits-container').addEventListener('click', e => { if (e.target.classList.contains('remove-btn')) { ui.removeCircuit(e.target.dataset.circuitId); } });
     
+    // --- EVENT LISTENERS ATUALIZADOS ---
     document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
     document.getElementById('memorialPdfBtn').addEventListener('click', handleGenerateMemorialPdf);
     document.getElementById('unifilarPdfBtn').addEventListener('click', handleGenerateUnifilarPdf);
