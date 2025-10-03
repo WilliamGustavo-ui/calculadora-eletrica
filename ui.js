@@ -522,19 +522,19 @@ export function resetClientForm() { const form = document.getElementById('client
 export function openEditClientForm(client) { document.getElementById('clientId').value = client.id; document.getElementById('clientNome').value = client.nome; document.getElementById('clientDocumentoTipo').value = client.documento_tipo; document.getElementById('clientDocumentoValor').value = client.documento_valor; document.getElementById('clientEmail').value = client.email; document.getElementById('clientCelular').value = client.celular; document.getElementById('clientTelefone').value = client.telefone; document.getElementById('clientEndereco').value = client.endereco; document.getElementById('clientFormTitle').textContent = 'Editar Cliente'; document.getElementById('clientFormSubmitBtn').textContent = 'Atualizar Cliente'; document.getElementById('clientFormCancelBtn').style.display = 'inline-block'; }
 export function populateSelectClientModal(clients, isChange = false) { const select = document.getElementById('clientSelectForNewProject'); select.innerHTML = '<option value="">-- Selecione um cliente --</option>'; clients.forEach(client => { const option = document.createElement('option'); option.value = client.id; option.textContent = `${client.nome} (${client.client_code})`; option.dataset.client = JSON.stringify(client); select.appendChild(option); }); const title = document.querySelector('#selectClientModalOverlay h3'); const confirmBtn = document.getElementById('confirmClientSelectionBtn'); if (isChange) { title.textContent = 'Vincular / Alterar Cliente da Obra'; confirmBtn.textContent = 'Confirmar Alteração'; } else { title.textContent = 'Vincular Cliente à Nova Obra'; confirmBtn.textContent = 'Vincular e Continuar'; } openModal('selectClientModalOverlay'); }
 
-function getDpsText(dpsInfo) { if (!dpsInfo) return 'Nao'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
+function getDpsText(dpsInfo) { if (!dpsInfo) return 'Não'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
 
 export function renderReport(calculationResults){
     if(!calculationResults) return;
     const { feederResult, circuitResults } = calculationResults;
     const dataHora = (new Date).toLocaleString('pt-BR');
     const formatLine = (label, value) => (label + ':').padEnd(30, ' ') + value;
-    let reportText = `======================================================\n==           RELATORIO DE PROJETO ELETRICO           ==\n======================================================\n${formatLine('Gerado em', dataHora)}\n`;
+    let reportText = `======================================================\n==           RELATÓRIO DE PROJETO ELÉTRICO           ==\n======================================================\n${formatLine('Gerado em', dataHora)}\n`;
     
     const reportData = feederResult.dados;
     reportText += `\n-- DADOS DA OBRA E CLIENTE --\n`;
-    reportText += `${formatLine('Cliente', reportData.cliente || 'Nao informado')}\n`;
-    reportText += `${formatLine(`Documento (${reportData.tipoDocumento})`, reportData.documento || 'Nao informado')}\n`;
+    reportText += `${formatLine('Cliente', reportData.cliente || 'Não informado')}\n`;
+    reportText += `${formatLine(`Documento (${reportData.tipoDocumento})`, reportData.documento || 'Não informado')}\n`;
     reportText += `${formatLine('Celular', reportData.celular || '-')}\n`;
     reportText += `${formatLine('Telefone', reportData.telefone || '-')}\n`;
     reportText += `${formatLine('E-mail', reportData.email || '-')}\n`;
@@ -551,7 +551,7 @@ export function renderReport(calculationResults){
 
     const respTecnico = document.getElementById('respTecnico').value;
     if (respTecnico) {
-        reportText += `\n-- RESPONSAVEL TECNICO --\n`;
+        reportText += `\n-- RESPONSÁVEL TÉCNICO --\n`;
         reportText += `${formatLine('Nome', respTecnico)}\n`;
         reportText += `${formatLine('CREA', document.getElementById('crea').value)}\n`;
     }
@@ -570,12 +570,12 @@ export function renderReport(calculationResults){
         const potenciaDemandadaVA = dados.fatorPotencia > 0 ? (calculos.potenciaDemandada / dados.fatorPotencia).toFixed(2) : "0.00";
         const correnteCorrigidaTexto = isFinite(calculos.correnteCorrigidaA) ? `${calculos.correnteCorrigidaA.toFixed(2)} A` : "Incalculável";
         
-        reportText += `\n\n======================================================\n==           MEMORIAL DE CALCULO - ${title.padEnd(16, ' ')} ==\n======================================================\n`;
+        reportText += `\n\n======================================================\n==           MEMORIAL DE CÁLCULO - ${title.padEnd(16, ' ')} ==\n======================================================\n`;
         reportText += `\n-- PARÂMETROS DE ENTRADA --\n`;
         if (dados.id !== 'Geral') { reportText += `${formatLine('Nome do Circuito', dados.nomeCircuito)}\n`; reportText += `${formatLine('Tipo de Circuito', dados.tipoCircuito)}\n`; }
-        reportText += `${formatLine('Potencia Instalada', `${calculos.potenciaInstalada.toFixed(2)} W`)}\n`;
+        reportText += `${formatLine('Potência Instalada', `${calculos.potenciaInstalada.toFixed(2)} W`)}\n`;
         reportText += `${formatLine('Fator de Demanda Aplicado (%)', `${dados.fatorDemanda}%`)}\n`;
-        reportText += `${formatLine('Potencia Demandada', `${potenciaDemandadaVA} VA`)}\n`;
+        reportText += `${formatLine('Potência Demandada', `${potenciaDemandadaVA} VA`)}\n`;
         reportText += `${formatLine('Fator de Potência', dados.fatorPotencia)}\n`;
         reportText += `${formatLine('Sistema de Fases', dados.fases)}\n`;
         reportText += `${formatLine('Tipo de Ligação', dados.tipoLigacao)}\n`;
@@ -583,9 +583,9 @@ export function renderReport(calculationResults){
         reportText += `${formatLine('Comprimento (m)', `${dados.comprimentoM} m`)}\n`;
         reportText += `${formatLine('Limite Queda de Tensão (%)', `${dados.limiteQuedaTensao} %`)}\n`;
 
-        reportText += `\n-- ESPECIFICACOES DE INSTALAÇÃO E CORREÇÕES --\n`;
-        reportText += `${formatLine('Material / Isolacao', `${dados.materialCabo} / ${dados.tipoIsolacao}`)}\n`;
-        reportText += `${formatLine('Metodo de Instalacao', dados.metodoInstalacao)}\n`;
+        reportText += `\n-- ESPECIFICAÇÕES DE INSTALAÇÃO E CORREÇÕES --\n`;
+        reportText += `${formatLine('Material / Isolação', `${dados.materialCabo} / ${dados.tipoIsolacao}`)}\n`;
+        reportText += `${formatLine('Método de Instalação', dados.metodoInstalacao)}\n`;
         reportText += `${formatLine('Temperatura Ambiente', `${dados.temperaturaAmbienteC}°C`)}\n`;
         if (dados.id !== 'Geral') {
              reportText += `${formatLine('Circuitos Agrupados', dados.numCircuitosAgrupados)}\n`;
@@ -594,7 +594,7 @@ export function renderReport(calculationResults){
              if (dados.resistividadeSolo && dados.resistividadeSolo > 0) { reportText += formatLine('Resist. do Solo (C.m/W)', dados.resistividadeSolo) + '\n'; }
         }
         if(calculos.fatorK1) {
-           reportText += `${formatLine('Fatores de Correcao', `K1=${calculos.fatorK1.toFixed(2)}, K2=${calculos.fatorK2.toFixed(2)}, K3=${calculos.fatorK3.toFixed(2)}`)}\n`;
+           reportText += `${formatLine('Fatores de Correção', `K1=${calculos.fatorK1.toFixed(2)}, K2=${calculos.fatorK2.toFixed(2)}, K3=${calculos.fatorK3.toFixed(2)}`)}\n`;
         }
         
         reportText += `\n-- RESULTADOS DE CÁLCULO E DIMENSIONAMENTO --\n`;
@@ -602,13 +602,13 @@ export function renderReport(calculationResults){
         reportText += `${formatLine('Corrente Demandada (Ib)', `${calculos.correnteDemandada.toFixed(2)} A`)}\n`;
         reportText += `${formatLine('Corrente Corrigida (I\')', correnteCorrigidaTexto)}\n`;
         reportText += `${formatLine('Bitola Recomendada', `${calculos.bitolaRecomendadaMm2} mm²`)}\n`;
-        reportText += `${formatLine('Queda de Tensao (DV)', `${calculos.quedaTensaoCalculada.toFixed(2)} % (Limite: ${dados.limiteQuedaTensao} %)`)}\n`;
+        reportText += `${formatLine('Queda de Tensão (DV)', `${calculos.quedaTensaoCalculada.toFixed(2)} % (Limite: ${dados.limiteQuedaTensao} %)`)}\n`;
         reportText += `${formatLine('Corrente Max. Cabo (Iz)', `${calculos.correnteMaximaCabo.toFixed(2)} A`)}\n`;
 
-        reportText += `\n-- PROTECOES RECOMENDADAS --\n`;
+        reportText += `\n-- PROTEÇÕES RECOMENDADAS --\n`;
         reportText += `${formatLine(`Disjuntor (${dados.tipoDisjuntor})`, `${calculos.disjuntorRecomendado.nome} (Icc: ${calculos.disjuntorRecomendado.icc} kA)`)}\n`;
-        reportText += `${formatLine('Protecao DR 30mA', dados.requerDR ? `Sim (usar ${calculos.disjuntorRecomendado.nome.replace('A','')}A / 30mA)` : 'Nao')}\n`;
-        reportText += `${formatLine('Protecao DPS', getDpsText(dados.dpsInfo))}\n`;
+        reportText += `${formatLine('Proteção DR 30mA', dados.requerDR ? `Sim (usar ${calculos.disjuntorRecomendado.nome.replace('A','')}A / 30mA)` : 'Não')}\n`;
+        reportText += `${formatLine('Proteção DPS', getDpsText(dados.dpsInfo))}\n`;
         reportText += `${formatLine('Eletroduto (aprox.)', `${calculos.dutoRecomendado} (${calculos.numCondutores} condutores)`)}\n`;
     });
     document.getElementById('report').textContent = reportText.trim();
@@ -631,53 +631,97 @@ export function renderUnifilarDiagram(calculationResults) {
     let y = 100;
     const xStart = 50;
     const xBar = 250;
+    const xCircuitStart = 300;
 
+    // Desenha Alimentação Geral
     canvas.line(xStart, 20, xStart, y).stroke({ width: 2 });
-    canvas.text(`${feederResult.calculos.disjuntorRecomendado.nome}`).move(xStart + 10, y - 40).font({ anchor: 'start', size: 12 });
-    canvas.rect(20, 20).move(xStart - 10, y - 30).stroke({ width: 1 }).fill('white');
-    canvas.text(`${feederResult.dados.fases.substring(0,1)}F`).move(xStart - 8, y-28).font({size:8});
+    canvas.text(`${feederResult.calculos.disjuntorRecomendado.nome}`).move(xStart + 10, y - 50).font({ anchor: 'start', size: 12 });
+    canvas.text(`${feederResult.calculos.disjuntorRecomendado.icc} kA`).move(xStart + 10, y - 35).font({ anchor: 'start', size: 12 });
+    canvas.rect(20, 20).move(xStart - 10, y - 55).stroke({ width: 1 }).fill('white');
+    canvas.text(`${feederResult.dados.fases.substring(0,1)}F`).move(xStart - 8, y - 53).font({size:8});
 
-    const barHeight = (circuitResults.length * 40) + 40;
-    canvas.line(xBar, y - 20, xBar, y + barHeight).stroke({ width: 4 });
+    // Linha do Geral para o Barramento
+    canvas.line(xStart, y, xBar, y).stroke({ width: 2 });
 
-    if (drCircuits.length > 0) {
-        const drCurrent = drCircuits.some(c => c.dados.tipoCircuito.includes('chuveiro') || c.dados.potenciaW > 4000) ? '63 A' : '40 A';
-        canvas.rect(30, 30).move(xBar - 15, y - 15).stroke({ width: 1.5, color: '#3498db' }).fill('white');
-        canvas.text('DR').move(xBar-10, y-12).font({size:12, weight:'bold', fill:'#3498db'});
+    // Barramento principal
+    const barHeight = (circuitResults.length * 45) + 60;
+    canvas.line(xBar, y - 20, xBar, y + barHeight).stroke({ width: 5 });
 
-        drCircuits.forEach(result => {
-            drawCircuitLine(canvas, result, xBar, y);
-            y += 40;
-        });
+    let currentY = y;
+
+    // Função para desenhar um grupo de circuitos
+    const drawGroup = (circuits, startY, drInfo) => {
+        let groupY = startY;
+        
+        if (drInfo) {
+            const drHeight = circuits.length * 45;
+            canvas.line(xBar, groupY - 20, xCircuitStart - 25, groupY - 20).stroke({ width: 1 });
+            
+            // Símbolo do DR
+            canvas.rect(25, 25).move(xCircuitStart - 25, groupY - 32).stroke({ width: 1.5, color: '#3498db' }).fill('white');
+            canvas.text('DR').move(xCircuitStart - 20, groupY - 30).font({size:12, weight:'bold', fill:'#3498db'});
+            canvas.text(drInfo).move(xCircuitStart - 22, groupY - 15).font({size:9, fill:'#3498db'});
+
+            // Barramento secundário (pós-DR)
+            canvas.line(xCircuitStart, groupY - 20, xCircuitStart, groupY + drHeight - 45).stroke({ width: 3 });
+            
+            circuits.forEach(result => {
+                drawCircuitLine(canvas, result, xCircuitStart, groupY);
+                groupY += 45;
+            });
+        } else {
+            circuits.forEach(result => {
+                drawCircuitLine(canvas, result, xBar, groupY);
+                groupY += 45;
+            });
+        }
+        return groupY;
+    };
+
+    // Desenha grupos de DR (ex: um para TUGs/Iluminação, um para áreas molhadas)
+    const tugs = drCircuits.filter(c => ['tug', 'iluminacao'].includes(c.dados.tipoCircuito));
+    const molhadas = drCircuits.filter(c => !['tug', 'iluminacao'].includes(c.dados.tipoCircuito));
+
+    if (tugs.length > 0) {
+        currentY = drawGroup(tugs, currentY, '40A/30mA');
+    }
+    if (molhadas.length > 0) {
+        currentY = drawGroup(molhadas, currentY, '63A/30mA');
     }
 
+    // Desenha circuitos sem DR
     if (nonDrCircuits.length > 0) {
-         if (drCircuits.length > 0) y += 20; 
-         nonDrCircuits.forEach(result => {
-            drawCircuitLine(canvas, result, xBar, y);
-            y += 40;
-        });
+        currentY = drawGroup(nonDrCircuits, currentY, null);
     }
-
-    canvas.height(y + 50);
+    
+    canvas.height(currentY + 50);
 }
 
 function drawCircuitLine(canvas, result, x, y) {
     const { dados, calculos } = result;
-    const xCircuit = x + 50;
+    const xBreaker = x + 50;
     
-    canvas.line(x, y, xCircuit, y).stroke({ width: 1 });
+    // Linha do barramento ao disjuntor
+    canvas.line(x, y, xBreaker, y).stroke({ width: 1 });
 
-    canvas.rect(20, 20).move(xCircuit, y - 10).stroke({ width: 1 }).fill('white');
-    canvas.text(`${calculos.disjuntorRecomendado.nome.replace(' A', '')}`).move(xCircuit + 2, y - 8).font({ size: 10 });
-    
-    const lineEndX = xCircuit + 250;
-    canvas.line(xCircuit + 20, y, lineEndX, y).stroke({ width: 1 });
+    // Disjuntor do circuito
+    canvas.rect(25, 25).move(xBreaker - 12.5, y - 12.5).stroke({ width: 1 }).fill('white');
+    canvas.text(`${calculos.disjuntorRecomendado.nome.replace(' A', '')} A`).move(xBreaker + 20, y - 10).font({ anchor: 'start', size: 10 });
+    canvas.text(`${calculos.disjuntorRecomendado.icc} kA`).move(xBreaker + 20, y + 2).font({ anchor: 'start', size: 10 });
 
-    const infoText = `${dados.potenciaW} W | PVC ${calculos.bitolaRecomendadaMm2}mm²`;
-    canvas.text(infoText).move(lineEndX + 10, y - 15).font({ anchor: 'start', size: 12 });
-    canvas.text(`${dados.id} - ${dados.nomeCircuito}`).move(lineEndX + 10, y + 5).font({ anchor: 'start', size: 12, weight: 'bold' });
+    // Símbolo do cabo com traços
+    const xCableEnd = xBreaker + 120;
+    canvas.line(xBreaker + 12.5, y, xCableEnd, y).stroke({ width: 1 });
+    canvas.line(xCableEnd - 5, y - 5, xCableEnd, y).stroke({ width: 1 }); // Traço no final
+    canvas.text('T').move(xCableEnd - 15, y + 12).font({size: 10}); // Símbolo T, R ou S
+
+    // Informações do circuito
+    const xText = xCableEnd + 20;
+    canvas.text(`(${dados.potenciaW} W)`).move(xText, y - 15).font({ anchor: 'start', size: 12, weight: 'bold' });
+    canvas.text(`${dados.id} - ${dados.nomeCircuito}`).move(xText, y).font({ anchor: 'start', size: 12 });
+    canvas.text(`PVC (70ºC) - ${calculos.bitolaRecomendadaMm2}mm²`).move(xText, y + 15).font({ anchor: 'start', size: 10 });
 }
+
 
 export function generateMemorialPdf(calculationResults, currentUserProfile) {
     if (!calculationResults) {
@@ -835,7 +879,6 @@ export async function generateUnifilarPdf() {
     const height = svgElement.height.baseVal.value;
 
     // 3. Usar a biblioteca canvg para renderizar o SVG no canvas
-    // Acessando 'canvg' do objeto global 'window'
     const v = await window.canvg.Canvg.fromString(ctx, svgString);
     await v.render();
 
