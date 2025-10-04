@@ -93,7 +93,6 @@ function updateFeederPowerDisplay() {
     document.getElementById('feederPotenciaInstalada').value = totalInstalada.toFixed(2);
     document.getElementById('feederPotenciaDemandada').value = totalDemandada.toFixed(2);
 }
-
 export function showLoginView() { document.getElementById('loginContainer').style.display = 'block'; document.getElementById('appContainer').style.display = 'none'; document.getElementById('resetPasswordContainer').style.display = 'none'; }
 export function showAppView(userProfile) {
     document.getElementById('loginContainer').style.display = 'none';
@@ -406,7 +405,6 @@ function getCircuitHTML(id) {
         </div>
     </div>`;
 }
-
 export function populateProjectList(projects) {
     const select = document.getElementById('savedProjectsSelect');
     select.innerHTML = '<option value="">-- Selecione uma obra --</option>';
@@ -522,7 +520,6 @@ export function populateClientManagementModal(clients) {
 export function resetClientForm() { const form = document.getElementById('clientForm'); form.reset(); document.getElementById('clientId').value = ''; document.getElementById('clientFormTitle').textContent = 'Cadastrar Novo Cliente'; document.getElementById('clientFormSubmitBtn').textContent = 'Salvar Cliente'; document.getElementById('clientFormCancelBtn').style.display = 'none'; }
 export function openEditClientForm(client) { document.getElementById('clientId').value = client.id; document.getElementById('clientNome').value = client.nome; document.getElementById('clientDocumentoTipo').value = client.documento_tipo; document.getElementById('clientDocumentoValor').value = client.documento_valor; document.getElementById('clientEmail').value = client.email; document.getElementById('clientCelular').value = client.celular; document.getElementById('clientTelefone').value = client.telefone; document.getElementById('clientEndereco').value = client.endereco; document.getElementById('clientFormTitle').textContent = 'Editar Cliente'; document.getElementById('clientFormSubmitBtn').textContent = 'Atualizar Cliente'; document.getElementById('clientFormCancelBtn').style.display = 'inline-block'; }
 export function populateSelectClientModal(clients, isChange = false) { const select = document.getElementById('clientSelectForNewProject'); select.innerHTML = '<option value="">-- Selecione um cliente --</option>'; clients.forEach(client => { const option = document.createElement('option'); option.value = client.id; option.textContent = `${client.nome} (${client.client_code})`; option.dataset.client = JSON.stringify(client); select.appendChild(option); }); const title = document.querySelector('#selectClientModalOverlay h3'); const confirmBtn = document.getElementById('confirmClientSelectionBtn'); if (isChange) { title.textContent = 'Vincular / Alterar Cliente da Obra'; confirmBtn.textContent = 'Confirmar Alteração'; } else { title.textContent = 'Vincular Cliente à Nova Obra'; confirmBtn.textContent = 'Vincular e Continuar'; } openModal('selectClientModalOverlay'); }
-
 function getDpsText(dpsInfo) { if (!dpsInfo) return 'Não'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
 
 export function renderReport(calculationResults){
@@ -624,105 +621,148 @@ export function renderUnifilarDiagram(calculationResults) {
     }
 
     const { feederResult, circuitResults } = calculationResults;
-    const canvas = SVG().addTo(container).size('100%', 1200);
+    const canvas = SVG().addTo(container).size('100%', 2000);
 
-    const drCircuits = circuitResults.filter(c => c.dados.requerDR);
-    const nonDrCircuits = circuitResults.filter(c => !c.dados.requerDR);
+    const circuitsComDR = circuitResults.filter(c => c.dados.requerDR);
+    const circuitsSemDR = circuitResults.filter(c => !c.dados.requerDR);
+
+    const categorizedCircuits = {};
+    circuitsComDR.forEach(c => {
+        let tipo = c.dados.tipoCircuito;
+        if (tipo === 'tue' && (c.dados.nomeCircuito.toLowerCase().includes('chuveiro') || c.dados.nomeCircuito.toLowerCase().includes('aquecedor'))) {
+            tipo = 'tue_potencia';
+        }
+        if (!categorizedCircuits[tipo]) {
+            categorizedCircuits[tipo] = [];
+        }
+        categorizedCircuits[tipo].push(c);
+    });
+
+    const finalGroups = [];
+    const groupOrder = ['iluminacao', 'tug', 'tue', 'tue_potencia', 'ar_condicionado', 'motores', 'aquecimento'];
     
-    let y = 100;
+    groupOrder.forEach(category => {
+        if (categorizedCircuits[category]) {
+            const circuitsOfType = categorizedCircuits[category];
+            for (let i = 0; i < circuitsOfType.length; i += 5) {
+                const chunk = circuitsOfType.slice(i, i + 5);
+                finalGroups.push({
+                    dr: { corrente: '40A', sensibilidade: '30mA' },
+                    circuits: chunk
+                });
+            }
+        }
+    });
+
+    if (circuitsSemDR.length > 0) {
+        finalGroups.push({ dr: null, circuits: circuitsSemDR });
+    }
+
+    let y = 120;
     const xStart = 50;
     const xBar = 250;
-    const xCircuitStart = 300;
+    
+    canvas.line(xStart + 100, 20, xStart + 100, y - 60).stroke({ width: 2 });
+    if(feederResult.dados.dpsClasse) {
+        drawDPS(canvas, xStart + 100, y - 60, feederResult.dados);
+    }
+    drawDisjuntor(canvas, xStart + 100, y, `${feederResult.calculos.disjuntorRecomendado.nome}\n${feederResult.calculos.disjuntorRecomendado.icc} kA`);
+    
+    canvas.line(xStart + 100, y, xBar, y).stroke({ width: 2 });
 
-    // Desenha Alimentação Geral
-    canvas.line(xStart, 20, xStart, y).stroke({ width: 2 });
-    canvas.text(`${feederResult.calculos.disjuntorRecomendado.nome}`).move(xStart + 10, y - 50).font({ anchor: 'start', size: 12 });
-    canvas.text(`${feederResult.calculos.disjuntorRecomendado.icc} kA`).move(xStart + 10, y - 35).font({ anchor: 'start', size: 12 });
-    canvas.rect(20, 20).move(xStart - 10, y - 55).stroke({ width: 1 }).fill('white');
-    canvas.text(`${feederResult.dados.fases.substring(0,1)}F`).move(xStart - 8, y - 53).font({size:8});
-
-    // Linha do Geral para o Barramento
-    canvas.line(xStart, y, xBar, y).stroke({ width: 2 });
-
-    // Barramento principal
-    const barHeight = (circuitResults.length * 45) + 60;
+    const barHeight = finalGroups.reduce((acc, group) => acc + (group.circuits.length * 45) + (group.dr ? 40 : 10), 0);
     canvas.line(xBar, y - 20, xBar, y + barHeight).stroke({ width: 5 });
 
     let currentY = y;
+    finalGroups.forEach(group => {
+        currentY = drawGroup(canvas, group, currentY, xBar);
+    });
 
-    // Função para desenhar um grupo de circuitos
-    const drawGroup = (circuits, startY, drInfo) => {
-        let groupY = startY;
-        
-        if (drInfo) {
-            const drHeight = circuits.length * 45;
-            canvas.line(xBar, groupY - 20, xCircuitStart - 25, groupY - 20).stroke({ width: 1 });
-            
-            // Símbolo do DR
-            canvas.rect(25, 25).move(xCircuitStart - 25, groupY - 32).stroke({ width: 1.5, color: '#3498db' }).fill('white');
-            canvas.text('DR').move(xCircuitStart - 20, groupY - 30).font({size:12, weight:'bold', fill:'#3498db'});
-            canvas.text(drInfo).move(xCircuitStart - 22, groupY - 15).font({size:9, fill:'#3498db'});
-
-            // Barramento secundário (pós-DR)
-            canvas.line(xCircuitStart, groupY - 20, xCircuitStart, groupY + drHeight - 45).stroke({ width: 3 });
-            
-            circuits.forEach(result => {
-                drawCircuitLine(canvas, result, xCircuitStart, groupY);
-                groupY += 45;
-            });
-        } else {
-            circuits.forEach(result => {
-                drawCircuitLine(canvas, result, xBar, groupY);
-                groupY += 45;
-            });
-        }
-        return groupY;
-    };
-
-    // Desenha grupos de DR (ex: um para TUGs/Iluminação, um para áreas molhadas)
-    const tugs = drCircuits.filter(c => ['tug', 'iluminacao'].includes(c.dados.tipoCircuito));
-    const molhadas = drCircuits.filter(c => !['tug', 'iluminacao'].includes(c.dados.tipoCircuito));
-
-    if (tugs.length > 0) {
-        currentY = drawGroup(tugs, currentY, '40A/30mA');
-    }
-    if (molhadas.length > 0) {
-        currentY = drawGroup(molhadas, currentY, '63A/30mA');
-    }
-
-    // Desenha circuitos sem DR
-    if (nonDrCircuits.length > 0) {
-        currentY = drawGroup(nonDrCircuits, currentY, null);
-    }
-    
     canvas.height(currentY + 50);
+}
+
+function drawGroup(canvas, group, startY, xBar) {
+    let currentY = startY;
+    const xCircuitStart = xBar + 50;
+    
+    if (group.dr) {
+        const groupHeight = group.circuits.length * 45;
+        const isHighPower = group.circuits.some(c => c.dados.tipoCircuito === 'tue_potencia' || c.dados.potenciaW >= 4000);
+        const drCurrent = isHighPower ? '63A' : '40A';
+
+        canvas.line(xBar, currentY, xCircuitStart - 25, currentY).stroke({ width: 1 });
+        
+        drawDR(canvas, xCircuitStart - 12.5, currentY, `${drCurrent}/${group.dr.sensibilidade}`);
+        
+        canvas.line(xCircuitStart, currentY, xCircuitStart, currentY + groupHeight - 45).stroke({ width: 3 });
+
+        group.circuits.forEach(result => {
+            drawCircuitLine(canvas, result, xCircuitStart, currentY);
+            currentY += 45;
+        });
+        currentY += 10;
+    } else {
+        group.circuits.forEach(result => {
+            drawCircuitLine(canvas, result, xBar, currentY);
+            currentY += 45;
+        });
+    }
+    return currentY;
 }
 
 function drawCircuitLine(canvas, result, x, y) {
     const { dados, calculos } = result;
-    const xBreaker = x + 50;
     
-    // Linha do barramento ao disjuntor
-    canvas.line(x, y, xBreaker, y).stroke({ width: 1 });
+    drawDisjuntor(canvas, x, y, `${calculos.disjuntorRecomendado.nome}\n${calculos.disjuntorRecomendado.icc} kA`);
 
-    // Disjuntor do circuito
-    canvas.rect(25, 25).move(xBreaker - 12.5, y - 12.5).stroke({ width: 1 }).fill('white');
-    canvas.text(`${calculos.disjuntorRecomendado.nome.replace(' A', '')} A`).move(xBreaker + 20, y - 10).font({ anchor: 'start', size: 10 });
-    canvas.text(`${calculos.disjuntorRecomendado.icc} kA`).move(xBreaker + 20, y + 2).font({ anchor: 'start', size: 10 });
+    const xCableEnd = x + 120;
+    canvas.line(x, y, xCableEnd, y).stroke({ width: 1 });
+    canvas.line(xCableEnd - 5, y - 5, xCableEnd, y).stroke({ width: 1 });
 
-    // Símbolo do cabo com traços
-    const xCableEnd = xBreaker + 120;
-    canvas.line(xBreaker + 12.5, y, xCableEnd, y).stroke({ width: 1 });
-    canvas.line(xCableEnd - 5, y - 5, xCableEnd, y).stroke({ width: 1 }); // Traço no final
-    canvas.text('T').move(xCableEnd - 15, y + 12).font({size: 10}); // Símbolo T, R ou S
-
-    // Informações do circuito
     const xText = xCableEnd + 20;
-    canvas.text(`(${dados.potenciaW} W)`).move(xText, y - 15).font({ anchor: 'start', size: 12, weight: 'bold' });
-    canvas.text(`${dados.id} - ${dados.nomeCircuito}`).move(xText, y).font({ anchor: 'start', size: 12 });
-    canvas.text(`PVC (70ºC) - ${calculos.bitolaRecomendadaMm2}mm²`).move(xText, y + 15).font({ anchor: 'start', size: 10 });
+    const fontStyle = { family: 'Arial', anchor: 'start' };
+    canvas.text(`(${dados.potenciaW} W)`).move(xText, y - 15).font({ ...fontStyle, size: 12, weight: 'bold' });
+    canvas.text(`${dados.id} - ${dados.nomeCircuito}`).move(xText, y).font({ ...fontStyle, size: 12 });
+    canvas.text(`${dados.tipoIsolacao} (70ºC) - ${calculos.bitolaRecomendadaMm2}mm²`).move(xText, y + 15).font({ ...fontStyle, size: 10 });
 }
 
+function drawDisjuntor(canvas, x, y, text) {
+    canvas.line(x - 50, y, x, y).stroke({ width: 1 });
+    canvas.rect(25, 25).center(x, y).stroke({ width: 1 }).fill('white');
+    const textLines = text.split('\n');
+    const fontStyle = { family: 'Arial', anchor: 'start', size: 10 };
+    canvas.text(textLines[0]).move(x + 20, y - 10).font(fontStyle);
+    if(textLines[1]) canvas.text(textLines[1]).move(x + 20, y + 2).font(fontStyle);
+}
+
+function drawDR(canvas, x, y, text) {
+    canvas.rect(25, 25).center(x, y).stroke({ width: 1.5, color: '#3498db' }).fill('white');
+    canvas.text('DR').center(x, y - 4).font({ family: 'Arial', size:12, weight:'bold', fill:'#3498db'});
+    canvas.text(text).move(x + 20, y + 2).font({ family: 'Arial', anchor: 'start', size: 9, fill:'#3498db' });
+}
+
+function drawDPS(canvas, x, y, feederData) {
+    let numDPS = 0;
+    if (feederData.fases === 'Monofasico') numDPS = 2;
+    else if (feederData.fases === 'Bifasico') numDPS = 3;
+    else if (feederData.fases === 'Trifasico') numDPS = 4;
+
+    const dpsInfo = feederData.dpsInfo;
+    const text = dpsInfo ? `${numDPS}x DPS Cl.${dpsInfo.classe} ${dpsInfo.corrente_ka}kA` : `${numDPS}x DPS`;
+
+    canvas.rect(80, 25).center(x, y).stroke({ width: 1 }).fill('white');
+    canvas.text(text).center(x, y).font({family: 'Arial', size: 10});
+
+    canvas.line(x, y + 12.5, x, y + 30).stroke({ width: 1 });
+    drawGroundSymbol(canvas, x, y + 30);
+}
+
+function drawGroundSymbol(canvas, x, y) {
+    canvas.line(x, y, x, y + 5).stroke({ width: 1 });
+    canvas.line(x - 8, y + 5, x + 8, y + 5).stroke({ width: 1.5 });
+    canvas.line(x - 5, y + 8, x + 5, y + 8).stroke({ width: 1.5 });
+    canvas.line(x - 2, y + 11, x + 2, y + 11).stroke({ width: 1.5 });
+}
 
 export function generateMemorialPdf(calculationResults, currentUserProfile) {
     if (!calculationResults) {
@@ -861,39 +901,48 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
 }
 
 export async function generateUnifilarPdf() {
-    const svgElement = document.querySelector('#unifilar-drawing svg');
-    if (!svgElement) {
-        alert("O diagrama unifilar não foi encontrado. Por favor, gere o cálculo primeiro.");
-        return;
+    try {
+        const svgElement = document.querySelector('#unifilar-drawing svg');
+        if (!svgElement) {
+            alert("O diagrama unifilar não foi encontrado. Por favor, gere o cálculo primeiro.");
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a3'); 
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const svgString = new XMLSerializer().serializeToString(svgElement);
+        const width = svgElement.width.baseVal.value;
+        const height = svgElement.height.baseVal.value;
+
+        // Força uma fonte padrão e ignora estilos externos para maior compatibilidade
+        const v = await Canvg.fromString(ctx, svgString, { ignoreCSS: true, useCORS: true });
+        
+        // Renderiza o SVG no canvas
+        await v.render();
+
+        const imgData = canvas.toDataURL('image/png');
+
+        const pdfWidth = 420; 
+        const pdfHeight = 297; 
+        const margin = 15;
+
+        const imgWidth = pdfWidth - (margin * 2);
+        const imgHeight = (height / width) * imgWidth;
+        
+        let finalY = margin;
+        if (imgHeight < (pdfHeight - (margin * 2))) {
+            finalY = (pdfHeight - imgHeight) / 2;
+        }
+
+        doc.addImage(imgData, 'PNG', margin, finalY, imgWidth, imgHeight);
+        doc.save(`Unifilar_${document.getElementById('obra').value || 'Projeto'}.pdf`);
+
+    } catch (error) {
+        console.error("Erro ao gerar PDF do Unifilar:", error);
+        alert("Ocorreu um erro ao gerar o PDF do diagrama. Verifique o console para mais detalhes.");
     }
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('l', 'mm', 'a3'); 
-
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    const svgString = new XMLSerializer().serializeToString(svgElement);
-    const width = svgElement.width.baseVal.value;
-    const height = svgElement.height.baseVal.value;
-
-    const v = await Canvg.fromString(ctx, svgString);
-    await v.render();
-
-    const imgData = canvas.toDataURL('image/png');
-
-    const pdfWidth = 420; 
-    const pdfHeight = 297; 
-    const margin = 15;
-
-    const imgWidth = pdfWidth - (margin * 2);
-    const imgHeight = (height / width) * imgWidth;
-    
-    let finalY = margin;
-    if (imgHeight < (pdfHeight - (margin * 2))) {
-        finalY = (pdfHeight - imgHeight) / 2;
-    }
-
-    doc.addImage(imgData, 'PNG', margin, finalY, imgWidth, imgHeight);
-    doc.save(`Unifilar_${document.getElementById('obra').value || 'Projeto'}.pdf`);
 }
