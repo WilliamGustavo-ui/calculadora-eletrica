@@ -897,4 +897,3 @@ export async function generateUnifilarPdf() {
     doc.addImage(imgData, 'PNG', margin, finalY, imgWidth, imgHeight);
     doc.save(`Unifilar_${document.getElementById('obra').value || 'Projeto'}.pdf`);
 }
-o sistema não está fazendo login, investigue e corrija
