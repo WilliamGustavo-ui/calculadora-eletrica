@@ -108,7 +108,6 @@ function setupEventListeners() {
     document.getElementById('addCircuitBtn').addEventListener('click', () => ui.addCircuit());
     document.getElementById('circuits-container').addEventListener('click', e => { if (e.target.classList.contains('remove-btn')) { ui.removeCircuit(e.target.dataset.circuitId); } });
     
-    // --- EVENT LISTENERS ATUALIZADOS ---
     document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
     document.getElementById('memorialPdfBtn').addEventListener('click', handleGenerateMemorialPdf);
     document.getElementById('unifilarPdfBtn').addEventListener('click', handleGenerateUnifilarPdf);
