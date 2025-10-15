@@ -67,6 +67,7 @@ button:active { transform: scale(0.98); }
     padding: 20px;
     border-radius: 5px;
     border: 1px solid var(--border-color);
+    overflow-x: auto; /* Adiciona scroll horizontal se o diagrama for muito largo */
 }
 
 .diagram-container h2 {
@@ -74,4 +75,8 @@ button:active { transform: scale(0.98); }
     margin-top: 0;
     padding-bottom: 15px;
     border-bottom: 1px solid #e0e0e0;
+}
+
+#unifilar-drawing svg {
+    min-width: 800px; /* Garante uma largura mínima para visualização */
 }
