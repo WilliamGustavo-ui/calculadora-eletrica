@@ -527,6 +527,7 @@ export function populateSelectClientModal(clients, isChange = false) { const sel
 function getDpsText(dpsInfo) { if (!dpsInfo) return 'Não'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
 
 export function renderReport(calculationResults){
+    // Esta função permanece a mesma, pois é rápida e não causa travamentos
     if(!calculationResults) return;
     const { feederResult, circuitResults } = calculationResults;
     const dataHora = (new Date).toLocaleString('pt-BR');
@@ -616,164 +617,31 @@ export function renderReport(calculationResults){
     document.getElementById('report').textContent = reportText.trim();
 }
 
-/**
- * >>>>>>>>>>>> FUNÇÃO MODIFICADA <<<<<<<<<<<<<<
- * Gera o diagrama unifilar separando os circuitos por tipo e aplicando
- * os limites corretos por DR, conforme NBR 5410.
- */
-export function renderUnifilarDiagram(calculationResults) {
-    const container = document.getElementById('unifilar-drawing');
-    container.innerHTML = ''; 
-    if (!calculationResults || !calculationResults.circuitResults) {
-        container.innerHTML = '<p>Dados insuficientes para gerar o diagrama.</p>';
-        return;
-    }
 
-    const { feederResult, circuitResults } = calculationResults;
-    const canvas = SVG().addTo(container).size('100%', 2000);
+// --- FUNÇÕES DE DESENHO DO DIAGRAMA (REESCRITAS PARA PERFORMANCE) ---
 
-    const circuitsComDR = circuitResults.filter(c => c.dados.requerDR);
-    const circuitsSemDR = circuitResults.filter(c => !c.dados.requerDR);
-
-    // 1. Categoriza todos os circuitos com DR pelo seu tipo
-    const categorizedCircuits = {};
-    circuitsComDR.forEach(c => {
-        let tipo = c.dados.tipoCircuito;
-        // Cria uma categoria especial para TUEs de alta potência para facilitar o dimensionamento do DR
-        if (tipo === 'tue' && (c.dados.nomeCircuito.toLowerCase().includes('chuveiro') || c.dados.nomeCircuito.toLowerCase().includes('aquecedor') || c.calculos.potenciaDemandada > 4000)) {
-            tipo = 'tue_potencia';
-        }
-        if (!categorizedCircuits[tipo]) {
-            categorizedCircuits[tipo] = [];
-        }
-        categorizedCircuits[tipo].push(c);
-    });
-
-    const finalGroups = [];
-    const groupOrder = ['iluminacao', 'tug', 'tue', 'tue_potencia', 'ar_condicionado', 'motores', 'aquecimento'];
-    
-    // 2. Itera sobre cada categoria e cria os grupos de DR com os limites corretos
-    groupOrder.forEach(category => {
-        if (categorizedCircuits[category]) {
-            const circuitsOfType = categorizedCircuits[category];
-            // Define o limite de circuitos por DR conforme a NBR 5410
-            const chunkSize = (category === 'iluminacao') ? 8 : 5;
-
-            for (let i = 0; i < circuitsOfType.length; i += chunkSize) {
-                const chunk = circuitsOfType.slice(i, i + chunkSize);
-                
-                // Determina a corrente do DR com base na maior carga do grupo
-                const isHighPower = chunk.some(c => c.dados.tipoCircuito === 'tue_potencia' || c.calculos.potenciaDemandada >= 4000);
-                const drCurrent = isHighPower ? '63A' : '40A';
-
-                finalGroups.push({
-                    dr: { corrente: drCurrent, sensibilidade: '30mA' },
-                    circuits: chunk
-                });
-            }
-        }
-    });
-
-    // 3. Adiciona os circuitos que não precisam de DR em um grupo separado no final
-    if (circuitsSemDR.length > 0) {
-        finalGroups.push({ dr: null, circuits: circuitsSemDR });
-    }
-
-    // --- Lógica de Desenho (sem alterações) ---
-    let y = 120;
-    const xStart = 50;
-    const xBar = 250;
-    
-    // Entrada de energia
-    canvas.line(xStart + 100, 20, xStart + 100, y - 60).stroke({ width: 2 });
-    // DPS Geral
-    if(feederResult.dados.dpsClasse) {
-        drawDPS(canvas, xStart + 100, y - 60, feederResult.dados);
-    }
-    // Disjuntor Geral
-    drawDisjuntor(canvas, xStart + 100, y, `${feederResult.calculos.disjuntorRecomendado.nome}\n${feederResult.calculos.disjuntorRecomendado.icc} kA`);
-    
-    canvas.line(xStart + 100, y, xBar, y).stroke({ width: 2 });
-
-    // Barramento principal
-    const barHeight = finalGroups.reduce((acc, group) => acc + (group.circuits.length * 45) + (group.dr ? 40 : 10), 0);
-    canvas.line(xBar, y - 20, xBar, y + barHeight).stroke({ width: 5 });
-
-    let currentY = y;
-    finalGroups.forEach(group => {
-        currentY = drawGroup(canvas, group, currentY, xBar);
-    });
-
-    // Ajusta a altura final do SVG
-    canvas.height(currentY + 50);
-}
-
-function drawGroup(canvas, group, startY, xBar) {
-    let currentY = startY;
-    const xCircuitStart = xBar + 50;
-    
-    if (group.dr) { // Desenha um grupo com DR
-        const groupHeight = group.circuits.length * 45;
-        
-        canvas.line(xBar, currentY, xCircuitStart - 25, currentY).stroke({ width: 1 });
-        
-        // Usa o valor de corrente pré-calculado para o DR
-        drawDR(canvas, xCircuitStart - 12.5, currentY, `${group.dr.corrente}/${group.dr.sensibilidade}`);
-        
-        // Linha vertical do barramento do DR
-        canvas.line(xCircuitStart, currentY, xCircuitStart, currentY + groupHeight - 45).stroke({ width: 3 });
-
-        group.circuits.forEach(result => {
-            drawCircuitLine(canvas, result, xCircuitStart, currentY, true); // Passa true para indicar que vem de um DR
-            currentY += 45;
-        });
-        currentY += 10;
-    } else { // Desenha um grupo sem DR
-        group.circuits.forEach(result => {
-            drawCircuitLine(canvas, result, xBar, currentY, false); // Passa false
-            currentY += 45;
-        });
-    }
-    return currentY;
-}
-
-function drawCircuitLine(canvas, result, x, y, fromDR = false) {
-    const { dados, calculos } = result;
-    const startX = fromDR ? x : x + 50; // Se não vier de um DR, afasta mais para a direita
-
-    // Desenha a linha vindo do barramento até o disjuntor do circuito
-    canvas.line(x, y, startX, y).stroke({ width: 1 });
-    
-    drawDisjuntor(canvas, startX, y, `${calculos.disjuntorRecomendado.nome}\n${calculos.disjuntorRecomendado.icc} kA`);
-
-    const xCableEnd = startX + 120;
-    canvas.line(startX, y, xCableEnd, y).stroke({ width: 1 });
-    canvas.line(xCableEnd - 5, y - 5, xCableEnd, y).stroke({ width: 1 });
-
-    const xText = xCableEnd + 20;
-    const fontStyle = { family: 'Arial', anchor: 'start' };
-    canvas.text(`(${calculos.potenciaDemandada.toFixed(0)} W)`).move(xText, y - 15).font({ ...fontStyle, size: 12, weight: 'bold' });
-    canvas.text(`${dados.id} - ${dados.nomeCircuito}`).move(xText, y).font({ ...fontStyle, size: 12 });
-    canvas.text(`${calculos.numCondutores}x${calculos.bitolaRecomendadaMm2}mm² + T - ${dados.tipoIsolacao}`).move(xText, y + 15).font({ ...fontStyle, size: 10 });
-}
-
-function drawDisjuntor(canvas, x, y, text) {
-    canvas.line(x - 50, y, x, y).stroke({ width: 1 });
-    canvas.rect(25, 25).center(x, y).stroke({ width: 1 }).fill('white');
-    canvas.path('M -5 -8 L 5 0 L -5 8').stroke({ width: 1.5, color: '#000' }).fill('none').move(x-4, y-4);
+function drawDisjuntor(x, y, text) {
     const textLines = text.split('\n');
-    const fontStyle = { family: 'Arial', anchor: 'start', size: 10 };
-    canvas.text(textLines[0]).move(x + 20, y - 10).font(fontStyle);
-    if(textLines[1]) canvas.text(textLines[1]).move(x + 20, y + 2).font(fontStyle);
+    const text1 = `<text x="${x + 20}" y="${y - 2}" style="font-family: Arial; font-size: 10px;">${textLines[0]}</text>`;
+    const text2 = textLines[1] ? `<text x="${x + 20}" y="${y + 10}" style="font-family: Arial; font-size: 10px;">${textLines[1]}</text>` : '';
+    return `
+        <line x1="${x - 50}" y1="${y}" x2="${x}" y2="${y}" stroke="black" stroke-width="1" />
+        <rect x="${x - 12.5}" y="${y - 12.5}" width="25" height="25" stroke="black" stroke-width="1" fill="white" />
+        <path d="M ${x - 4} ${y - 4} l -5 -8 l 10 8 l -10 8" stroke="black" stroke-width="1.5" fill="none" transform="rotate(180 ${x-4} ${y-4}) translate(-13 -8)" />
+        ${text1}
+        ${text2}
+    `;
 }
 
-function drawDR(canvas, x, y, text) {
-    canvas.rect(25, 25).center(x, y).stroke({ width: 1.5, color: '#3498db' }).fill('white');
-    canvas.text('DR').center(x, y - 4).font({ family: 'Arial', size:12, weight:'bold', fill:'#3498db'});
-    canvas.text(text).move(x + 20, y + 2).font({ family: 'Arial', anchor: 'start', size: 9, fill:'#3498db' });
+function drawDR(x, y, text) {
+    return `
+        <rect x="${x - 12.5}" y="${y - 12.5}" width="25" height="25" stroke="#3498db" stroke-width="1.5" fill="white" />
+        <text x="${x}" y="${y - 2}" text-anchor="middle" style="font-family: Arial; font-size: 12px; font-weight: bold; fill: #3498db;">DR</text>
+        <text x="${x + 20}" y="${y + 10}" style="font-family: Arial; font-size: 9px; fill: #3498db;">${text}</text>
+    `;
 }
 
-function drawDPS(canvas, x, y, feederData) {
+function drawDPS(x, y, feederData) {
     let numDPS = 0;
     if (feederData.fases === 'Monofasico') numDPS = 2;
     else if (feederData.fases === 'Bifasico') numDPS = 3;
@@ -782,21 +650,130 @@ function drawDPS(canvas, x, y, feederData) {
     const dpsInfo = feederData.dpsInfo;
     const text = dpsInfo ? `${numDPS}x DPS Cl.${dpsInfo.classe} ${dpsInfo.corrente_ka}kA` : `${numDPS}x DPS`;
 
-    canvas.rect(80, 25).center(x, y).stroke({ width: 1 }).fill('white');
-    canvas.text(text).center(x, y).font({family: 'Arial', size: 10});
-
-    canvas.line(x, y + 12.5, x, y + 30).stroke({ width: 1 });
-    drawGroundSymbol(canvas, x, y + 30);
+    return `
+        <rect x="${x - 40}" y="${y - 12.5}" width="80" height="25" stroke="black" stroke-width="1" fill="white" />
+        <text x="${x}" y="${y + 4}" text-anchor="middle" style="font-family: Arial; font-size: 10px;">${text}</text>
+        <line x1="${x}" y1="${y + 12.5}" x2="${x}" y2="${y + 30}" stroke="black" stroke-width="1" />
+        ${drawGroundSymbol(x, y + 30)}
+    `;
 }
 
-function drawGroundSymbol(canvas, x, y) {
-    canvas.line(x, y, x, y + 5).stroke({ width: 1 });
-    canvas.line(x - 8, y + 5, x + 8, y + 5).stroke({ width: 1.5 });
-    canvas.line(x - 5, y + 8, x + 5, y + 8).stroke({ width: 1.5 });
-    canvas.line(x - 2, y + 11, x + 2, y + 11).stroke({ width: 1.5 });
+function drawGroundSymbol(x, y) {
+    return `
+        <line x1="${x}" y1="${y}" x2="${x}" y2="${y + 5}" stroke="black" stroke-width="1" />
+        <line x1="${x - 8}" y1="${y + 5}" x2="${x + 8}" y2="${y + 5}" stroke="black" stroke-width="1.5" />
+        <line x1="${x - 5}" y1="${y + 8}" x2="${x + 5}" y2="${y + 8}" stroke="black" stroke-width="1.5" />
+        <line x1="${x - 2}" y1="${y + 11}" x2="${x + 2}" y2="${y + 11}" stroke="black" stroke-width="1.5" />
+    `;
+}
+
+function drawCircuitLine(result, x, y, fromDR = false) {
+    const { dados, calculos } = result;
+    const startX = fromDR ? x : x + 50;
+    const xCableEnd = startX + 120;
+    const xText = xCableEnd + 20;
+    const fontStyle = `font-family: Arial;`;
+
+    return `
+        <g>
+            <line x1="${x}" y1="${y}" x2="${startX}" y2="${y}" stroke="black" stroke-width="1" />
+            ${drawDisjuntor(startX, y, `${calculos.disjuntorRecomendado.nome}\n${calculos.disjuntorRecomendado.icc} kA`)}
+            <line x1="${startX}" y1="${y}" x2="${xCableEnd}" y2="${y}" stroke="black" stroke-width="1" />
+            <line x1="${xCableEnd - 5}" y1="${y - 5}" x2="${xCableEnd}" y2="${y}" stroke="black" stroke-width="1" />
+            <text x="${xText}" y="${y - 7}" style="${fontStyle} font-size: 12px; font-weight: bold;">(${calculos.potenciaDemandada.toFixed(0)} W)</text>
+            <text x="${xText}" y="${y + 8}" style="${fontStyle} font-size: 12px;">${dados.id} - ${dados.nomeCircuito}</text>
+            <text x="${xText}" y="${y + 23}" style="${fontStyle} font-size: 10px;">${calculos.numCondutores}x${calculos.bitolaRecomendadaMm2}mm² + T - ${dados.tipoIsolacao}</text>
+        </g>
+    `;
+}
+
+export function renderUnifilarDiagram(calculationResults) {
+    const container = document.getElementById('unifilar-drawing');
+    container.innerHTML = '';
+    if (!calculationResults || !calculationResults.circuitResults) {
+        container.innerHTML = '<p>Dados insuficientes para gerar o diagrama.</p>';
+        return;
+    }
+
+    const { feederResult, circuitResults } = calculationResults;
+    const circuitsComDR = circuitResults.filter(c => c.dados.requerDR);
+    const circuitsSemDR = circuitResults.filter(c => !c.dados.requerDR);
+
+    const categorizedCircuits = {};
+    circuitsComDR.forEach(c => {
+        let tipo = c.dados.tipoCircuito;
+        if (tipo === 'tue' && (c.dados.nomeCircuito.toLowerCase().includes('chuveiro') || c.dados.nomeCircuito.toLowerCase().includes('aquecedor') || c.calculos.potenciaDemandada > 4000)) {
+            tipo = 'tue_potencia';
+        }
+        if (!categorizedCircuits[tipo]) categorizedCircuits[tipo] = [];
+        categorizedCircuits[tipo].push(c);
+    });
+
+    const finalGroups = [];
+    const groupOrder = ['iluminacao', 'tug', 'tue', 'tue_potencia', 'ar_condicionado', 'motores', 'aquecimento'];
+    
+    groupOrder.forEach(category => {
+        if (categorizedCircuits[category]) {
+            const circuitsOfType = categorizedCircuits[category];
+            const chunkSize = (category === 'iluminacao') ? 8 : 5;
+            for (let i = 0; i < circuitsOfType.length; i += chunkSize) {
+                const chunk = circuitsOfType.slice(i, i + chunkSize);
+                const isHighPower = chunk.some(c => c.dados.tipoCircuito === 'tue_potencia' || c.calculos.potenciaDemandada >= 4000);
+                const drCurrent = isHighPower ? '63A' : '40A';
+                finalGroups.push({ dr: { corrente: drCurrent, sensibilidade: '30mA' }, circuits: chunk });
+            }
+        }
+    });
+
+    if (circuitsSemDR.length > 0) {
+        finalGroups.push({ dr: null, circuits: circuitsSemDR });
+    }
+
+    let y = 120;
+    const xStart = 50;
+    const xBar = 250;
+    let svgParts = [];
+
+    // Calcula a altura final necessária para o SVG
+    const barHeight = finalGroups.reduce((acc, group) => acc + (group.circuits.length * 45) + (group.dr ? 40 : 10), 0);
+    const finalHeight = y + barHeight + 50;
+
+    svgParts.push(`<svg width="100%" height="${finalHeight}" xmlns="http://www.w3.org/2000/svg">`);
+    svgParts.push(`<line x1="${xStart + 100}" y1="20" x2="${xStart + 100}" y2="${y - 60}" stroke="black" stroke-width="2" />`);
+    if (feederResult.dados.dpsClasse) {
+        svgParts.push(drawDPS(xStart + 100, y - 60, feederResult.dados));
+    }
+    svgParts.push(drawDisjuntor(xStart + 100, y, `${feederResult.calculos.disjuntorRecomendado.nome}\n${feederResult.calculos.disjuntorRecomendado.icc} kA`));
+    svgParts.push(`<line x1="${xStart + 100}" y1="${y}" x2="${xBar}" y2="${y}" stroke="black" stroke-width="2" />`);
+    svgParts.push(`<line x1="${xBar}" y1="${y - 20}" x2="${xBar}" y2="${y + barHeight}" stroke="black" stroke-width="5" />`);
+
+    let currentY = y;
+    finalGroups.forEach(group => {
+        const xCircuitStart = xBar + 50;
+        if (group.dr) {
+            const groupHeight = group.circuits.length * 45;
+            svgParts.push(`<line x1="${xBar}" y1="${currentY}" x2="${xCircuitStart - 25}" y2="${currentY}" stroke="black" stroke-width="1" />`);
+            svgParts.push(drawDR(xCircuitStart - 12.5, currentY, `${group.dr.corrente}/${group.dr.sensibilidade}`));
+            svgParts.push(`<line x1="${xCircuitStart}" y1="${currentY}" x2="${xCircuitStart}" y2="${currentY + groupHeight - 45}" stroke="black" stroke-width="3" />`);
+            group.circuits.forEach(result => {
+                svgParts.push(drawCircuitLine(result, xCircuitStart, currentY, true));
+                currentY += 45;
+            });
+            currentY += 10;
+        } else {
+            group.circuits.forEach(result => {
+                svgParts.push(drawCircuitLine(result, xBar, currentY, false));
+                currentY += 45;
+            });
+        }
+    });
+
+    svgParts.push('</svg>');
+    container.innerHTML = svgParts.join('');
 }
 
 
+// As funções de PDF permanecem as mesmas, pois dependem do SVG já renderizado.
 export function generateMemorialPdf(calculationResults, currentUserProfile) {
     if (!calculationResults) {
         alert("Por favor, gere o cálculo primeiro.");
@@ -886,7 +863,7 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
 
         addTitle(title);
         
-        addSection("-- PARÂMETROS DE ENTRADA --");
+        addSection("-- PARÂMETROS DE ENTRada --");
         if (dados.id !== 'Geral') { addLineItem("Tipo de Circuito:", dados.tipoCircuito); }
         addLineItem("Potência Instalada:", `${calculos.potenciaInstalada.toFixed(2)} W`);
         addLineItem("Fator de Demanda:", `${dados.fatorDemanda}%`);
@@ -948,10 +925,8 @@ export async function generateUnifilarPdf() {
         const ctx = canvas.getContext('2d');
         
         const svgString = new XMLSerializer().serializeToString(svgElement);
-        const width = svgElement.width.baseVal.value;
-        const height = svgElement.height.baseVal.value;
+        const { width, height } = svgElement.getBoundingClientRect(); // Use getBoundingClientRect for accurate size
 
-        // Renderiza o SVG no canvas em sua escala original (1:1)
         canvas.width = width;
         canvas.height = height;
         
