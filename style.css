@@ -80,3 +80,11 @@ button:active { transform: scale(0.98); }
 #unifilar-drawing svg {
     min-width: 800px; /* Garante uma largura mínima para visualização */
 }
+
+/* ESTILO ADICIONADO PARA BOTÕES DESABILITADOS */
+button:disabled,
+button[disabled] {
+    background-color: #bdc3c7 !important; /* Cor cinza, !important para sobrepor outros estilos */
+    cursor: not-allowed !important;
+    opacity: 0.7;
+}

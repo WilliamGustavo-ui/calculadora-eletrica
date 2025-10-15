@@ -1,4 +1,4 @@
-// Arquivo: main.js (VERSÃO FINAL COM DEBOUNCE)
+// Arquivo: main.js (VERSÃO FINAL COM DEBOUNCE E FEEDBACK VISUAL)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -62,17 +62,55 @@ async function showAdminPanel() { const users = await api.fetchAllUsers(); ui.po
 async function handleAdminUserActions(event) { const target = event.target; const userId = target.dataset.userId; if (target.classList.contains('approve-user-btn')) { await api.approveUser(userId); await showAdminPanel(); } if (target.classList.contains('edit-user-btn')) { const user = await api.fetchUserById(userId); if (user) ui.populateEditUserModal(user); } if (target.classList.contains('remove-user-btn')) { /* ... */ } }
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
+/**
+ * >>>>>>>>>>>> FUNÇÃO MODIFICADA <<<<<<<<<<<<<<
+ * Adiciona feedback visual para o usuário durante o processamento
+ * para evitar a percepção de "travamento" da página.
+ */
 function handleCalculate() {
-    const currentClientId = document.getElementById('currentClientId').value;
-    const currentClient = allClients.find(c => c.id == currentClientId) || null;
-    const results = utils.calcularProjetoCompleto(technicalData, currentClient);
-    if (results) {
-        lastCalculationResults = results; // Salva os resultados para usar depois
-        ui.renderReport(results);
-        ui.renderUnifilarDiagram(results); // Nova chamada para desenhar o diagrama na tela
-        alert("Memorial de Cálculo e Diagrama Unifilar gerados na tela. Agora você pode salvá-los como PDF.");
-    }
+    // Pega a referência dos botões de ação
+    const calculateBtn = document.getElementById('calculateBtn');
+    const memorialPdfBtn = document.getElementById('memorialPdfBtn');
+    const unifilarPdfBtn = document.getElementById('unifilarPdfBtn');
+
+    // 1. Desabilita os botões e mostra a mensagem de carregamento IMEDIATAMENTE
+    calculateBtn.disabled = true;
+    memorialPdfBtn.disabled = true;
+    unifilarPdfBtn.disabled = true;
+    calculateBtn.textContent = 'Gerando, por favor aguarde...';
+    lastCalculationResults = null; // Limpa resultados anteriores
+
+    // 2. Usa setTimeout para adiar a tarefa pesada.
+    // Isso dá tempo para o navegador redesenhar a tela e mostrar o estado de "carregando".
+    setTimeout(() => {
+        try {
+            // 3. Executa todo o cálculo e renderização (a parte demorada)
+            const currentClientId = document.getElementById('currentClientId').value;
+            const currentClient = allClients.find(c => c.id == currentClientId) || null;
+            const results = utils.calcularProjetoCompleto(technicalData, currentClient);
+            
+            if (results) {
+                lastCalculationResults = results; // Salva os resultados para usar depois
+                ui.renderReport(results);
+                ui.renderUnifilarDiagram(results); // Desenha o diagrama na tela
+                alert("Memorial de Cálculo e Diagrama Unifilar gerados na tela. Agora você pode salvá-los como PDF.");
+            } else {
+                 alert("Não foi possível gerar o cálculo. Verifique os dados de entrada.");
+            }
+        } catch (error) {
+            console.error("Erro durante o cálculo:", error);
+            alert("Ocorreu um erro inesperado ao gerar o cálculo. Verifique o console para mais detalhes.");
+        } finally {
+            // 4. Reabilita os botões e restaura o texto original,
+            // independentemente de o cálculo ter sucesso ou falha.
+            calculateBtn.disabled = false;
+            memorialPdfBtn.disabled = false;
+            unifilarPdfBtn.disabled = false;
+            calculateBtn.textContent = '1. Gerar Memorial e Diagrama';
+        }
+    }, 10); // Um pequeno atraso (10ms) é suficiente para a mágica acontecer
 }
+
 
 function handleGenerateMemorialPdf() {
     if (lastCalculationResults) {
