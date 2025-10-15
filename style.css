@@ -117,3 +117,61 @@ button:disabled, button[disabled] { background-color: #bdc3c7 !important; cursor
 #circuits-container .circuit-block:first-child .remove-btn {
     display: none;
 }
+
+/* >>>>>>>>>>>> ESTILOS ADICIONADOS PARA ABAS SUSPENSAS (ACCORDION) <<<<<<<<<<<<<< */
+
+.circuit-header {
+    background-color: #ecf0f1; /* Um fundo para destacar o cabeçalho */
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer; /* Muda o cursor para indicar que é clicável */
+    user-select: none; /* Impede que o texto seja selecionado ao clicar */
+    transition: background-color 0.2s ease;
+}
+
+.circuit-header:hover {
+    background-color: #e0e6e8;
+}
+
+.circuit-header h2 {
+    margin: 0;
+    padding: 0;
+    border: none;
+    font-size: 1.2rem;
+    text-align: left;
+    display: flex; /* Alinha o título e a seta */
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.circuit-content {
+    padding: 20px 5px 5px 5px;
+    border-top: none;
+    transition: max-height 0.3s ease-out, opacity 0.2s ease-in-out;
+    max-height: 2000px; /* Um valor alto para garantir que todo o conteúdo caiba */
+    overflow: hidden;
+    opacity: 1;
+}
+
+/* Estado "Fechado" do circuito */
+.circuit-block.collapsed .circuit-content {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+    /* Adicionar display: none; pode ser mais performático, mas perdemos a transição.
+       Para a quantidade de elementos aqui, max-height é a melhor opção visual. */
+}
+
+/* Ícone de Seta */
+.toggle-arrow {
+    font-size: 1.5rem;
+    font-weight: bold;
+    transition: transform 0.3s ease;
+    transform-origin: center;
+}
+
+.circuit-block.collapsed .toggle-arrow {
+    transform: rotate(-90deg); /* Gira a seta quando o bloco está fechado */
+}
