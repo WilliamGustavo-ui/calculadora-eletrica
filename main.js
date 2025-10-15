@@ -1,4 +1,4 @@
-// Arquivo: main.js (REESCRITO PARA USAR WEB WORKER)
+// Arquivo: main.js (VERSÃO FINAL COM FEEDBACK NOS PDFS)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -64,9 +64,6 @@ async function showAdminPanel() { const users = await api.fetchAllUsers(); ui.po
 async function handleAdminUserActions(event) { const target = event.target; const userId = target.dataset.userId; if (target.classList.contains('approve-user-btn')) { await api.approveUser(userId); await showAdminPanel(); } if (target.classList.contains('edit-user-btn')) { const user = await api.fetchUserById(userId); if (user) ui.populateEditUserModal(user); } if (target.classList.contains('remove-user-btn')) { /* ... */ } }
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
-/**
- * Coleta todos os dados dos formulários da página em um objeto estruturado.
- */
 function getFullFormData() {
     const mainData = {};
     document.querySelectorAll('#main-form input, #main-form textarea, #main-form select').forEach(el => {
@@ -99,41 +96,70 @@ function getFullFormData() {
     return { mainData, feederData, circuitsData, clientProfile };
 }
 
-/**
- * Inicia o cálculo enviando os dados para o Web Worker.
- */
 function handleCalculate() {
     const loadingOverlay = document.getElementById('loadingOverlay');
     lastCalculationResults = null;
-    loadingOverlay.classList.add('visible'); // Mostra o spinner de carregamento
-
+    loadingOverlay.classList.add('visible');
     const formData = getFullFormData();
-    
-    // Envia os dados para o worker para processamento em segundo plano
     calculatorWorker.postMessage({ formData, technicalData });
 }
 
-function handleGenerateMemorialPdf() {
-    if (lastCalculationResults) {
-        ui.generateMemorialPdf(lastCalculationResults, currentUserProfile);
-    } else {
+// >>>>>>>>>>>> FUNÇÕES MODIFICADAS <<<<<<<<<<<<<<
+async function handleGenerateMemorialPdf() {
+    if (!lastCalculationResults) {
         alert("Por favor, gere o cálculo primeiro clicando em '1. Gerar Memorial e Diagrama'.");
+        return;
+    }
+    
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingText = loadingOverlay.querySelector('p');
+    
+    loadingText.textContent = 'Gerando PDF do memorial, aguarde...';
+    loadingOverlay.classList.add('visible');
+    
+    try {
+        // Pequeno delay para garantir que o overlay seja renderizado antes da tarefa pesada.
+        await new Promise(resolve => setTimeout(resolve, 50)); 
+        ui.generateMemorialPdf(lastCalculationResults, currentUserProfile);
+    } catch (error) {
+        console.error("Erro ao gerar PDF do Memorial:", error);
+        alert("Ocorreu um erro ao gerar o PDF do memorial.");
+    } finally {
+        loadingOverlay.classList.remove('visible');
+        loadingText.textContent = 'Calculando, por favor aguarde...'; // Reseta o texto
     }
 }
 
-function handleGenerateUnifilarPdf() {
-    if (lastCalculationResults) {
-        ui.generateUnifilarPdf();
-    } else {
+async function handleGenerateUnifilarPdf() {
+    if (!lastCalculationResults) {
         alert("Por favor, gere o cálculo primeiro clicando em '1. Gerar Memorial e Diagrama'.");
+        return;
+    }
+
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingText = loadingOverlay.querySelector('p');
+    
+    loadingText.textContent = 'Gerando PDF do diagrama, aguarde...';
+    loadingOverlay.classList.add('visible');
+    
+    try {
+        // Pequeno delay para garantir que o overlay seja renderizado antes da tarefa pesada.
+        await new Promise(resolve => setTimeout(resolve, 50));
+        await ui.generateUnifilarPdf(); // A função é async, então usamos await
+    } catch (error) {
+        console.error("Erro ao gerar PDF do Unifilar:", error);
+        alert("Ocorreu um erro ao gerar o PDF do diagrama.");
+    } finally {
+        loadingOverlay.classList.remove('visible');
+        loadingText.textContent = 'Calculando, por favor aguarde...'; // Reseta o texto
     }
 }
+
 
 function setupEventListeners() {
-    // --- Listener para respostas do Web Worker ---
     calculatorWorker.onmessage = function(e) {
         const loadingOverlay = document.getElementById('loadingOverlay');
-        loadingOverlay.classList.remove('visible'); // Esconde o spinner
+        loadingOverlay.classList.remove('visible');
         
         const results = e.data;
 
@@ -165,9 +191,11 @@ function setupEventListeners() {
     document.getElementById('searchInput').addEventListener('input', debouncedSearch);
     document.getElementById('addCircuitBtn').addEventListener('click', () => ui.addCircuit());
     document.getElementById('circuits-container').addEventListener('click', e => { if (e.target.classList.contains('remove-btn')) { ui.removeCircuit(e.target.dataset.circuitId); } });
+    
     document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
-    document.getElementById('memorialPdfBtn').addEventListener('click', handleGenerateMemorialPdf);
-    document.getElementById('unifilarPdfBtn').addEventListener('click', handleGenerateUnifilarPdf);
+    document.getElementById('memorialPdfBtn').addEventListener('click', handleGenerateMemorialPdf); // Evento agora chama a nova função async
+    document.getElementById('unifilarPdfBtn').addEventListener('click', handleGenerateUnifilarPdf); // Evento agora chama a nova função async
+    
     document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
     document.getElementById('adminProjectsTableBody').addEventListener('click', handleProjectPanelClick);
     document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
