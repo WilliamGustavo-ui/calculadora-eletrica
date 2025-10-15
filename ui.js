@@ -1,4 +1,4 @@
-// Arquivo: ui.js (VERSÃO COM LEGENDA TÉCNICA)
+// Arquivo: ui.js (VERSÃO COM DIAGRAMA PROFISSIONAL HORIZONTAL)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
@@ -643,27 +643,26 @@ function drawDisjuntor(x, y, text, fases = 'Monofasico') {
 }
 
 function drawDR(x, y, text, fases = 'Monofasico') {
-    const drColor = 'var(--success-color, #27ae60)';
+    const drColor = '#27ae60'; // Cor verde da legenda
     let internalSymbol = '';
     if (fases === 'Trifasico') {
-        internalSymbol = `<line x1="${x-4}" y1="${y-5}" x2="${x-4}" y2="${y+5}" stroke="${drColor}" stroke-width="1"/>
-                         <line x1="${x}" y1="${y-5}" x2="${x}" y2="${y+5}" stroke="${drColor}" stroke-width="1"/>
-                         <line x1="${x+4}" y1="${y-5}" x2="${x+4}" y2="${y+5}" stroke="${drColor}" stroke-width="1"/>`;
+        internalSymbol = `<path d="M ${x-4} ${y-5} v 10 M ${x} ${y-5} v 10 M ${x+4} ${y-5} v 10 M ${x-4} ${y-5} h 8" stroke="${drColor}" stroke-width="1" fill="none"/>`;
     } else {
-        internalSymbol = `<line x1="${x}" y1="${y-5}" x2="${x}" y2="${y+5}" stroke="${drColor}" stroke-width="1"/>
-                         <line x1="${x-3}" y1="${y-5}" x2="${x+3}" y2="${y-5}" stroke="${drColor}" stroke-width="1"/>`;
+        internalSymbol = `<path d="M ${x} ${y-5} v 10 M ${x-3} ${y-5} h 6" stroke="${drColor}" stroke-width="1" fill="none"/>`;
     }
 
     return `
         <g text-anchor="middle">
             <rect x="${x - 12.5}" y="${y - 12.5}" width="25" height="25" stroke="${drColor}" stroke-width="1.5" fill="white" />
             <text x="${x}" y="${y - 18}" style="font-family: Arial; font-size: 10px; fill: ${drColor};">${text}</text>
+            <text x="${x}" y="${y+4}" style="font-family: Arial; font-size: 11px; font-weight: bold; fill: ${drColor};">DR</text>
             ${internalSymbol}
         </g>
     `;
 }
 
 function drawDPS(x, y, feederData) {
+    const dpsColor = '#27ae60'; // Cor verde da legenda
     let numDPS = 0;
     if (feederData.fases === 'Monofasico') numDPS = 2;
     else if (feederData.fases === 'Bifasico') numDPS = 3;
@@ -672,8 +671,8 @@ function drawDPS(x, y, feederData) {
     const text = dpsInfo ? `${numDPS}x DPS Cl.${dpsInfo.classe} ${dpsInfo.corrente_ka}kA` : `${numDPS}x DPS`;
     return `
         <g>
-            <rect x="${x - 45}" y="${y - 12.5}" width="90" height="25" stroke="black" stroke-width="1" fill="white" />
-            <text x="${x}" y="${y + 4}" text-anchor="middle" style="font-family: Arial; font-size: 10px;">${text}</text>
+            <rect x="${x - 45}" y="${y - 12.5}" width="90" height="25" stroke="${dpsColor}" stroke-width="1.5" fill="white" />
+            <text x="${x}" y="${y + 4}" text-anchor="middle" style="font-family: Arial; font-size: 10px; fill:${dpsColor};">${text}</text>
             <line x1="${x}" y1="${y + 12.5}" x2="${x}" y2="${y + 30}" stroke="black" stroke-width="1" />
             ${drawGroundSymbol(x, y + 30)}
         </g>
@@ -711,7 +710,6 @@ function drawCircuitLine(result, x, y, index) {
             <text x="${x}" y="${y + 90}" style="${fontStyle} font-size: 11px;">${calculos.bitolaRecomendadaMm2}</text>
             <text x="${x}" y="${yEnd + 20}" style="${fontStyle} font-size: 11px; font-weight: bold;">(${calculos.potenciaDemandada.toFixed(0)} W)</text>
             <text x="${x}" y="${yEnd + 35}" style="${fontStyle} font-size: 12px;">${index} - ${dados.nomeCircuito}</text>
-            <text x="${x}" y="${yEnd + 50}" style="${fontStyle} font-size: 10px; fill: #333;">${calculos.numCondutores}x${calculos.bitolaRecomendadaMm2}mm² + T - ${dados.tipoIsolacao}</text>
         </g>
     `;
 }
