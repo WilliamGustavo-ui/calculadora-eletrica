@@ -58,33 +58,44 @@ button:active { transform: scale(0.98); }
 .btn-warning { background-color: var(--warning-color); }
 #adminProjectsTable .action-cell { display: flex; flex-direction: column; gap: 5px; align-items: stretch; }
 .transfer-client-btn.btn-success { background-color: var(--success-color); }
+.diagram-container { margin-top: 30px; background-color: #fdfdfd; color: var(--text-color); padding: 20px; border-radius: 5px; border: 1px solid var(--border-color); overflow-x: auto; }
+.diagram-container h2 { text-align: left; margin-top: 0; padding-bottom: 15px; border-bottom: 1px solid #e0e0e0; }
+#unifilar-drawing svg { min-width: 800px; }
+button:disabled, button[disabled] { background-color: #bdc3c7 !important; cursor: not-allowed !important; opacity: 0.7; }
 
-/* ESTILO ADICIONADO PARA O CONTAINER DO DIAGRAMA */
-.diagram-container {
-    margin-top: 30px;
-    background-color: #fdfdfd;
-    color: var(--text-color);
-    padding: 20px;
-    border-radius: 5px;
-    border: 1px solid var(--border-color);
-    overflow-x: auto; /* Adiciona scroll horizontal se o diagrama for muito largo */
+/* ESTILOS ADICIONADOS PARA O LOADING OVERLAY */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    display: none; /* Começa escondido */
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    z-index: 2000;
+    border-radius: 8px;
 }
-
-.diagram-container h2 {
-    text-align: left;
-    margin-top: 0;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #e0e0e0;
+.loading-overlay.visible {
+    display: flex; /* Torna visível */
 }
-
-#unifilar-drawing svg {
-    min-width: 800px; /* Garante uma largura mínima para visualização */
+.spinner {
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid var(--secondary-color);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
 }
-
-/* ESTILO ADICIONADO PARA BOTÕES DESABILITADOS */
-button:disabled,
-button[disabled] {
-    background-color: #bdc3c7 !important; /* Cor cinza, !important para sobrepor outros estilos */
-    cursor: not-allowed !important;
-    opacity: 0.7;
+.loading-overlay p {
+    margin-top: 15px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--primary-color);
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }

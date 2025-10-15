@@ -1,4 +1,4 @@
-// Arquivo: main.js (VERSÃO FINAL COM DEBOUNCE E FEEDBACK VISUAL)
+// Arquivo: main.js (REESCRITO PARA USAR WEB WORKER)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -9,7 +9,10 @@ import { supabase } from './supabaseClient.js';
 let currentUserProfile = null;
 let technicalData = null;
 let allClients = [];
-let lastCalculationResults = null; // Armazena o último resultado do cálculo
+let lastCalculationResults = null;
+
+// --- INICIALIZAÇÃO DO WEB WORKER ---
+const calculatorWorker = new Worker('./calculator.worker.js');
 
 async function handleLogin() {
     console.log("1. Tentando fazer login...");
@@ -41,7 +44,6 @@ async function handleLogin() {
         console.error("ERRO: userProfile é nulo ou inválido após a tentativa de login.");
     }
 }
-
 async function handleLogout() { await auth.signOutUser(); }
 async function handleRegister(event) { event.preventDefault(); const email = document.getElementById('regEmail').value; const password = document.getElementById('regPassword').value; const details = { nome: document.getElementById('regNome').value, cpf: document.getElementById('regCpf').value, telefone: document.getElementById('regTelefone').value, crea: document.getElementById('regCrea').value, email: email }; const { error } = await auth.signUpUser(email, password, details); if (!error) { alert('Cadastro realizado com sucesso! Aguarde a aprovação de um administrador.'); ui.closeModal('registerModalOverlay'); event.target.reset(); } }
 async function handleForgotPassword(event) { event.preventDefault(); const email = document.getElementById('forgotEmail').value; const { error } = await auth.sendPasswordResetEmail(email); if (error) { alert("Erro ao enviar e-mail: " + error.message); } else { alert("Se o e-mail estiver cadastrado, um link de redefinição foi enviado!"); ui.closeModal('forgotPasswordModalOverlay'); event.target.reset(); } }
@@ -63,54 +65,53 @@ async function handleAdminUserActions(event) { const target = event.target; cons
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
 /**
- * >>>>>>>>>>>> FUNÇÃO MODIFICADA <<<<<<<<<<<<<<
- * Adiciona feedback visual para o usuário durante o processamento
- * para evitar a percepção de "travamento" da página.
+ * Coleta todos os dados dos formulários da página em um objeto estruturado.
  */
-function handleCalculate() {
-    // Pega a referência dos botões de ação
-    const calculateBtn = document.getElementById('calculateBtn');
-    const memorialPdfBtn = document.getElementById('memorialPdfBtn');
-    const unifilarPdfBtn = document.getElementById('unifilarPdfBtn');
-
-    // 1. Desabilita os botões e mostra a mensagem de carregamento IMEDIATAMENTE
-    calculateBtn.disabled = true;
-    memorialPdfBtn.disabled = true;
-    unifilarPdfBtn.disabled = true;
-    calculateBtn.textContent = 'Gerando, por favor aguarde...';
-    lastCalculationResults = null; // Limpa resultados anteriores
-
-    // 2. Usa setTimeout para adiar a tarefa pesada.
-    // Isso dá tempo para o navegador redesenhar a tela e mostrar o estado de "carregando".
-    setTimeout(() => {
-        try {
-            // 3. Executa todo o cálculo e renderização (a parte demorada)
-            const currentClientId = document.getElementById('currentClientId').value;
-            const currentClient = allClients.find(c => c.id == currentClientId) || null;
-            const results = utils.calcularProjetoCompleto(technicalData, currentClient);
-            
-            if (results) {
-                lastCalculationResults = results; // Salva os resultados para usar depois
-                ui.renderReport(results);
-                ui.renderUnifilarDiagram(results); // Desenha o diagrama na tela
-                alert("Memorial de Cálculo e Diagrama Unifilar gerados na tela. Agora você pode salvá-los como PDF.");
-            } else {
-                 alert("Não foi possível gerar o cálculo. Verifique os dados de entrada.");
-            }
-        } catch (error) {
-            console.error("Erro durante o cálculo:", error);
-            alert("Ocorreu um erro inesperado ao gerar o cálculo. Verifique o console para mais detalhes.");
-        } finally {
-            // 4. Reabilita os botões e restaura o texto original,
-            // independentemente de o cálculo ter sucesso ou falha.
-            calculateBtn.disabled = false;
-            memorialPdfBtn.disabled = false;
-            unifilarPdfBtn.disabled = false;
-            calculateBtn.textContent = '1. Gerar Memorial e Diagrama';
+function getFullFormData() {
+    const mainData = {};
+    document.querySelectorAll('#main-form input, #main-form textarea, #main-form select').forEach(el => {
+        if (el.id && !['currentProjectId', 'currentClientId'].includes(el.id)) {
+            mainData[el.id] = el.value;
         }
-    }, 10); // Um pequeno atraso (10ms) é suficiente para a mágica acontecer
+    });
+
+    const feederData = { id: 'Geral', nomeCircuito: "Alimentador Geral" };
+    document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(el => {
+        const value = el.type === 'checkbox' ? el.checked : el.value;
+        const key = el.id.replace('feeder', '').charAt(0).toLowerCase() + el.id.replace('feeder', '').slice(1);
+        feederData[key] = isNaN(parseFloat(value)) || !isFinite(value) ? value : parseFloat(value);
+    });
+
+    const circuitsData = [];
+    document.querySelectorAll('#circuits-container .circuit-block').forEach(block => {
+        const circuit = { id: block.dataset.id };
+        block.querySelectorAll('input, select').forEach(el => {
+            const key = el.id.replace(`-${circuit.id}`, '');
+            const value = el.type === 'checkbox' ? el.checked : el.value;
+            circuit[key] = isNaN(parseFloat(value)) || !isFinite(value) ? value : parseFloat(value);
+        });
+        circuitsData.push(circuit);
+    });
+    
+    const currentClientId = document.getElementById('currentClientId').value;
+    const clientProfile = allClients.find(c => c.id == currentClientId) || null;
+
+    return { mainData, feederData, circuitsData, clientProfile };
 }
 
+/**
+ * Inicia o cálculo enviando os dados para o Web Worker.
+ */
+function handleCalculate() {
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    lastCalculationResults = null;
+    loadingOverlay.classList.add('visible'); // Mostra o spinner de carregamento
+
+    const formData = getFullFormData();
+    
+    // Envia os dados para o worker para processamento em segundo plano
+    calculatorWorker.postMessage({ formData, technicalData });
+}
 
 function handleGenerateMemorialPdf() {
     if (lastCalculationResults) {
@@ -122,13 +123,32 @@ function handleGenerateMemorialPdf() {
 
 function handleGenerateUnifilarPdf() {
     if (lastCalculationResults) {
-        ui.generateUnifilarPdf(); // A função de unifilar pega o SVG direto da tela
+        ui.generateUnifilarPdf();
     } else {
         alert("Por favor, gere o cálculo primeiro clicando em '1. Gerar Memorial e Diagrama'.");
     }
 }
 
 function setupEventListeners() {
+    // --- Listener para respostas do Web Worker ---
+    calculatorWorker.onmessage = function(e) {
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        loadingOverlay.classList.remove('visible'); // Esconde o spinner
+        
+        const results = e.data;
+
+        if (results.error) {
+            console.error("Erro retornado pelo Worker:", results.error);
+            alert("Ocorreu um erro inesperado durante o cálculo: " + results.error);
+            return;
+        }
+
+        lastCalculationResults = results;
+        ui.renderReport(results);
+        ui.renderUnifilarDiagram(results);
+        alert("Memorial de Cálculo e Diagrama Unifilar gerados na tela. Agora você pode salvá-los como PDF.");
+    };
+
     document.getElementById('loginBtn').addEventListener('click', handleLogin);
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
     document.getElementById('registerBtn').addEventListener('click', () => ui.openModal('registerModalOverlay'));
@@ -141,17 +161,13 @@ function setupEventListeners() {
     document.getElementById('loadBtn').addEventListener('click', handleLoadProject);
     document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
     document.getElementById('newBtn').addEventListener('click', () => handleNewProject(true));
-
     const debouncedSearch = utils.debounce((e) => handleSearch(e.target.value), 300);
     document.getElementById('searchInput').addEventListener('input', debouncedSearch);
-
     document.getElementById('addCircuitBtn').addEventListener('click', () => ui.addCircuit());
     document.getElementById('circuits-container').addEventListener('click', e => { if (e.target.classList.contains('remove-btn')) { ui.removeCircuit(e.target.dataset.circuitId); } });
-    
     document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
     document.getElementById('memorialPdfBtn').addEventListener('click', handleGenerateMemorialPdf);
     document.getElementById('unifilarPdfBtn').addEventListener('click', handleGenerateUnifilarPdf);
-
     document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
     document.getElementById('adminProjectsTableBody').addEventListener('click', handleProjectPanelClick);
     document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
@@ -165,8 +181,6 @@ function setupEventListeners() {
     document.getElementById('continueWithoutClientBtn').addEventListener('click', handleContinueWithoutClient);
     document.getElementById('addNewClientFromSelectModalBtn').addEventListener('click', () => { ui.closeModal('selectClientModalOverlay'); handleOpenClientManagement(); });
     document.getElementById('changeClientBtn').addEventListener('click', async () => { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients, true); });
-
-    // Máscaras
     document.getElementById('regCpf').addEventListener('input', utils.mascaraCPF);
     document.getElementById('regTelefone').addEventListener('input', utils.mascaraCelular);
     document.getElementById('editCpf').addEventListener('input', utils.mascaraCPF);
