@@ -1,4 +1,4 @@
-// Arquivo: ui.js (VERSÃO COMPLETA E CORRIGIDA)
+// Arquivo: ui.js (VERSÃO COM DIAGRAMA PROFISSIONAL)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
@@ -606,24 +606,39 @@ export function renderReport(calculationResults){
 
 // >>>>>>>>>>>> FUNÇÕES DE DESENHO DO DIAGRAMA (ATUALIZADAS) <<<<<<<<<<<<<<
 
+function drawHeader(x, y, projectData, totalPower) {
+    const title = projectData.obra || "Diagrama Unifilar";
+    const powerText = `(${totalPower.toFixed(2)} W)`;
+
+    return `
+        <g text-anchor="end">
+            <text x="${x}" y="${y}" style="font-family: Arial; font-size: 16px; font-weight: bold;">${title.toUpperCase()}</text>
+            <text x="${x}" y="${y + 15}" style="font-family: Arial; font-size: 12px;">${powerText}</text>
+        </g>
+    `;
+}
+
 function drawDisjuntor(x, y, text) {
     const textLines = text.split('\n');
     const symbolPath = `<path d="M ${x - 5} ${y + 5} q 5 -10 10 0" stroke="black" stroke-width="1.5" fill="none" />`;
     
     return `
-        <rect x="${x - 12.5}" y="${y - 12.5}" width="25" height="25" stroke="black" stroke-width="1" fill="white" />
-        ${symbolPath}
-        <text x="${x + 20}" y="${y - 2}" style="font-family: Arial; font-size: 11px;">${textLines[0]}</text>
-        <text x="${x + 20}" y="${y + 10}" style="font-family: Arial; font-size: 10px; fill: #555;">${textLines[1] || ''}</text>
+        <g text-anchor="middle">
+            <rect x="${x - 12.5}" y="${y - 12.5}" width="25" height="25" stroke="black" stroke-width="1" fill="white" />
+            ${symbolPath}
+            <text x="${x}" y="${y - 18}" style="font-family: Arial; font-size: 11px;">${textLines[0]}</text>
+        </g>
     `;
 }
 
 function drawDR(x, y, text) {
     const drColor = '#3498db';
     return `
-        <rect x="${x - 12.5}" y="${y - 12.5}" width="25" height="25" stroke="${drColor}" stroke-width="1.5" fill="white" />
-        <text x="${x}" y="${y + 4}" text-anchor="middle" style="font-family: Arial; font-size: 12px; font-weight: bold; fill: ${drColor};">DR</text>
-        <text x="${x + 20}" y="${y + 5}" style="font-family: Arial; font-size: 10px; fill: ${drColor};">${text}</text>
+        <g text-anchor="middle">
+            <rect x="${x - 12.5}" y="${y - 12.5}" width="25" height="25" stroke="${drColor}" stroke-width="1.5" fill="white" />
+            <text x="${x}" y="${y + 4}" style="font-family: Arial; font-size: 12px; font-weight: bold; fill: ${drColor};">DR</text>
+            <text x="${x}" y="${y - 18}" style="font-family: Arial; font-size: 10px; fill: ${drColor};">${text}</text>
+        </g>
     `;
 }
 
@@ -635,10 +650,12 @@ function drawDPS(x, y, feederData) {
     const dpsInfo = feederData.dpsInfo;
     const text = dpsInfo ? `${numDPS}x DPS Cl.${dpsInfo.classe} ${dpsInfo.corrente_ka}kA` : `${numDPS}x DPS`;
     return `
-        <rect x="${x - 45}" y="${y - 12.5}" width="90" height="25" stroke="black" stroke-width="1" fill="white" />
-        <text x="${x}" y="${y + 4}" text-anchor="middle" style="font-family: Arial; font-size: 10px;">${text}</text>
-        <line x1="${x}" y1="${y + 12.5}" x2="${x}" y2="${y + 30}" stroke="black" stroke-width="1" />
-        ${drawGroundSymbol(x, y + 30)}
+        <g>
+            <rect x="${x - 45}" y="${y - 12.5}" width="90" height="25" stroke="black" stroke-width="1" fill="white" />
+            <text x="${x}" y="${y + 4}" text-anchor="middle" style="font-family: Arial; font-size: 10px;">${text}</text>
+            <line x1="${x}" y1="${y + 12.5}" x2="${x}" y2="${y + 30}" stroke="black" stroke-width="1" />
+            ${drawGroundSymbol(x, y + 30)}
+        </g>
     `;
 }
 
@@ -651,22 +668,33 @@ function drawGroundSymbol(x, y) {
     `;
 }
 
-function drawCircuitLine(result, x, y, fromDR = false, index) {
+function drawConductorSymbol(x, y, numConductors) {
+    let path = '';
+    for (let i = 0; i < numConductors; i++) {
+        path += ` M ${x - 5} ${y + 5 + (i * 4)} l 10 -5`;
+    }
+    return `<path d="${path}" stroke="black" stroke-width="1" fill="none" />`;
+}
+
+
+function drawCircuitLine(result, x, y, index) {
     const { dados, calculos } = result;
-    const startX = fromDR ? x : x + 50;
-    const xCableEnd = startX + 150; 
+    const yEnd = y + 250;
     const fontStyle = `font-family: Arial;`;
 
     return `
-        <g>
-            <line x1="${x}" y1="${y}" x2="${startX - 12.5}" y2="${y}" stroke="black" stroke-width="1" />
-            ${drawDisjuntor(startX, y, `${calculos.disjuntorRecomendado.nome}\n${calculos.disjuntorRecomendado.icc} kA`)}
-            <line x1="${startX + 12.5}" y1="${y}" x2="${xCableEnd}" y2="${y}" stroke="black" stroke-width="1" />
-            <line x1="${xCableEnd - 5}" y1="${y - 5}" x2="${xCableEnd}" y2="${y}" stroke="black" stroke-width="1" />
+        <g text-anchor="middle">
+            ${drawDisjuntor(x, y, `${calculos.disjuntorRecomendado.nome}`)}
             
-            <text x="${xCableEnd + 10}" y="${y - 5}" style="${fontStyle} font-size: 11px; font-weight: bold;">(${calculos.potenciaDemandada.toFixed(0)} W)</text>
-            <text x="${xCableEnd + 10}" y="${y + 8}" style="${fontStyle} font-size: 12px;">${index} - ${dados.nomeCircuito}</text>
-            <text x="${xCableEnd + 10}" y="${y + 21}" style="${fontStyle} font-size: 10px; fill: #333;">${calculos.numCondutores}x${calculos.bitolaRecomendadaMm2}mm² + T - ${dados.tipoIsolacao}</text>
+            <line x1="${x}" y1="${y + 12.5}" x2="${x}" y2="${yEnd}" stroke="black" stroke-width="1" />
+            
+            ${drawConductorSymbol(x, y + 60, calculos.numCondutores)}
+            
+            <text x="${x}" y="${y + 90}" style="${fontStyle} font-size: 11px;">${calculos.bitolaRecomendadaMm2}</text>
+
+            <text x="${x}" y="${yEnd + 20}" style="${fontStyle} font-size: 11px; font-weight: bold;">(${calculos.potenciaDemandada.toFixed(0)} W)</text>
+            <text x="${x}" y="${yEnd + 35}" style="${fontStyle} font-size: 12px;">${index} - ${dados.nomeCircuito}</text>
+            <text x="${x}" y="${yEnd + 50}" style="${fontStyle} font-size: 10px; fill: #333;">${calculos.numCondutores}x${calculos.bitolaRecomendadaMm2}mm² + T - ${dados.tipoIsolacao}</text>
         </g>
     `;
 }
@@ -712,58 +740,75 @@ export function renderUnifilarDiagram(calculationResults) {
     if (circuitsSemDR.length > 0) {
         finalGroups.push({ dr: null, circuits: circuitsSemDR });
     }
-
-    let y = 120;
-    const xStart = 50;
-    const xBar = 220;
-    let svgParts = [];
-    let circuitIndex = 1;
-    let dotPositions = [];
-
-    const barHeight = finalGroups.reduce((acc, group) => acc + (group.circuits.length * 55) + (group.dr ? 40 : 10), 0) + 20;
-    const finalHeight = y + barHeight + 50;
-    const svgWidth = 850;
-
-    svgParts.push(`<svg width="${svgWidth}" height="${finalHeight}" xmlns="http://www.w3.org/2000/svg">`);
-    svgParts.push(`<line x1="${xStart + 100}" y1="20" x2="${xStart + 100}" y2="${y - 60}" stroke="black" stroke-width="2" />`);
-    if (feederResult.dados.dpsClasse) {
-        svgParts.push(drawDPS(xStart + 100, y - 60, feederResult.dados));
-    }
-    svgParts.push(drawDisjuntor(xStart + 100, y, `${feederResult.calculos.disjuntorRecomendado.nome}\n${feederResult.calculos.disjuntorRecomendado.icc} kA`));
-    svgParts.push(`<line x1="${xStart + 112.5}" y1="${y}" x2="${xBar}" y2="${y}" stroke="black" stroke-width="2" />`);
     
-    svgParts.push(`<line x1="${xBar}" y1="${y - 20}" x2="${xBar}" y2="${y + barHeight}" stroke="black" stroke-width="6" />`);
+    // --- Lógica de Desenho Principal ---
+    const yStart = 40;
+    const yBusbar = yStart + 150;
+    const circuitWidth = 100;
+    const marginLeft = 60;
+    const totalCircuits = circuitResults.length;
+    const svgWidth = (totalCircuits * circuitWidth) + marginLeft * 2;
+    const svgHeight = 600;
 
-    let currentY = y;
+    let svgParts = [];
+    svgParts.push(`<svg width="${svgWidth}" height="${svgHeight}" xmlns="http://www.w3.org/2000/svg">`);
+    
+    // Header
+    svgParts.push(drawHeader(svgWidth - 20, yStart, feederResult.dados, feederResult.calculos.potenciaDemandada));
+
+    // Entrada de Energia e Disjuntor Geral
+    let currentX = marginLeft;
+    svgParts.push(`<line x1="${currentX}" y1="${yStart}" x2="${currentX}" y2="${yBusbar - 50}" stroke="black" stroke-width="2"/>`);
+    svgParts.push(drawDisjuntor(currentX, yBusbar - 50, `${feederResult.calculos.disjuntorRecomendado.nome}\n${feederResult.calculos.disjuntorRecomendado.icc} kA`));
+    svgParts.push(`<line x1="${currentX}" y1="${yBusbar - 37.5}" x2="${currentX}" y2="${yBusbar}" stroke="black" stroke-width="2"/>`);
+
+    // DPS e Aterramento
+    if (feederResult.dados.dpsClasse) {
+        svgParts.push(`<line x1="${currentX}" y1="${yBusbar - 100}" x2="${currentX + 50}" y2="${yBusbar - 100}" stroke="black" stroke-width="1"/>`);
+        svgParts.push(drawDPS(currentX + 95, yBusbar - 100, feederResult.dados));
+    }
+    svgParts.push(drawGroundSymbol(marginLeft + (totalCircuits * circuitWidth) / 2, svgHeight - 40));
+
+    // Barramento Principal
+    const busbarStart = marginLeft;
+    const busbarEnd = busbarStart + totalCircuits * circuitWidth;
+    svgParts.push(`<line x1="${busbarStart}" y1="${yBusbar}" x2="${busbarEnd}" y2="${yBusbar}" stroke="black" stroke-width="5"/>`);
+
+    currentX += (circuitWidth / 2);
+    let circuitIndex = 1;
+
     finalGroups.forEach(group => {
-        const xCircuitStart = xBar + 60;
-        if (group.dr) {
-            const groupHeight = group.circuits.length * 55;
-            dotPositions.push(currentY);
-            svgParts.push(`<line x1="${xBar}" y1="${currentY}" x2="${xCircuitStart - 25}" y2="${currentY}" stroke="black" stroke-width="1" />`);
-            svgParts.push(drawDR(xCircuitStart - 12.5, currentY, `${group.dr.corrente}/${group.dr.sensibilidade}`));
-            
-            const drLineY_end = currentY + groupHeight - 55;
-            if (group.circuits.length > 1) {
-                svgParts.push(`<line x1="${xCircuitStart}" y1="${currentY}" x2="${xCircuitStart}" y2="${drLineY_end}" stroke="black" stroke-width="3" />`);
-            }
+        const groupWidth = group.circuits.length * circuitWidth;
+        const groupStartX = currentX - (circuitWidth/2);
 
+        if (group.dr) {
+            // Desenha o DR e o sub-barramento
+            const drX = groupStartX + groupWidth / 2;
+            svgParts.push(`<line x1="${drX}" y1="${yBusbar}" x2="${drX}" y2="${yBusbar + 40}" stroke="black" stroke-width="1"/>`);
+            svgParts.push(`<circle cx="${drX}" cy="${yBusbar}" r="3" fill="black"/>`);
+            svgParts.push(drawDR(drX, yBusbar + 40, `${group.dr.corrente}/${group.dr.sensibilidade}`));
+            
+            const subBusbarY = yBusbar + 65;
+            svgParts.push(`<line x1="${groupStartX + circuitWidth/2}" y1="${subBusbarY}" x2="${groupStartX + groupWidth - circuitWidth/2}" y2="${subBusbarY}" stroke="black" stroke-width="3"/>`);
+
+            // Caixa tracejada do DR
+            svgParts.push(`<rect x="${groupStartX}" y="${yBusbar + 10}" width="${groupWidth}" height="350" fill="none" stroke="black" stroke-dasharray="5,5"/>`);
+            
             group.circuits.forEach(result => {
-                svgParts.push(drawCircuitLine(result, xCircuitStart, currentY, true, circuitIndex++));
-                currentY += 55;
+                svgParts.push(`<line x1="${currentX}" y1="${subBusbarY}" x2="${currentX}" y2="${subBusbarY + 15}" stroke="black" stroke-width="1"/>`);
+                svgParts.push(`<circle cx="${currentX}" cy="${subBusbarY}" r="3" fill="black"/>`);
+                svgParts.push(drawCircuitLine(result, currentX, subBusbarY + 15, circuitIndex++));
+                currentX += circuitWidth;
             });
-            currentY += 10;
-        } else {
+
+        } else { // Circuitos sem DR
             group.circuits.forEach(result => {
-                dotPositions.push(currentY);
-                svgParts.push(drawCircuitLine(result, xBar, currentY, false, circuitIndex++));
-                currentY += 55;
+                svgParts.push(`<line x1="${currentX}" y1="${yBusbar}" x2="${currentX}" y2="${yBusbar + 15}" stroke="black" stroke-width="1"/>`);
+                svgParts.push(`<circle cx="${currentX}" cy="${yBusbar}" r="3" fill="black"/>`);
+                svgParts.push(drawCircuitLine(result, currentX, yBusbar + 15, circuitIndex++));
+                currentX += circuitWidth;
             });
         }
-    });
-
-    dotPositions.forEach(dotY => {
-        svgParts.push(`<circle cx="${xBar}" cy="${dotY}" r="3" fill="black" />`);
     });
 
     svgParts.push('</svg>');
@@ -780,7 +825,7 @@ export async function generateUnifilarPdf() {
         }
 
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('l', 'mm', 'a3'); 
+        const doc = new jsPDF('l', 'mm', 'a4'); 
 
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -796,9 +841,9 @@ export async function generateUnifilarPdf() {
 
         const imgData = canvas.toDataURL('image/png');
 
-        const pdfWidth = 420; 
-        const pdfHeight = 297; 
-        const margin = 15;
+        const pdfWidth = doc.internal.pageSize.getWidth();
+        const pdfHeight = doc.internal.pageSize.getHeight();
+        const margin = 10;
 
         const imgWidth = pdfWidth - (margin * 2);
         const imgHeight = (height / width) * imgWidth;
