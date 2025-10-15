@@ -1,21 +1,13 @@
+// Arquivo: ui.js (VERSÃO OTIMIZADA COM EVENT DELEGATION)
+
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
 
 let circuitCount = 0;
 let technicalData = null;
 let tempOptions = { pvc: [], epr: [] };
-const circuitListeners = {};
 
-// --- FUNÇÕES DE SETUP E HELPERS (sem alterações) ---
-function cleanupCircuitListeners(id) {
-    if (!circuitListeners[id]) return;
-    circuitListeners[id].forEach(({ element, event, handler }) => {
-        if (element) {
-            element.removeEventListener(event, handler);
-        }
-    });
-    delete circuitListeners[id];
-}
+// --- FUNÇÕES DE SETUP E HELPERS ---
 
 export function setupDynamicData(techData) {
     technicalData = techData;
@@ -95,6 +87,7 @@ function updateFeederPowerDisplay() {
     document.getElementById('feederPotenciaDemandada').value = totalDemandada.toFixed(2);
 }
 
+// --- FUNÇÕES DE VISIBILIDADE E MODAIS (sem alterações) ---
 export function showLoginView() { document.getElementById('loginContainer').style.display = 'block'; document.getElementById('appContainer').style.display = 'none'; document.getElementById('resetPasswordContainer').style.display = 'none'; }
 export function showAppView(userProfile) {
     document.getElementById('loginContainer').style.display = 'none';
@@ -109,17 +102,19 @@ export function showResetPasswordView() { document.getElementById('loginContaine
 export function openModal(modalId) { document.getElementById(modalId).style.display = 'flex'; }
 export function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
 
+
+// --- LÓGICA DE FORMULÁRIO E CIRCUITOS (OTIMIZADA) ---
+
 export function resetForm(addFirst = true, linkedClient = null) {
     document.getElementById('main-form').reset();
     document.getElementById('tech-form').reset();
     document.getElementById('feeder-form').reset();
     document.getElementById('currentProjectId').value = '';
-    Object.keys(circuitListeners).forEach(id => cleanupCircuitListeners(id));
     document.getElementById('circuits-container').innerHTML = '';
     document.getElementById('report').textContent = 'O relatório aparecerá aqui.';
     document.getElementById('searchInput').value = '';
     const unifilarContainer = document.getElementById('unifilar-drawing');
-    if(unifilarContainer) unifilarContainer.innerHTML = '';
+    if (unifilarContainer) unifilarContainer.innerHTML = '';
 
     const clientLinkDisplay = document.getElementById('clientLinkDisplay');
     const currentClientIdInput = document.getElementById('currentClientId');
@@ -145,167 +140,31 @@ export function addCircuit() {
     const newCircuitDiv = document.createElement('div');
     newCircuitDiv.innerHTML = getCircuitHTML(circuitCount);
     document.getElementById('circuits-container').appendChild(newCircuitDiv.firstElementChild);
-    initializeCircuitListeners(circuitCount);
-    updateFeederPowerDisplay();
-}
 
-export function removeCircuit(id) {
-    cleanupCircuitListeners(id);
-    document.getElementById(`circuit-${id}`)?.remove();
-    renumberCircuits();
-    updateFeederPowerDisplay();
-}
+    // Disparamos os eventos iniciais para popular os dropdowns corretamente
+    atualizarLigacoes(circuitCount);
+    handleInsulationChange(circuitCount);
+    handleCircuitTypeChange(circuitCount); // Já chama updateFeederPowerDisplay
 
-function renumberCircuits() {
-    const circuitBlocks = document.querySelectorAll('#circuits-container .circuit-block');
-    circuitCount = circuitBlocks.length;
-    circuitBlocks.forEach((block, index) => {
-        const newId = index + 1;
-        const oldId = parseInt(block.dataset.id);
-        
-        if (oldId === newId) return;
-
-        if (circuitListeners[oldId]) {
-            circuitListeners[newId] = circuitListeners[oldId];
-            delete circuitListeners[oldId];
-        }
-
-        block.dataset.id = newId;
-        block.id = `circuit-${newId}`;
-        block.querySelectorAll('[id],[for],[data-circuit-id]').forEach(el => {
-            const props = ['id', 'htmlFor'];
-            props.forEach(prop => {
-                if (el[prop] && String(el[prop]).includes(`-${oldId}`)) {
-                    el[prop] = el[prop].replace(`-${oldId}`, `-${newId}`);
-                }
-            });
-            if (el.dataset.circuitId && el.dataset.circuitId.includes(`${oldId}`)) {
-                el.dataset.circuitId = el.dataset.circuitId.replace(`${oldId}`, `${newId}`);
-            }
-        });
-        block.querySelector('h2').textContent = `Circuito ${newId}`;
-    });
-}
-
-function initializeFeederListeners() {
-    const fases = document.getElementById('feederFases');
-    const tipoLigacao = document.getElementById('feederTipoLigacao');
-    const tipoIsolacao = document.getElementById('feederTipoIsolacao');
-    const temperaturaAmbiente = document.getElementById('feederTemperaturaAmbienteC');
-    const resistividadeSolo = document.getElementById('feederResistividadeSolo');
-
-    populateSoilResistivityDropdown(resistividadeSolo, technicalData.fatores_k2);
-
-    const atualizarLigacoesFeeder = () => {
-        const faseSelecionada = fases.value;
-        const ligacoesDisponiveis = ligacoes[faseSelecionada] || [];
-        tipoLigacao.innerHTML = '';
-        ligacoesDisponiveis.forEach(opt => { const option = document.createElement('option'); option.value = opt.value; option.textContent = opt.text; tipoLigacao.appendChild(option); });
-    };
-
-    const handleInsulationChange = () => {
-        const selectedInsulation = tipoIsolacao.value;
-        const temps = (selectedInsulation === 'EPR' || selectedInsulation === 'XLPE') ? tempOptions.epr : tempOptions.pvc;
-        populateTemperatureDropdown(temperaturaAmbiente, temps);
-    };
-
-    fases.addEventListener('change', atualizarLigacoesFeeder);
-    tipoIsolacao.addEventListener('change', handleInsulationChange);
-
-    atualizarLigacoesFeeder();
-    handleInsulationChange();
-}
-
-function initializeCircuitListeners(id) {
-    const addTrackedListener = (element, event, handler) => {
-        element.addEventListener(event, handler);
-        if (!circuitListeners[id]) {
-            circuitListeners[id] = [];
-        }
-        circuitListeners[id].push({ element, event, handler });
-    };
-
-    const tipoCircuito = document.getElementById(`tipoCircuito-${id}`);
-    const fases = document.getElementById(`fases-${id}`);
-    const tipoLigacao = document.getElementById(`tipoLigacao-${id}`);
-    const tipoIsolacao = document.getElementById(`tipoIsolacao-${id}`);
-    const temperaturaAmbiente = document.getElementById(`temperaturaAmbienteC-${id}`);
-    const fatorDemandaInput = document.getElementById(`fatorDemanda-${id}`);
-    const resistividadeSolo = document.getElementById(`resistividadeSolo-${id}`);
-    const potenciaWInput = document.getElementById(`potenciaW-${id}`);
-    const potenciaBTUGroup = document.getElementById(`potenciaBTU_group-${id}`);
-    const potenciaBTUSelect = document.getElementById(`potenciaBTU-${id}`);
-    const potenciaCVGroup = document.getElementById(`potenciaCV_group-${id}`);
-    const potenciaCVSelect = document.getElementById(`potenciaCV-${id}`);
-
+    // Preenche dropdowns que dependem de dados técnicos
+    const potenciaBTUSelect = document.getElementById(`potenciaBTU-${circuitCount}`);
+    const potenciaCVSelect = document.getElementById(`potenciaCV-${circuitCount}`);
+    const resistividadeSolo = document.getElementById(`resistividadeSolo-${circuitCount}`);
     populateBtuDropdown(potenciaBTUSelect, technicalData.ar_condicionado_btu);
     populateCvDropdown(potenciaCVSelect, technicalData.motores_cv);
     populateSoilResistivityDropdown(resistividadeSolo, technicalData.fatores_k2);
+}
 
-    const atualizarLigacoes = () => {
-        const faseSelecionada = fases.value;
-        const ligacoesDisponiveis = ligacoes[faseSelecionada] || [];
-        tipoLigacao.innerHTML = '';
-        ligacoesDisponiveis.forEach(opt => { const option = document.createElement('option'); option.value = opt.value; option.textContent = opt.text; tipoLigacao.appendChild(option); });
-    };
-
-    const handleInsulationChange = () => {
-        const selectedInsulation = tipoIsolacao.value;
-        const temps = (selectedInsulation === 'EPR' || selectedInsulation === 'XLPE') ? tempOptions.epr : tempOptions.pvc;
-        populateTemperatureDropdown(temperaturaAmbiente, temps);
-    };
-
-    const handleBtuSelectChange = () => {
-        const btuValue = parseFloat(potenciaBTUSelect.value) || 0;
-        potenciaWInput.value = (btuValue * BTU_TO_WATTS_FACTOR).toFixed(2);
-        updateFeederPowerDisplay();
-    };
-
-    const handleCvSelectChange = () => {
-        const cvValue = parseFloat(potenciaCVSelect.value) || 0;
-        potenciaWInput.value = (cvValue * CV_TO_WATTS_FACTOR).toFixed(2);
-        updateFeederPowerDisplay();
-    };
-
-    const handleCircuitTypeChange = () => {
-        const selectedType = tipoCircuito.value;
-        potenciaBTUGroup.classList.add('hidden');
-        potenciaCVGroup.classList.add('hidden');
-        potenciaWInput.readOnly = false;
-        fatorDemandaInput.readOnly = false;
-
-        if (selectedType === 'ar_condicionado') {
-            potenciaBTUGroup.classList.remove('hidden');
-            potenciaWInput.readOnly = true;
-            handleBtuSelectChange();
-        } else if (selectedType === 'motores') {
-            potenciaCVGroup.classList.remove('hidden');
-            potenciaWInput.readOnly = true;
-            handleCvSelectChange();
-        } else if (selectedType === 'aquecimento') {
-            fatorDemandaInput.value = '100';
-            fatorDemandaInput.readOnly = true;
-        }
-    };
-
-    addTrackedListener(tipoCircuito, 'change', handleCircuitTypeChange);
-    addTrackedListener(fases, 'change', atualizarLigacoes);
-    addTrackedListener(tipoIsolacao, 'change', handleInsulationChange);
-    addTrackedListener(potenciaBTUSelect, 'change', handleBtuSelectChange);
-    addTrackedListener(potenciaCVSelect, 'change', handleCvSelectChange);
-    addTrackedListener(potenciaWInput, 'change', updateFeederPowerDisplay);
-    addTrackedListener(fatorDemandaInput, 'change', updateFeederPowerDisplay);
-
-    atualizarLigacoes();
-    handleCircuitTypeChange();
-    handleInsulationChange();
+export function removeCircuit(id) {
+    document.getElementById(`circuit-${id}`)?.remove();
+    updateFeederPowerDisplay();
 }
 
 function getCircuitHTML(id) {
     return `<div class="circuit-block" id="circuit-${id}" data-id="${id}">
         <div class="circuit-header">
-            <h2 id="circuit-title-${id}">Circuito ${id}</h2>
-            ${id > 1 ? `<button type="button" class="remove-btn btn-danger" data-circuit-id="${id}">Remover</button>` : ''}
+            <h2>Circuito <span class="circuit-number"></span></h2>
+            <button type="button" class="remove-btn btn-danger" data-circuit-id="${id}">Remover</button>
         </div>
         <div class="form-grid">
             <div class="form-group">
@@ -408,6 +267,112 @@ function getCircuitHTML(id) {
     </div>`;
 }
 
+
+// --- LÓGICA DE EVENTOS (OTIMIZADA) ---
+
+function initializeFeederListeners() {
+    const fases = document.getElementById('feederFases');
+    const tipoLigacao = document.getElementById('feederTipoLigacao');
+    const tipoIsolacao = document.getElementById('feederTipoIsolacao');
+    const temperaturaAmbiente = document.getElementById('feederTemperaturaAmbienteC');
+    const resistividadeSolo = document.getElementById('feederResistividadeSolo');
+
+    populateSoilResistivityDropdown(resistividadeSolo, technicalData.fatores_k2);
+
+    const atualizarLigacoesFeeder = () => {
+        const faseSelecionada = fases.value;
+        const ligacoesDisponiveis = ligacoes[faseSelecionada] || [];
+        tipoLigacao.innerHTML = '';
+        ligacoesDisponiveis.forEach(opt => { const option = document.createElement('option'); option.value = opt.value; option.textContent = opt.text; tipoLigacao.appendChild(option); });
+    };
+
+    const handleFeederInsulationChange = () => {
+        const selectedInsulation = tipoIsolacao.value;
+        const temps = (selectedInsulation === 'EPR' || selectedInsulation === 'XLPE') ? tempOptions.epr : tempOptions.pvc;
+        populateTemperatureDropdown(temperaturaAmbiente, temps);
+    };
+
+    fases.addEventListener('change', atualizarLigacoesFeeder);
+    tipoIsolacao.addEventListener('change', handleFeederInsulationChange);
+
+    atualizarLigacoesFeeder();
+    handleFeederInsulationChange();
+}
+
+// Handler centralizado para eventos dos circuitos
+export function handleCircuitContainerInteraction(event) {
+    const target = event.target;
+    const circuitBlock = target.closest('.circuit-block');
+    if (!circuitBlock) return;
+
+    const id = circuitBlock.dataset.id;
+
+    if (target.id === `tipoCircuito-${id}`) { handleCircuitTypeChange(id); }
+    else if (target.id === `fases-${id}`) { atualizarLigacoes(id); }
+    else if (target.id === `tipoIsolacao-${id}`) { handleInsulationChange(id); }
+    else if (target.id === `potenciaBTU-${id}` || target.id === `potenciaCV-${id}`) { handlePowerUnitChange(id, target.id.includes('BTU') ? 'btu' : 'cv'); }
+    else if (target.id === `potenciaW-${id}` || target.id === `fatorDemanda-${id}`) { updateFeederPowerDisplay(); }
+    else if (target.classList.contains('remove-btn')) { removeCircuit(target.dataset.circuitId); }
+}
+
+function atualizarLigacoes(id) {
+    const fases = document.getElementById(`fases-${id}`);
+    const tipoLigacao = document.getElementById(`tipoLigacao-${id}`);
+    const faseSelecionada = fases.value;
+    const ligacoesDisponiveis = ligacoes[faseSelecionada] || [];
+    tipoLigacao.innerHTML = '';
+    ligacoesDisponiveis.forEach(opt => { const option = document.createElement('option'); option.value = opt.value; option.textContent = opt.text; tipoLigacao.appendChild(option); });
+}
+
+function handleInsulationChange(id) {
+    const tipoIsolacao = document.getElementById(`tipoIsolacao-${id}`);
+    const temperaturaAmbiente = document.getElementById(`temperaturaAmbienteC-${id}`);
+    const selectedInsulation = tipoIsolacao.value;
+    const temps = (selectedInsulation === 'EPR' || selectedInsulation === 'XLPE') ? tempOptions.epr : tempOptions.pvc;
+    populateTemperatureDropdown(temperaturaAmbiente, temps);
+}
+
+function handlePowerUnitChange(id, type) {
+    const potenciaWInput = document.getElementById(`potenciaW-${id}`);
+    if (type === 'btu') {
+        const btuValue = parseFloat(document.getElementById(`potenciaBTU-${id}`).value) || 0;
+        potenciaWInput.value = (btuValue * BTU_TO_WATTS_FACTOR).toFixed(2);
+    } else { // cv
+        const cvValue = parseFloat(document.getElementById(`potenciaCV-${id}`).value) || 0;
+        potenciaWInput.value = (cvValue * CV_TO_WATTS_FACTOR).toFixed(2);
+    }
+    updateFeederPowerDisplay();
+}
+
+function handleCircuitTypeChange(id) {
+    const tipoCircuito = document.getElementById(`tipoCircuito-${id}`);
+    const fatorDemandaInput = document.getElementById(`fatorDemanda-${id}`);
+    const potenciaWInput = document.getElementById(`potenciaW-${id}`);
+    const potenciaBTUGroup = document.getElementById(`potenciaBTU_group-${id}`);
+    const potenciaCVGroup = document.getElementById(`potenciaCV_group-${id}`);
+
+    const selectedType = tipoCircuito.value;
+    potenciaBTUGroup.classList.add('hidden');
+    potenciaCVGroup.classList.add('hidden');
+    potenciaWInput.readOnly = false;
+    fatorDemandaInput.readOnly = false;
+
+    if (selectedType === 'ar_condicionado') {
+        potenciaBTUGroup.classList.remove('hidden');
+        potenciaWInput.readOnly = true;
+        handlePowerUnitChange(id, 'btu');
+    } else if (selectedType === 'motores') {
+        potenciaCVGroup.classList.remove('hidden');
+        potenciaWInput.readOnly = true;
+        handlePowerUnitChange(id, 'cv');
+    } else if (selectedType === 'aquecimento') {
+        fatorDemandaInput.value = '100';
+        fatorDemandaInput.readOnly = true;
+    }
+    updateFeederPowerDisplay();
+}
+
+// --- FUNÇÕES DE PREENCHIMENTO DE DADOS (sem alterações significativas) ---
 export function populateProjectList(projects) {
     const select = document.getElementById('savedProjectsSelect');
     select.innerHTML = '<option value="">-- Selecione uma obra --</option>';
@@ -420,9 +385,9 @@ export function populateProjectList(projects) {
 }
 
 export function populateFormWithProjectData(project) {
-    document.getElementById('main-form').reset();
-    document.getElementById('tech-form').reset();
-    document.getElementById('feeder-form').reset();
+    // Resetando o formulário e circuitos antes de popular
+    resetForm(false, project.client);
+
     document.getElementById('currentProjectId').value = project.id;
     if (project.main_data) {
         Object.keys(project.main_data).forEach(id => {
@@ -433,22 +398,24 @@ export function populateFormWithProjectData(project) {
             }
         });
     }
-    document.getElementById('project_code').value = project.project_code || '';
-    const clientLinkDisplay = document.getElementById('clientLinkDisplay');
-    const currentClientIdInput = document.getElementById('currentClientId');
-    if (project.client) {
-        clientLinkDisplay.textContent = `Cliente Vinculado: ${project.client.nome} (${project.client.client_code})`;
-        currentClientIdInput.value = project.client.id;
-    } else {
-        clientLinkDisplay.textContent = 'Cliente: Nenhum';
-        currentClientIdInput.value = '';
-    }
-    if (project.tech_data) { Object.keys(project.tech_data).forEach(id => { const el = document.getElementById(id); if (el) el.value = project.tech_data[id]; }); }
-    if (project.feeder_data) { Object.keys(project.feeder_data).forEach(id => { const el = document.getElementById(id); if (el) { if (el.type === 'checkbox') el.checked = project.feeder_data[id]; else el.value = project.feeder_data[id]; } }); document.getElementById('feederFases').dispatchEvent(new Event('change')); document.getElementById('feederTipoLigacao').value = project.feeder_data['feederTipoLigacao']; document.getElementById('feederTipoIsolacao').dispatchEvent(new Event('change')); }
     
-    Object.keys(circuitListeners).forEach(id => cleanupCircuitListeners(id));
-    document.getElementById('circuits-container').innerHTML = '';
-    circuitCount = 0;
+    document.getElementById('project_code').value = project.project_code || '';
+    
+    if (project.tech_data) { Object.keys(project.tech_data).forEach(id => { const el = document.getElementById(id); if (el) el.value = project.tech_data[id]; }); }
+    
+    if (project.feeder_data) { 
+        Object.keys(project.feeder_data).forEach(id => { 
+            const el = document.getElementById(id); 
+            if (el) { 
+                if (el.type === 'checkbox') el.checked = project.feeder_data[id]; 
+                else el.value = project.feeder_data[id]; 
+            } 
+        }); 
+        document.getElementById('feederFases').dispatchEvent(new Event('change')); 
+        document.getElementById('feederTipoLigacao').value = project.feeder_data['feederTipoLigacao']; 
+        document.getElementById('feederTipoIsolacao').dispatchEvent(new Event('change')); 
+    }
+    
     if (project.circuits_data) {
         project.circuits_data.forEach(savedCircuitData => {
             addCircuit();
@@ -462,16 +429,21 @@ export function populateFormWithProjectData(project) {
                     else { element.value = savedCircuitData[savedId]; }
                 }
             });
-            const tipoCircuitoEl = document.getElementById(`tipoCircuito-${currentId}`);
-            if (savedCircuitData.tipoCircuito === 'ar_condicionado' && savedCircuitData.potenciaBTU_value) {
-                document.getElementById(`potenciaBTU-${currentId}`).value = savedCircuitData.potenciaBTU_value;
-            } else if (savedCircuitData.tipoCircuito === 'motores' && savedCircuitData.potenciaCV_value) {
-                document.getElementById(`potenciaCV-${currentId}`).value = savedCircuitData.potenciaCV_value;
-            }
+
+            // Dispara eventos para garantir que a UI reflita os dados carregados
             document.getElementById(`fases-${currentId}`).dispatchEvent(new Event('change'));
             document.getElementById(`tipoLigacao-${currentId}`).value = savedCircuitData[`tipoLigacao-${savedCircuitData.id}`];
-            tipoCircuitoEl.dispatchEvent(new Event('change'));
             document.getElementById(`tipoIsolacao-${currentId}`).dispatchEvent(new Event('change'));
+            document.getElementById(`tipoCircuito-${currentId}`).dispatchEvent(new Event('change'));
+            
+            // Define valores específicos para BTU/CV após o tipo de circuito ter sido alterado
+            if (savedCircuitData.tipoCircuito === 'ar_condicionado' && savedCircuitData.potenciaBTU_value) {
+                document.getElementById(`potenciaBTU-${currentId}`).value = savedCircuitData.potenciaBTU_value;
+                document.getElementById(`potenciaBTU-${currentId}`).dispatchEvent(new Event('change'));
+            } else if (savedCircuitData.tipoCircuito === 'motores' && savedCircuitData.potenciaCV_value) {
+                document.getElementById(`potenciaCV-${currentId}`).value = savedCircuitData.potenciaCV_value;
+                document.getElementById(`potenciaCV-${currentId}`).dispatchEvent(new Event('change'));
+            }
         });
     }
     updateFeederPowerDisplay();
@@ -524,10 +496,12 @@ export function resetClientForm() { const form = document.getElementById('client
 export function openEditClientForm(client) { document.getElementById('clientId').value = client.id; document.getElementById('clientNome').value = client.nome; document.getElementById('clientDocumentoTipo').value = client.documento_tipo; document.getElementById('clientDocumentoValor').value = client.documento_valor; document.getElementById('clientEmail').value = client.email; document.getElementById('clientCelular').value = client.celular; document.getElementById('clientTelefone').value = client.telefone; document.getElementById('clientEndereco').value = client.endereco; document.getElementById('clientFormTitle').textContent = 'Editar Cliente'; document.getElementById('clientFormSubmitBtn').textContent = 'Atualizar Cliente'; document.getElementById('clientFormCancelBtn').style.display = 'inline-block'; }
 export function populateSelectClientModal(clients, isChange = false) { const select = document.getElementById('clientSelectForNewProject'); select.innerHTML = '<option value="">-- Selecione um cliente --</option>'; clients.forEach(client => { const option = document.createElement('option'); option.value = client.id; option.textContent = `${client.nome} (${client.client_code})`; option.dataset.client = JSON.stringify(client); select.appendChild(option); }); const title = document.querySelector('#selectClientModalOverlay h3'); const confirmBtn = document.getElementById('confirmClientSelectionBtn'); if (isChange) { title.textContent = 'Vincular / Alterar Cliente da Obra'; confirmBtn.textContent = 'Confirmar Alteração'; } else { title.textContent = 'Vincular Cliente à Nova Obra'; confirmBtn.textContent = 'Vincular e Continuar'; } openModal('selectClientModalOverlay'); }
 
+
+// --- FUNÇÕES DE RENDERIZAÇÃO DE RELATÓRIO E DIAGRAMA (sem alterações) ---
+
 function getDpsText(dpsInfo) { if (!dpsInfo) return 'Não'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
 
 export function renderReport(calculationResults){
-    // Esta função permanece a mesma, pois é rápida e não causa travamentos
     if(!calculationResults) return;
     const { feederResult, circuitResults } = calculationResults;
     const dataHora = (new Date).toLocaleString('pt-BR');
@@ -616,9 +590,6 @@ export function renderReport(calculationResults){
     });
     document.getElementById('report').textContent = reportText.trim();
 }
-
-
-// --- FUNÇÕES DE DESENHO DO DIAGRAMA (REESCRITAS PARA PERFORMANCE) ---
 
 function drawDisjuntor(x, y, text) {
     const textLines = text.split('\n');
@@ -734,7 +705,6 @@ export function renderUnifilarDiagram(calculationResults) {
     const xBar = 250;
     let svgParts = [];
 
-    // Calcula a altura final necessária para o SVG
     const barHeight = finalGroups.reduce((acc, group) => acc + (group.circuits.length * 45) + (group.dr ? 40 : 10), 0);
     const finalHeight = y + barHeight + 50;
 
@@ -772,8 +742,53 @@ export function renderUnifilarDiagram(calculationResults) {
     container.innerHTML = svgParts.join('');
 }
 
+export async function generateUnifilarPdf() {
+    try {
+        const svgElement = document.querySelector('#unifilar-drawing svg');
+        if (!svgElement) {
+            alert("O diagrama unifilar não foi encontrado. Por favor, gere o cálculo primeiro.");
+            return;
+        }
 
-// As funções de PDF permanecem as mesmas, pois dependem do SVG já renderizado.
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a3'); 
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const svgString = new XMLSerializer().serializeToString(svgElement);
+        const { width, height } = svgElement.getBoundingClientRect();
+
+        canvas.width = width;
+        canvas.height = height;
+        
+        const v = await Canvg.fromString(ctx, svgString);
+        await v.render();
+
+        const imgData = canvas.toDataURL('image/png');
+
+        const pdfWidth = 420; 
+        const pdfHeight = 297; 
+        const margin = 15;
+
+        const imgWidth = pdfWidth - (margin * 2);
+        const imgHeight = (height / width) * imgWidth;
+        
+        let finalY = margin;
+        if (imgHeight < (pdfHeight - (margin * 2))) {
+            finalY = (pdfHeight - imgHeight) / 2;
+        }
+
+        doc.addImage(imgData, 'PNG', margin, finalY, imgWidth, imgHeight);
+        doc.save(`Unifilar_${document.getElementById('obra').value || 'Projeto'}.pdf`);
+
+    } catch (error) {
+        console.error("Erro ao gerar PDF do Unifilar:", error);
+        alert("Ocorreu um erro ao gerar o PDF do diagrama. Verifique o console para mais detalhes.");
+    }
+}
+
+// O restante das funções de PDF permanecem aqui, sem alterações
 export function generateMemorialPdf(calculationResults, currentUserProfile) {
     if (!calculationResults) {
         alert("Por favor, gere o cálculo primeiro.");
@@ -863,7 +878,7 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
 
         addTitle(title);
         
-        addSection("-- PARÂMETROS DE ENTRada --");
+        addSection("-- PARÂMETROS DE ENTRADA --");
         if (dados.id !== 'Geral') { addLineItem("Tipo de Circuito:", dados.tipoCircuito); }
         addLineItem("Potência Instalada:", `${calculos.potenciaInstalada.toFixed(2)} W`);
         addLineItem("Fator de Demanda:", `${dados.fatorDemanda}%`);
@@ -908,50 +923,4 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
     });
 
     doc.save(`Memorial_${document.getElementById('obra').value || 'Projeto'}.pdf`);
-}
-
-export async function generateUnifilarPdf() {
-    try {
-        const svgElement = document.querySelector('#unifilar-drawing svg');
-        if (!svgElement) {
-            alert("O diagrama unifilar não foi encontrado. Por favor, gere o cálculo primeiro.");
-            return;
-        }
-
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('l', 'mm', 'a3'); 
-
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        const svgString = new XMLSerializer().serializeToString(svgElement);
-        const { width, height } = svgElement.getBoundingClientRect(); // Use getBoundingClientRect for accurate size
-
-        canvas.width = width;
-        canvas.height = height;
-        
-        const v = await Canvg.fromString(ctx, svgString);
-        await v.render();
-
-        const imgData = canvas.toDataURL('image/png');
-
-        const pdfWidth = 420; 
-        const pdfHeight = 297; 
-        const margin = 15;
-
-        const imgWidth = pdfWidth - (margin * 2);
-        const imgHeight = (height / width) * imgWidth;
-        
-        let finalY = margin;
-        if (imgHeight < (pdfHeight - (margin * 2))) {
-            finalY = (pdfHeight - imgHeight) / 2;
-        }
-
-        doc.addImage(imgData, 'PNG', margin, finalY, imgWidth, imgHeight);
-        doc.save(`Unifilar_${document.getElementById('obra').value || 'Projeto'}.pdf`);
-
-    } catch (error) {
-        console.error("Erro ao gerar PDF do Unifilar:", error);
-        alert("Ocorreu um erro ao gerar o PDF do diagrama. Verifique o console para mais detalhes.");
-    }
 }

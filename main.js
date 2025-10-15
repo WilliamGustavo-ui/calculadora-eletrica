@@ -1,4 +1,4 @@
-// Arquivo: main.js (VERSÃO FINAL COM SAVE ASSÍNCRONO)
+// Arquivo: main.js (VERSÃO FINAL OTIMIZADA)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -54,7 +54,6 @@ async function handleNewProject(showModal = true) { if (showModal) { allClients 
 function handleConfirmClientSelection(isChange = false) { const select = document.getElementById('clientSelectForNewProject'); const selectedOption = select.options[select.selectedIndex]; const currentProjectId = document.getElementById('currentProjectId').value; if (select.value) { const client = JSON.parse(selectedOption.dataset.client); if (isChange && currentProjectId) { document.getElementById('currentClientId').value = client.id; document.getElementById('clientLinkDisplay').textContent = `Cliente Vinculado: ${client.nome} (${client.client_code})`; } else { ui.resetForm(true, client); } } ui.closeModal('selectClientModalOverlay'); }
 function handleContinueWithoutClient() { ui.resetForm(true, null); ui.closeModal('selectClientModalOverlay'); }
 
-// >>>>>>>>>>>> FUNÇÃO MODIFICADA <<<<<<<<<<<<<<
 async function handleSaveProject() {
     if (!currentUserProfile) {
         alert("Você precisa estar logado para salvar um projeto.");
@@ -94,7 +93,25 @@ async function handleSaveProject() {
     }
 }
 
-async function handleLoadProject() { const projectId = document.getElementById('savedProjectsSelect').value; if (!projectId) return; const project = await api.fetchProjectById(projectId); if (project) { ui.populateFormWithProjectData(project); alert(`Obra "${project.project_name}" carregada.`); } }
+async function handleLoadProject() {
+    const projectId = document.getElementById('savedProjectsSelect').value;
+    if (!projectId) return;
+
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    loadingOverlay.classList.add('visible');
+    try {
+        await new Promise(resolve => setTimeout(resolve, 50));
+        const project = await api.fetchProjectById(projectId);
+        if (project) {
+            ui.populateFormWithProjectData(project);
+            alert(`Obra "${project.project_name}" carregada.`);
+        }
+    } catch (error) {
+        alert("Erro ao carregar a obra: " + error.message);
+    } finally {
+        loadingOverlay.classList.remove('visible');
+    }
+}
 async function handleDeleteProject() { const projectId = document.getElementById('savedProjectsSelect').value; const projectName = document.getElementById('savedProjectsSelect').options[document.getElementById('savedProjectsSelect').selectedIndex].text; if (!projectId || !confirm(`Tem certeza que deseja excluir a obra "${projectName}"?`)) return; const { error } = await api.deleteProject(projectId); if (error) { alert('Erro ao excluir obra: ' + error.message); } else { alert("Obra excluída."); ui.resetForm(true, null); await handleSearch(); } }
 async function handleSearch(term = '') { if (!currentUserProfile) return; const projects = await api.fetchProjects(term); ui.populateProjectList(projects); }
 async function showManageProjectsPanel() { const projects = await api.fetchProjects(''); allClients = await api.fetchClients(); const allUsers = await api.fetchAllUsers(); ui.populateProjectsPanel(projects, allClients, allUsers, currentUserProfile); ui.openModal('manageProjectsModalOverlay'); }
@@ -103,7 +120,6 @@ async function showAdminPanel() { const users = await api.fetchAllUsers(); ui.po
 async function handleAdminUserActions(event) { const target = event.target; const userId = target.dataset.userId; if (target.classList.contains('approve-user-btn')) { await api.approveUser(userId); await showAdminPanel(); } if (target.classList.contains('edit-user-btn')) { const user = await api.fetchUserById(userId); if (user) ui.populateEditUserModal(user); } if (target.classList.contains('remove-user-btn')) { /* ... */ } }
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
-// >>>>>>>>>>>> FUNÇÃO MODIFICADA <<<<<<<<<<<<<<
 function getFullFormData(forSave = false) {
     const mainData = {};
     document.querySelectorAll('#main-form input, #main-form textarea, #main-form select').forEach(el => {
@@ -116,9 +132,7 @@ function getFullFormData(forSave = false) {
     const feederDataForCalc = { id: 'Geral', nomeCircuito: "Alimentador Geral" };
     document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(el => {
         const value = el.type === 'checkbox' ? el.checked : el.value;
-        // Para salvar no BD
         feederDataForSave[el.id] = value;
-        // Para calcular no worker
         const key = el.id.replace('feeder', '').charAt(0).toLowerCase() + el.id.replace('feeder', '').slice(1);
         feederDataForCalc[key] = isNaN(parseFloat(value)) || !isFinite(value) ? value : parseFloat(value);
     });
@@ -130,11 +144,9 @@ function getFullFormData(forSave = false) {
         const circuitForCalc = { id: block.dataset.id };
         block.querySelectorAll('input, select').forEach(el => {
             const value = el.type === 'checkbox' ? el.checked : el.value;
-            // Para salvar no BD
             if (el.id.startsWith('potenciaBTU')) { circuitForSave['potenciaBTU_value'] = value; } 
             else if (el.id.startsWith('potenciaCV')) { circuitForSave['potenciaCV_value'] = value; }
             circuitForSave[el.id] = value;
-            // Para calcular no worker
             const key = el.id.replace(`-${circuitForSave.id}`, '');
             circuitForCalc[key] = isNaN(parseFloat(value)) || !isFinite(value) ? value : parseFloat(value);
         });
@@ -143,11 +155,22 @@ function getFullFormData(forSave = false) {
     });
     
     const currentClientId = document.getElementById('currentClientId').value;
-    const clientProfile = allClients.find(c => c.id == currentClientId) || null;
+    const client = allClients.find(c => c.id == currentClientId);
+    const clientProfile = client ? { 
+        cliente: client.nome,
+        tipoDocumento: client.documento_tipo,
+        documento: client.documento_valor,
+        celular: client.celular,
+        telefone: client.telefone,
+        email: client.email,
+        enderecoCliente: client.endereco
+    } : {};
+
 
     if (forSave) {
         return {
             project_name: mainData.obra,
+            project_code: document.getElementById('project_code').value || null,
             client_id: currentClientId || null,
             main_data: mainData,
             tech_data: {
@@ -173,7 +196,7 @@ function handleCalculate() {
     const loadingOverlay = document.getElementById('loadingOverlay');
     lastCalculationResults = null;
     loadingOverlay.classList.add('visible');
-    const formData = getFullFormData(false); // Pega os dados para calcular
+    const formData = getFullFormData(false);
     calculatorWorker.postMessage({ formData, technicalData });
 }
 
@@ -251,17 +274,21 @@ function setupEventListeners() {
     document.getElementById('forgotPasswordLink').addEventListener('click', (e) => { e.preventDefault(); ui.openModal('forgotPasswordModalOverlay'); });
     document.getElementById('forgotPasswordForm').addEventListener('submit', handleForgotPassword);
     document.getElementById('resetPasswordForm').addEventListener('submit', handleResetPassword);
-    document.querySelectorAll('.close-modal-btn').forEach(btn => { btn.addEventListener('click', (e) => ui.closeModal(e.target.dataset.modalId)); });
+    document.querySelectorAll('.close-modal-btn').forEach(btn => { btn.addEventListener('click', (e) => ui.closeModal(e.target.closest('.modal-overlay').id)); });
     
-    document.getElementById('saveBtn').addEventListener('click', handleSaveProject); // O listener permanece o mesmo
-    
+    document.getElementById('saveBtn').addEventListener('click', handleSaveProject);
     document.getElementById('loadBtn').addEventListener('click', handleLoadProject);
     document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
     document.getElementById('newBtn').addEventListener('click', () => handleNewProject(true));
     const debouncedSearch = utils.debounce((e) => handleSearch(e.target.value), 300);
     document.getElementById('searchInput').addEventListener('input', debouncedSearch);
     document.getElementById('addCircuitBtn').addEventListener('click', () => ui.addCircuit());
-    document.getElementById('circuits-container').addEventListener('click', e => { if (e.target.classList.contains('remove-btn')) { ui.removeCircuit(e.target.dataset.circuitId); } });
+    
+    // >>>>>>>>>>>> ALTERAÇÃO IMPORTANTE <<<<<<<<<<<<<<
+    // Listener único para todos os eventos dentro do container de circuitos
+    const circuitsContainer = document.getElementById('circuits-container');
+    circuitsContainer.addEventListener('change', ui.handleCircuitContainerInteraction);
+    circuitsContainer.addEventListener('click', ui.handleCircuitContainerInteraction);
     
     document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
     document.getElementById('memorialPdfBtn').addEventListener('click', handleGenerateMemorialPdf);
@@ -292,31 +319,34 @@ function setupEventListeners() {
 
 function main() {
     setupEventListeners();
-}
-main();
-
-supabase.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-        if (session) {
-            const userProfile = await auth.getSession();
-            if (userProfile && userProfile.is_approved) {
-                currentUserProfile = userProfile;
-                ui.showAppView(currentUserProfile);
-                technicalData = await api.fetchTechnicalData();
-                if (technicalData) {
-                    ui.setupDynamicData(technicalData);
-                    await handleNewProject(false);
-                    await handleSearch();
+    
+    supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+            if (session) {
+                const userProfile = await auth.getSession();
+                if (userProfile && userProfile.is_approved) {
+                    currentUserProfile = userProfile;
+                    ui.showAppView(currentUserProfile);
+                    allClients = await api.fetchClients(); // Carrega clientes no login
+                    technicalData = await api.fetchTechnicalData();
+                    if (technicalData) {
+                        ui.setupDynamicData(technicalData);
+                        await handleNewProject(false);
+                        await handleSearch();
+                    }
                 }
+            } else {
+                ui.showLoginView();
             }
-        } else {
+        } else if (event === 'SIGNED_OUT') {
+            currentUserProfile = null;
+            technicalData = null;
+            allClients = [];
             ui.showLoginView();
+        } else if (event === 'PASSWORD_RECOVERY') {
+            ui.showResetPasswordView();
         }
-    } else if (event === 'SIGNED_OUT') {
-        currentUserProfile = null;
-        technicalData = null;
-        ui.showLoginView();
-    } else if (event === 'PASSWORD_RECOVERY') {
-        ui.showResetPasswordView();
-    }
-});
+    });
+}
+
+main();

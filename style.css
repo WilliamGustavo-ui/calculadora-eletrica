@@ -63,7 +63,7 @@ button:active { transform: scale(0.98); }
 #unifilar-drawing svg { min-width: 800px; }
 button:disabled, button[disabled] { background-color: #bdc3c7 !important; cursor: not-allowed !important; opacity: 0.7; }
 
-/* ESTILOS ADICIONADOS PARA O LOADING OVERLAY */
+/* ESTILOS PARA O LOADING OVERLAY */
 .loading-overlay {
     position: absolute;
     top: 0;
@@ -98,4 +98,22 @@ button:disabled, button[disabled] { background-color: #bdc3c7 !important; cursor
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* >>>>>>>>>>>> ESTILOS ADICIONADOS PARA OTIMIZAÇÃO <<<<<<<<<<<<<< */
+#circuits-container {
+    counter-reset: circuit-counter; /* Inicia o contador de circuitos */
+}
+
+.circuit-block {
+    counter-increment: circuit-counter; /* Incrementa o contador para cada bloco de circuito */
+}
+
+.circuit-block .circuit-number::before {
+    content: counter(circuit-counter); /* Exibe o número do circuito atual */
+}
+
+/* Esconde o botão de remover apenas no primeiro circuito */
+#circuits-container .circuit-block:first-child .remove-btn {
+    display: none;
 }
