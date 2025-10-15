@@ -6,6 +6,7 @@ let technicalData = null;
 let tempOptions = { pvc: [], epr: [] };
 const circuitListeners = {};
 
+// --- FUNÇÕES DE SETUP E HELPERS (sem alterações) ---
 function cleanupCircuitListeners(id) {
     if (!circuitListeners[id]) return;
     circuitListeners[id].forEach(({ element, event, handler }) => {
@@ -93,6 +94,7 @@ function updateFeederPowerDisplay() {
     document.getElementById('feederPotenciaInstalada').value = totalInstalada.toFixed(2);
     document.getElementById('feederPotenciaDemandada').value = totalDemandada.toFixed(2);
 }
+
 export function showLoginView() { document.getElementById('loginContainer').style.display = 'block'; document.getElementById('appContainer').style.display = 'none'; document.getElementById('resetPasswordContainer').style.display = 'none'; }
 export function showAppView(userProfile) {
     document.getElementById('loginContainer').style.display = 'none';
@@ -117,7 +119,7 @@ export function resetForm(addFirst = true, linkedClient = null) {
     document.getElementById('report').textContent = 'O relatório aparecerá aqui.';
     document.getElementById('searchInput').value = '';
     const unifilarContainer = document.getElementById('unifilar-drawing');
-    if (unifilarContainer) unifilarContainer.innerHTML = '';
+    if(unifilarContainer) unifilarContainer.innerHTML = '';
 
     const clientLinkDisplay = document.getElementById('clientLinkDisplay');
     const currentClientIdInput = document.getElementById('currentClientId');
@@ -298,6 +300,7 @@ function initializeCircuitListeners(id) {
     handleCircuitTypeChange();
     handleInsulationChange();
 }
+
 function getCircuitHTML(id) {
     return `<div class="circuit-block" id="circuit-${id}" data-id="${id}">
         <div class="circuit-header">
@@ -404,6 +407,7 @@ function getCircuitHTML(id) {
         </div>
     </div>`;
 }
+
 export function populateProjectList(projects) {
     const select = document.getElementById('savedProjectsSelect');
     select.innerHTML = '<option value="">-- Selecione uma obra --</option>';
@@ -519,6 +523,7 @@ export function populateClientManagementModal(clients) {
 export function resetClientForm() { const form = document.getElementById('clientForm'); form.reset(); document.getElementById('clientId').value = ''; document.getElementById('clientFormTitle').textContent = 'Cadastrar Novo Cliente'; document.getElementById('clientFormSubmitBtn').textContent = 'Salvar Cliente'; document.getElementById('clientFormCancelBtn').style.display = 'none'; }
 export function openEditClientForm(client) { document.getElementById('clientId').value = client.id; document.getElementById('clientNome').value = client.nome; document.getElementById('clientDocumentoTipo').value = client.documento_tipo; document.getElementById('clientDocumentoValor').value = client.documento_valor; document.getElementById('clientEmail').value = client.email; document.getElementById('clientCelular').value = client.celular; document.getElementById('clientTelefone').value = client.telefone; document.getElementById('clientEndereco').value = client.endereco; document.getElementById('clientFormTitle').textContent = 'Editar Cliente'; document.getElementById('clientFormSubmitBtn').textContent = 'Atualizar Cliente'; document.getElementById('clientFormCancelBtn').style.display = 'inline-block'; }
 export function populateSelectClientModal(clients, isChange = false) { const select = document.getElementById('clientSelectForNewProject'); select.innerHTML = '<option value="">-- Selecione um cliente --</option>'; clients.forEach(client => { const option = document.createElement('option'); option.value = client.id; option.textContent = `${client.nome} (${client.client_code})`; option.dataset.client = JSON.stringify(client); select.appendChild(option); }); const title = document.querySelector('#selectClientModalOverlay h3'); const confirmBtn = document.getElementById('confirmClientSelectionBtn'); if (isChange) { title.textContent = 'Vincular / Alterar Cliente da Obra'; confirmBtn.textContent = 'Confirmar Alteração'; } else { title.textContent = 'Vincular Cliente à Nova Obra'; confirmBtn.textContent = 'Vincular e Continuar'; } openModal('selectClientModalOverlay'); }
+
 function getDpsText(dpsInfo) { if (!dpsInfo) return 'Não'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
 
 export function renderReport(calculationResults){
@@ -661,16 +666,16 @@ export function renderUnifilarDiagram(calculationResults) {
     const xStart = 50;
     const xBar = 250;
     
-    canvas.line(xStart + 100, 20, xStart + 100, y - 60).attr({ stroke: '#000', 'stroke-width': 2 });
+    canvas.line(xStart + 100, 20, xStart + 100, y - 60).stroke({ width: 2 });
     if(feederResult.dados.dpsClasse) {
         drawDPS(canvas, xStart + 100, y - 60, feederResult.dados);
     }
     drawDisjuntor(canvas, xStart + 100, y, `${feederResult.calculos.disjuntorRecomendado.nome}\n${feederResult.calculos.disjuntorRecomendado.icc} kA`);
     
-    canvas.line(xStart + 100, y, xBar, y).attr({ stroke: '#000', 'stroke-width': 2 });
+    canvas.line(xStart + 100, y, xBar, y).stroke({ width: 2 });
 
     const barHeight = finalGroups.reduce((acc, group) => acc + (group.circuits.length * 45) + (group.dr ? 40 : 10), 0);
-    canvas.line(xBar, y - 20, xBar, y + barHeight).attr({ stroke: '#000', 'stroke-width': 5 });
+    canvas.line(xBar, y - 20, xBar, y + barHeight).stroke({ width: 5 });
 
     let currentY = y;
     finalGroups.forEach(group => {
@@ -689,11 +694,11 @@ function drawGroup(canvas, group, startY, xBar) {
         const isHighPower = group.circuits.some(c => c.dados.tipoCircuito === 'tue_potencia' || c.dados.potenciaW >= 4000);
         const drCurrent = isHighPower ? '63A' : '40A';
 
-        canvas.line(xBar, currentY, xCircuitStart - 25, currentY).attr({ stroke: '#000', 'stroke-width': 1 });
+        canvas.line(xBar, currentY, xCircuitStart - 25, currentY).stroke({ width: 1 });
         
         drawDR(canvas, xCircuitStart - 12.5, currentY, `${drCurrent}/${group.dr.sensibilidade}`);
         
-        canvas.line(xCircuitStart, currentY, xCircuitStart, currentY + groupHeight - 45).attr({ stroke: '#000', 'stroke-width': 3 });
+        canvas.line(xCircuitStart, currentY, xCircuitStart, currentY + groupHeight - 45).stroke({ width: 3 });
 
         group.circuits.forEach(result => {
             drawCircuitLine(canvas, result, xCircuitStart, currentY);
@@ -715,8 +720,8 @@ function drawCircuitLine(canvas, result, x, y) {
     drawDisjuntor(canvas, x, y, `${calculos.disjuntorRecomendado.nome}\n${calculos.disjuntorRecomendado.icc} kA`);
 
     const xCableEnd = x + 120;
-    canvas.line(x, y, xCableEnd, y).attr({ stroke: '#000', 'stroke-width': 1 });
-    canvas.line(xCableEnd - 5, y - 5, xCableEnd, y).attr({ stroke: '#000', 'stroke-width': 1 });
+    canvas.line(x, y, xCableEnd, y).stroke({ width: 1 });
+    canvas.line(xCableEnd - 5, y - 5, xCableEnd, y).stroke({ width: 1 });
 
     const xText = xCableEnd + 20;
     const fontStyle = { family: 'Arial', anchor: 'start' };
@@ -726,8 +731,8 @@ function drawCircuitLine(canvas, result, x, y) {
 }
 
 function drawDisjuntor(canvas, x, y, text) {
-    canvas.line(x - 50, y, x, y).attr({ stroke: '#000', 'stroke-width': 1 });
-    canvas.rect(25, 25).center(x, y).attr({ stroke: '#000', 'stroke-width': 1, fill: '#fff' });
+    canvas.line(x - 50, y, x, y).stroke({ width: 1 });
+    canvas.rect(25, 25).center(x, y).stroke({ width: 1 }).fill('white');
     const textLines = text.split('\n');
     const fontStyle = { family: 'Arial', anchor: 'start', size: 10 };
     canvas.text(textLines[0]).move(x + 20, y - 10).font(fontStyle);
@@ -735,7 +740,7 @@ function drawDisjuntor(canvas, x, y, text) {
 }
 
 function drawDR(canvas, x, y, text) {
-    canvas.rect(25, 25).center(x, y).attr({ stroke: '#3498db', 'stroke-width': 1.5, fill: '#fff' });
+    canvas.rect(25, 25).center(x, y).stroke({ width: 1.5, color: '#3498db' }).fill('white');
     canvas.text('DR').center(x, y - 4).font({ family: 'Arial', size:12, weight:'bold', fill:'#3498db'});
     canvas.text(text).move(x + 20, y + 2).font({ family: 'Arial', anchor: 'start', size: 9, fill:'#3498db' });
 }
@@ -749,18 +754,18 @@ function drawDPS(canvas, x, y, feederData) {
     const dpsInfo = feederData.dpsInfo;
     const text = dpsInfo ? `${numDPS}x DPS Cl.${dpsInfo.classe} ${dpsInfo.corrente_ka}kA` : `${numDPS}x DPS`;
 
-    canvas.rect(80, 25).center(x, y).attr({ stroke: '#000', 'stroke-width': 1, fill: '#fff' });
+    canvas.rect(80, 25).center(x, y).stroke({ width: 1 }).fill('white');
     canvas.text(text).center(x, y).font({family: 'Arial', size: 10});
 
-    canvas.line(x, y + 12.5, x, y + 30).attr({ stroke: '#000', 'stroke-width': 1 });
+    canvas.line(x, y + 12.5, x, y + 30).stroke({ width: 1 });
     drawGroundSymbol(canvas, x, y + 30);
 }
 
 function drawGroundSymbol(canvas, x, y) {
-    canvas.line(x, y, x, y + 5).attr({ stroke: '#000', 'stroke-width': 1 });
-    canvas.line(x - 8, y + 5, x + 8, y + 5).attr({ stroke: '#000', 'stroke-width': 1.5 });
-    canvas.line(x - 5, y + 8, x + 5, y + 8).attr({ stroke: '#000', 'stroke-width': 1.5 });
-    canvas.line(x - 2, y + 11, x + 2, y + 11).attr({ stroke: '#000', 'stroke-width': 1.5 });
+    canvas.line(x, y, x, y + 5).stroke({ width: 1 });
+    canvas.line(x - 8, y + 5, x + 8, y + 5).stroke({ width: 1.5 });
+    canvas.line(x - 5, y + 8, x + 5, y + 8).stroke({ width: 1.5 });
+    canvas.line(x - 2, y + 11, x + 2, y + 11).stroke({ width: 1.5 });
 }
 
 
@@ -790,9 +795,113 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
     
     addSection("DADOS DO CLIENTE");
     addLineItem("Cliente:", reportData.cliente);
-    // ... O restante desta função (muito longa) é omitido para garantir a entrega ...
-    // ... O código dela não foi alterado e deve estar correto da última vez que funcionou ...
+    addLineItem(`Documento (${reportData.tipoDocumento}):`, reportData.documento);
+    addLineItem("Celular:", reportData.celular);
+    addLineItem("Telefone:", reportData.telefone);
+    addLineItem("E-mail:", reportData.email);
+    addLineItem("Endereço do Cliente:", reportData.enderecoCliente);
+    yPos += 5;
+
+    addSection("DADOS DA OBRA");
+    addLineItem("Código da Obra:", reportData.projectCode);
+    addLineItem("Nome da Obra:", reportData.obra);
+    addLineItem("Cidade da Obra:", reportData.cidadeObra);
+    addLineItem("Endereço da Obra:", reportData.enderecoObra);
+    addLineItem("Área da Obra (m²):", reportData.areaObra);
+    addLineItem("Unid. Residenciais:", reportData.unidadesResidenciais);
+    addLineItem("Unid. Comerciais:", reportData.unidadesComerciais);
+    addLineItem("Observações:", reportData.observacoes);
+    yPos += 5;
+
+    addSection("INFORMAÇÕES DO RESPONSÁVEL TÉCNICO");
+    addLineItem("Nome:", document.getElementById('respTecnico').value);
+    addLineItem("Título:", document.getElementById('titulo').value);
+    addLineItem("CREA:", document.getElementById('crea').value);
+    yPos += 5;
+
+    addSection("INFORMAÇÕES DO RELATÓRIO");
+    const dataFormatada = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    addLineItem("Gerado em:", dataFormatada);
+    addLineItem("Gerado por:", currentUserProfile?.nome || 'N/A');
+    yPos += 5;
+
+    addSection("RESUMO DA ALIMENTAÇÃO GERAL");
+    const feederBreakerType = feederResult.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
+    const feederBreakerText = `${feederBreakerType} ${feederResult.calculos.disjuntorRecomendado.nome}`;
+    const feederHead = [['Tensão/Fases', 'Disjuntor Geral', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
+    const feederBody = [[ `${feederResult.dados.tensaoV}V - ${feederResult.dados.fases}`, feederBreakerText, feederResult.dados.requerDR ? 'Sim' : 'Nao', getDpsText(feederResult.dados.dpsInfo), `${feederResult.calculos.bitolaRecomendadaMm2} mm² (${feederResult.dados.tipoIsolacao})`, feederResult.calculos.dutoRecomendado ]];
+    doc.autoTable({ startY: yPos, head: feederHead, body: feederBody, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
+    yPos = doc.lastAutoTable.finalY + 10;
+
+    if (circuitResults.length > 0) {
+        addSection("RESUMO DOS CIRCUITOS");
+        const head = [['Ckt', 'Nome', 'Disjuntor', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
+        const body = circuitResults.map(r => {
+            const circuitBreakerType = r.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
+            const circuitBreakerText = `${circuitBreakerType} ${r.calculos.disjuntorRecomendado.nome}`;
+            return [ r.dados.id, r.dados.nomeCircuito, circuitBreakerText, r.dados.requerDR ? 'Sim' : 'Nao', getDpsText(r.dados.dpsInfo), `${r.calculos.bitolaRecomendadaMm2} mm² (${r.dados.tipoIsolacao})`, r.calculos.dutoRecomendado ];
+        });
+        doc.autoTable({ startY: yPos, head: head, body: body, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
+    }
     
+    const allCalculationsForMemorial = [feederResult, ...circuitResults];
+    allCalculationsForMemorial.forEach(result => {
+        doc.addPage();
+        yPos = 20;
+        const { dados, calculos } = result;
+        const potenciaDemandadaVA = dados.fatorPotencia > 0 ? (calculos.potenciaDemandada / dados.fatorPotencia).toFixed(2) : "0.00";
+        const correnteCorrigidaTexto = isFinite(calculos.correnteCorrigidaA) ? `${calculos.correnteCorrigidaA.toFixed(2)} A` : "Incalculável";
+
+        const title = dados.id === 'Geral' 
+            ? `MEMORIAL DE CÁLCULO - ALIMENTADOR GERAL`
+            : `MEMORIAL DE CÁLCULO - CIRCUITO ${dados.id}: ${dados.nomeCircuito}`;
+
+        addTitle(title);
+        
+        addSection("-- PARÂMETROS DE ENTRADA --");
+        if (dados.id !== 'Geral') { addLineItem("Tipo de Circuito:", dados.tipoCircuito); }
+        addLineItem("Potência Instalada:", `${calculos.potenciaInstalada.toFixed(2)} W`);
+        addLineItem("Fator de Demanda:", `${dados.fatorDemanda}%`);
+        addLineItem("Potência Demandada:", `${potenciaDemandadaVA} VA`);
+        addLineItem("Fator de Potência:", dados.fatorPotencia);
+        addLineItem("Sistema de Fases:", dados.fases);
+        addLineItem("Tipo de Ligação:", dados.tipoLigacao);
+        addLineItem("Tensão (V):", `${dados.tensaoV} V`);
+        addLineItem("Comprimento:", `${dados.comprimentoM} m`);
+        addLineItem("Limite Queda de Tensão:", `${dados.limiteQuedaTensao}%`);
+        yPos += 5;
+
+        addSection("-- ESPECIFICAÇÕES DE INSTALAÇÃO E CORREÇÕES --");
+        addLineItem("Material / Isolação:", `${dados.materialCabo} / ${dados.tipoIsolacao}`);
+        addLineItem("Método de Instalação:", dados.metodoInstalacao);
+        addLineItem("Temperatura Ambiente:", `${dados.temperaturaAmbienteC}°C`);
+        if (dados.id !== 'Geral') {
+            addLineItem("Circuitos Agrupados:", dados.numCircuitosAgrupados);
+            if (dados.resistividadeSolo && dados.resistividadeSolo > 0) {
+                addLineItem("Resist. do Solo (C.m/W):", dados.resistividadeSolo);
+            }
+        } else {
+             if (dados.resistividadeSolo && dados.resistividadeSolo > 0) {
+                addLineItem("Resist. do Solo (C.m/W):", dados.resistividadeSolo);
+            }
+        }
+        yPos += 5;
+        
+        addSection("-- RESULTADOS DE CÁLCULO E DIMENSIONAMENTO --");
+        addLineItem("Corrente de Projeto:", `${calculos.correnteInstalada.toFixed(2)} A`);
+        addLineItem("Corrente Demandada (Ib):", `${calculos.correnteDemandada.toFixed(2)} A`);
+        addLineItem("Corrente Corrigida (I'):", correnteCorrigidaTexto);
+        addLineItem("Bitola Recomendada:", `${calculos.bitolaRecomendadaMm2} mm²`);
+        addLineItem("Queda de Tensão (DV):", `${calculos.quedaTensaoCalculada.toFixed(2)}%`);
+        addLineItem("Corrente Máx. Cabo (Iz):", `${calculos.correnteMaximaCabo.toFixed(2)} A`);
+        yPos += 5;
+
+        addSection("-- PROTEÇÕES RECOMENDADAS --");
+        addLineItem("Disjuntor:", `${dados.tipoDisjuntor}: ${calculos.disjuntorRecomendado.nome} (Icc: ${calculos.disjuntorRecomendado.icc} kA)`);
+        addLineItem("Proteção DR:", dados.requerDR ? `Sim (${calculos.disjuntorRecomendado.nome.replace('A','')}A / 30mA)` : 'Não');
+        addLineItem("Proteção DPS:", getDpsText(dados.dpsInfo));
+    });
+
     doc.save(`Memorial_${document.getElementById('obra').value || 'Projeto'}.pdf`);
 }
 
@@ -805,27 +914,27 @@ export async function generateUnifilarPdf() {
         }
 
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('l', 'mm', 'a4'); // Alterado para A4 para teste
+        const doc = new jsPDF('l', 'mm', 'a3'); 
 
-        const canvasEl = document.createElement('canvas');
-        const ctx = canvasEl.getContext('2d');
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
         
         const svgString = new XMLSerializer().serializeToString(svgElement);
         const width = svgElement.width.baseVal.value;
         const height = svgElement.height.baseVal.value;
 
         // Renderiza o SVG no canvas em sua escala original (1:1)
-        canvasEl.width = width;
-        canvasEl.height = height;
+        canvas.width = width;
+        canvas.height = height;
         
         const v = await Canvg.fromString(ctx, svgString);
         await v.render();
 
-        const imgData = canvasEl.toDataURL('image/png');
+        const imgData = canvas.toDataURL('image/png');
 
-        const pdfWidth = 297; 
-        const pdfHeight = 210; 
-        const margin = 10;
+        const pdfWidth = 420; 
+        const pdfHeight = 297; 
+        const margin = 15;
 
         const imgWidth = pdfWidth - (margin * 2);
         const imgHeight = (height / width) * imgWidth;

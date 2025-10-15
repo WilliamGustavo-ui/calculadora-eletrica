@@ -1,3 +1,5 @@
+// Arquivo: main.js (VERSÃO FINAL COM DEBOUNCE)
+
 import * as auth from './auth.js';
 import * as ui from './ui.js';
 import * as api from './api.js';

@@ -59,6 +59,7 @@ button:active { transform: scale(0.98); }
 #adminProjectsTable .action-cell { display: flex; flex-direction: column; gap: 5px; align-items: stretch; }
 .transfer-client-btn.btn-success { background-color: var(--success-color); }
 
+/* ESTILO ADICIONADO PARA O CONTAINER DO DIAGRAMA */
 .diagram-container {
     margin-top: 30px;
     background-color: #fdfdfd;

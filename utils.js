@@ -1,4 +1,4 @@
-// Arquivo: utils.js
+// Arquivo: utils.js (CORRIGIDO)
 
 export const ligacoes = { Monofasico: [{value:'FN', text:'Fase-Neutro (FN)'}, {value:'FF', text:'Fase-Fase (FF)'}], Bifasico: [{value:'FF', text:'Fase-Fase (FF)'}, {value:'FFN', text:'Fase-Fase-Neutro (FFN)'}], Trifasico: [{value:'FFF', text:'Fase-Fase-Fase (FFF)'}, {value:'FFFN', text:'Fase-Fase-Fase-Neutro (FFFN)'}] };
 export const BTU_TO_WATTS_FACTOR = 0.293071;
@@ -239,6 +239,7 @@ function performCalculation(dados, potenciaInstalada, potenciaDemandada, technic
     return { dados, calculos };
 }
 
+// FUNÇÃO ADICIONADA PARA OTIMIZAR A BUSCA
 export function debounce(func, delay) {
     let timeout;
     return function(...args) {
