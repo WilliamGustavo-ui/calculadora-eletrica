@@ -1,4 +1,4 @@
-// Arquivo: ui.js (VERSÃO COM DIAGRAMA PROFISSIONAL)
+// Arquivo: ui.js (VERSÃO COM LEGENDA TÉCNICA)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
@@ -510,7 +510,7 @@ export function openEditClientForm(client) { document.getElementById('clientId')
 export function populateSelectClientModal(clients, isChange = false) { const select = document.getElementById('clientSelectForNewProject'); select.innerHTML = '<option value="">-- Selecione um cliente --</option>'; clients.forEach(client => { const option = document.createElement('option'); option.value = client.id; option.textContent = `${client.nome} (${client.client_code})`; option.dataset.client = JSON.stringify(client); select.appendChild(option); }); const title = document.querySelector('#selectClientModalOverlay h3'); const confirmBtn = document.getElementById('confirmClientSelectionBtn'); if (isChange) { title.textContent = 'Vincular / Alterar Cliente da Obra'; confirmBtn.textContent = 'Confirmar Alteração'; } else { title.textContent = 'Vincular Cliente à Nova Obra'; confirmBtn.textContent = 'Vincular e Continuar'; } openModal('selectClientModalOverlay'); }
 
 
-// --- FUNÇÕES DE RENDERIZAÇÃO DE RELATÓRIO E DIAGRAMA (Aprimoradas) ---
+// --- FUNÇÕES DE RENDERIZAÇÃO DE RELATÓRIO E DIAGRAMA ---
 
 function getDpsText(dpsInfo) { if (!dpsInfo) return 'Não'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
 
@@ -604,7 +604,7 @@ export function renderReport(calculationResults){
     document.getElementById('report').textContent = reportText.trim();
 }
 
-// >>>>>>>>>>>> FUNÇÕES DE DESENHO DO DIAGRAMA (ATUALIZADAS) <<<<<<<<<<<<<<
+// >>>>>>>>>>>> FUNÇÕES DE DESENHO DO DIAGRAMA (REFEITAS PARA PADRÃO PROFISSIONAL) <<<<<<<<<<<<<<
 
 function drawHeader(x, y, projectData, totalPower) {
     const title = projectData.obra || "Diagrama Unifilar";
@@ -612,32 +612,53 @@ function drawHeader(x, y, projectData, totalPower) {
 
     return `
         <g text-anchor="end">
-            <text x="${x}" y="${y}" style="font-family: Arial; font-size: 16px; font-weight: bold;">${title.toUpperCase()}</text>
+            <text x="${x}" y="${y}" style="font-family: Arial; font-size: 16px; font-weight: bold;">Q.D. ${title.toUpperCase()}</text>
             <text x="${x}" y="${y + 15}" style="font-family: Arial; font-size: 12px;">${powerText}</text>
         </g>
     `;
 }
 
-function drawDisjuntor(x, y, text) {
-    const textLines = text.split('\n');
-    const symbolPath = `<path d="M ${x - 5} ${y + 5} q 5 -10 10 0" stroke="black" stroke-width="1.5" fill="none" />`;
+function drawDisjuntor(x, y, text, fases = 'Monofasico') {
+    let symbolPath = '';
+    switch (fases) {
+        case 'Trifasico':
+            symbolPath = `<path d="M ${x - 5} ${y - 2} q 5 -10 10 0 M ${x - 5} ${y + 2} q 5 -10 10 0 M ${x - 5} ${y + 6} q 5 -10 10 0" stroke="black" stroke-width="1.5" fill="none" />`;
+            break;
+        case 'Bifasico':
+            symbolPath = `<path d="M ${x - 5} ${y} q 5 -10 10 0 M ${x - 5} ${y + 4} q 5 -10 10 0" stroke="black" stroke-width="1.5" fill="none" />`;
+            break;
+        default: // Monofasico
+            symbolPath = `<path d="M ${x - 5} ${y + 2} q 5 -10 10 0" stroke="black" stroke-width="1.5" fill="none" />`;
+            break;
+    }
     
     return `
         <g text-anchor="middle">
-            <rect x="${x - 12.5}" y="${y - 12.5}" width="25" height="25" stroke="black" stroke-width="1" fill="white" />
+            <circle cx="${x - 12.5}" cy="${y}" r="1.5" fill="black"/>
+            <circle cx="${x + 12.5}" cy="${y}" r="1.5" fill="black"/>
             ${symbolPath}
-            <text x="${x}" y="${y - 18}" style="font-family: Arial; font-size: 11px;">${textLines[0]}</text>
+            <text x="${x}" y="${y - 18}" style="font-family: Arial; font-size: 11px;">${text}</text>
         </g>
     `;
 }
 
-function drawDR(x, y, text) {
-    const drColor = '#3498db';
+function drawDR(x, y, text, fases = 'Monofasico') {
+    const drColor = 'var(--success-color, #27ae60)';
+    let internalSymbol = '';
+    if (fases === 'Trifasico') {
+        internalSymbol = `<line x1="${x-4}" y1="${y-5}" x2="${x-4}" y2="${y+5}" stroke="${drColor}" stroke-width="1"/>
+                         <line x1="${x}" y1="${y-5}" x2="${x}" y2="${y+5}" stroke="${drColor}" stroke-width="1"/>
+                         <line x1="${x+4}" y1="${y-5}" x2="${x+4}" y2="${y+5}" stroke="${drColor}" stroke-width="1"/>`;
+    } else {
+        internalSymbol = `<line x1="${x}" y1="${y-5}" x2="${x}" y2="${y+5}" stroke="${drColor}" stroke-width="1"/>
+                         <line x1="${x-3}" y1="${y-5}" x2="${x+3}" y2="${y-5}" stroke="${drColor}" stroke-width="1"/>`;
+    }
+
     return `
         <g text-anchor="middle">
             <rect x="${x - 12.5}" y="${y - 12.5}" width="25" height="25" stroke="${drColor}" stroke-width="1.5" fill="white" />
-            <text x="${x}" y="${y + 4}" style="font-family: Arial; font-size: 12px; font-weight: bold; fill: ${drColor};">DR</text>
             <text x="${x}" y="${y - 18}" style="font-family: Arial; font-size: 10px; fill: ${drColor};">${text}</text>
+            ${internalSymbol}
         </g>
     `;
 }
@@ -684,14 +705,10 @@ function drawCircuitLine(result, x, y, index) {
 
     return `
         <g text-anchor="middle">
-            ${drawDisjuntor(x, y, `${calculos.disjuntorRecomendado.nome}`)}
-            
+            ${drawDisjuntor(x, y, `${calculos.disjuntorRecomendado.nome}`, dados.fases)}
             <line x1="${x}" y1="${y + 12.5}" x2="${x}" y2="${yEnd}" stroke="black" stroke-width="1" />
-            
             ${drawConductorSymbol(x, y + 60, calculos.numCondutores)}
-            
             <text x="${x}" y="${y + 90}" style="${fontStyle} font-size: 11px;">${calculos.bitolaRecomendadaMm2}</text>
-
             <text x="${x}" y="${yEnd + 20}" style="${fontStyle} font-size: 11px; font-weight: bold;">(${calculos.potenciaDemandada.toFixed(0)} W)</text>
             <text x="${x}" y="${yEnd + 35}" style="${fontStyle} font-size: 12px;">${index} - ${dados.nomeCircuito}</text>
             <text x="${x}" y="${yEnd + 50}" style="${fontStyle} font-size: 10px; fill: #333;">${calculos.numCondutores}x${calculos.bitolaRecomendadaMm2}mm² + T - ${dados.tipoIsolacao}</text>
@@ -753,23 +770,19 @@ export function renderUnifilarDiagram(calculationResults) {
     let svgParts = [];
     svgParts.push(`<svg width="${svgWidth}" height="${svgHeight}" xmlns="http://www.w3.org/2000/svg">`);
     
-    // Header
     svgParts.push(drawHeader(svgWidth - 20, yStart, feederResult.dados, feederResult.calculos.potenciaDemandada));
 
-    // Entrada de Energia e Disjuntor Geral
     let currentX = marginLeft;
     svgParts.push(`<line x1="${currentX}" y1="${yStart}" x2="${currentX}" y2="${yBusbar - 50}" stroke="black" stroke-width="2"/>`);
-    svgParts.push(drawDisjuntor(currentX, yBusbar - 50, `${feederResult.calculos.disjuntorRecomendado.nome}\n${feederResult.calculos.disjuntorRecomendado.icc} kA`));
+    svgParts.push(drawDisjuntor(currentX, yBusbar - 50, `${feederResult.calculos.disjuntorRecomendado.nome}`, feederResult.dados.fases));
     svgParts.push(`<line x1="${currentX}" y1="${yBusbar - 37.5}" x2="${currentX}" y2="${yBusbar}" stroke="black" stroke-width="2"/>`);
 
-    // DPS e Aterramento
     if (feederResult.dados.dpsClasse) {
         svgParts.push(`<line x1="${currentX}" y1="${yBusbar - 100}" x2="${currentX + 50}" y2="${yBusbar - 100}" stroke="black" stroke-width="1"/>`);
         svgParts.push(drawDPS(currentX + 95, yBusbar - 100, feederResult.dados));
     }
     svgParts.push(drawGroundSymbol(marginLeft + (totalCircuits * circuitWidth) / 2, svgHeight - 40));
 
-    // Barramento Principal
     const busbarStart = marginLeft;
     const busbarEnd = busbarStart + totalCircuits * circuitWidth;
     svgParts.push(`<line x1="${busbarStart}" y1="${yBusbar}" x2="${busbarEnd}" y2="${yBusbar}" stroke="black" stroke-width="5"/>`);
@@ -782,16 +795,17 @@ export function renderUnifilarDiagram(calculationResults) {
         const groupStartX = currentX - (circuitWidth/2);
 
         if (group.dr) {
-            // Desenha o DR e o sub-barramento
+            const isGroupTrifasico = group.circuits.some(c => c.dados.fases === 'Trifasico');
+            const drFases = isGroupTrifasico ? 'Trifasico' : 'Monofasico';
+            
             const drX = groupStartX + groupWidth / 2;
             svgParts.push(`<line x1="${drX}" y1="${yBusbar}" x2="${drX}" y2="${yBusbar + 40}" stroke="black" stroke-width="1"/>`);
             svgParts.push(`<circle cx="${drX}" cy="${yBusbar}" r="3" fill="black"/>`);
-            svgParts.push(drawDR(drX, yBusbar + 40, `${group.dr.corrente}/${group.dr.sensibilidade}`));
+            svgParts.push(drawDR(drX, yBusbar + 40, `${group.dr.corrente}/${group.dr.sensibilidade}`, drFases));
             
             const subBusbarY = yBusbar + 65;
             svgParts.push(`<line x1="${groupStartX + circuitWidth/2}" y1="${subBusbarY}" x2="${groupStartX + groupWidth - circuitWidth/2}" y2="${subBusbarY}" stroke="black" stroke-width="3"/>`);
 
-            // Caixa tracejada do DR
             svgParts.push(`<rect x="${groupStartX}" y="${yBusbar + 10}" width="${groupWidth}" height="350" fill="none" stroke="black" stroke-dasharray="5,5"/>`);
             
             group.circuits.forEach(result => {
@@ -801,7 +815,7 @@ export function renderUnifilarDiagram(calculationResults) {
                 currentX += circuitWidth;
             });
 
-        } else { // Circuitos sem DR
+        } else {
             group.circuits.forEach(result => {
                 svgParts.push(`<line x1="${currentX}" y1="${yBusbar}" x2="${currentX}" y2="${yBusbar + 15}" stroke="black" stroke-width="1"/>`);
                 svgParts.push(`<circle cx="${currentX}" cy="${yBusbar}" r="3" fill="black"/>`);
