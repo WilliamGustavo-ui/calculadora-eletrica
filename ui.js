@@ -1,4 +1,4 @@
-// Arquivo: ui.js (VERSÃO COM DIAGRAMA APRIMORADO)
+// Arquivo: ui.js (VERSÃO COMPLETA E CORRIGIDA)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
@@ -608,7 +608,6 @@ export function renderReport(calculationResults){
 
 function drawDisjuntor(x, y, text) {
     const textLines = text.split('\n');
-    // Alterado para um arco simples, similar ao exemplo
     const symbolPath = `<path d="M ${x - 5} ${y + 5} q 5 -10 10 0" stroke="black" stroke-width="1.5" fill="none" />`;
     
     return `
@@ -620,7 +619,6 @@ function drawDisjuntor(x, y, text) {
 }
 
 function drawDR(x, y, text) {
-    // Adicionada cor de destaque para o DR, conforme exemplo
     const drColor = '#3498db';
     return `
         <rect x="${x - 12.5}" y="${y - 12.5}" width="25" height="25" stroke="${drColor}" stroke-width="1.5" fill="white" />
@@ -656,12 +654,12 @@ function drawGroundSymbol(x, y) {
 function drawCircuitLine(result, x, y, fromDR = false, index) {
     const { dados, calculos } = result;
     const startX = fromDR ? x : x + 50;
-    const xCableEnd = startX + 150; // Linha mais longa para mais espaço
+    const xCableEnd = startX + 150; 
     const fontStyle = `font-family: Arial;`;
 
     return `
         <g>
-            <line x1="${x}" y1="${y}" x2="${startX}" y2="${y}" stroke="black" stroke-width="1" />
+            <line x1="${x}" y1="${y}" x2="${startX - 12.5}" y2="${y}" stroke="black" stroke-width="1" />
             ${drawDisjuntor(startX, y, `${calculos.disjuntorRecomendado.nome}\n${calculos.disjuntorRecomendado.icc} kA`)}
             <line x1="${startX + 12.5}" y1="${y}" x2="${xCableEnd}" y2="${y}" stroke="black" stroke-width="1" />
             <line x1="${xCableEnd - 5}" y1="${y - 5}" x2="${xCableEnd}" y2="${y}" stroke="black" stroke-width="1" />
@@ -717,14 +715,14 @@ export function renderUnifilarDiagram(calculationResults) {
 
     let y = 120;
     const xStart = 50;
-    const xBar = 220; // Puxado mais para a esquerda para dar espaço
+    const xBar = 220;
     let svgParts = [];
     let circuitIndex = 1;
     let dotPositions = [];
 
-    const barHeight = finalGroups.reduce((acc, group) => acc + (group.circuits.length * 55) + (group.dr ? 40 : 10), 0) + 20; // Aumentado espaçamento
+    const barHeight = finalGroups.reduce((acc, group) => acc + (group.circuits.length * 55) + (group.dr ? 40 : 10), 0) + 20;
     const finalHeight = y + barHeight + 50;
-    const svgWidth = 850; // Largura fixa para melhor controle de layout
+    const svgWidth = 850;
 
     svgParts.push(`<svg width="${svgWidth}" height="${finalHeight}" xmlns="http://www.w3.org/2000/svg">`);
     svgParts.push(`<line x1="${xStart + 100}" y1="20" x2="${xStart + 100}" y2="${y - 60}" stroke="black" stroke-width="2" />`);
@@ -734,19 +732,17 @@ export function renderUnifilarDiagram(calculationResults) {
     svgParts.push(drawDisjuntor(xStart + 100, y, `${feederResult.calculos.disjuntorRecomendado.nome}\n${feederResult.calculos.disjuntorRecomendado.icc} kA`));
     svgParts.push(`<line x1="${xStart + 112.5}" y1="${y}" x2="${xBar}" y2="${y}" stroke="black" stroke-width="2" />`);
     
-    // Barramento principal mais grosso
     svgParts.push(`<line x1="${xBar}" y1="${y - 20}" x2="${xBar}" y2="${y + barHeight}" stroke="black" stroke-width="6" />`);
 
     let currentY = y;
     finalGroups.forEach(group => {
         const xCircuitStart = xBar + 60;
         if (group.dr) {
-            const groupHeight = group.circuits.length * 55; // Aumentado espaçamento
+            const groupHeight = group.circuits.length * 55;
             dotPositions.push(currentY);
             svgParts.push(`<line x1="${xBar}" y1="${currentY}" x2="${xCircuitStart - 25}" y2="${currentY}" stroke="black" stroke-width="1" />`);
             svgParts.push(drawDR(xCircuitStart - 12.5, currentY, `${group.dr.corrente}/${group.dr.sensibilidade}`));
             
-            // Linha vertical do grupo DR
             const drLineY_end = currentY + groupHeight - 55;
             if (group.circuits.length > 1) {
                 svgParts.push(`<line x1="${xCircuitStart}" y1="${currentY}" x2="${xCircuitStart}" y2="${drLineY_end}" stroke="black" stroke-width="3" />`);
@@ -766,7 +762,6 @@ export function renderUnifilarDiagram(calculationResults) {
         }
     });
 
-    // Adiciona os pontos de conexão (dots) no barramento
     dotPositions.forEach(dotY => {
         svgParts.push(`<circle cx="${xBar}" cy="${dotY}" r="3" fill="black" />`);
     });
@@ -956,5 +951,4 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
     });
 
     doc.save(`Memorial_${document.getElementById('obra').value || 'Projeto'}.pdf`);
-}
 }
