@@ -1,3 +1,5 @@
+// Arquivo: api.js
+
 import { supabase } from './supabaseClient.js';
 
 // --- FUNÇÕES DE CLIENTE ---
@@ -91,32 +93,4 @@ export async function fetchUserById(userId) {
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
     if (error) console.error('Erro ao buscar usuário por ID:', error.message);
     return data;
-}
-export async function fetchTechnicalData() {
-    const technicalData = {};
-    const tablesToFetch = [
-        { key: 'disjuntores', name: 'disjuntores' },
-        { key: 'cabos', name: 'cabos' },
-        { key: 'eletrodutos', name: 'eletrodutos' },
-        { key: 'fatores_k1', name: 'fatores_k1_temperatura' },
-        { key: 'fatores_k1_epr', name: 'fatores_k1_temperatura_epr' },
-        { key: 'fatores_k2', name: 'fatores_k2_solo' },
-        { key: 'fatores_k3', name: 'fatores_k3_agrupamento' },
-        { key: 'dps', name: 'dps' },
-        { key: 'ar_condicionado_btu', name: 'ar_condicionado_btu' }, // ADICIONADO
-        { key: 'motores_cv', name: 'motores_cv' } // ADICIONADO
-    ];
-    console.log("Iniciando busca de dados técnicos...");
-    for (const table of tablesToFetch) {
-        try {
-            const { data, error } = await supabase.from(table.name).select('*');
-            if (error) { throw new Error(error.message); }
-            technicalData[table.key] = data;
-        } catch (err) {
-            console.error(`ERRO FATAL ao carregar a tabela '${table.name}'. Detalhes: ${err.message}`);
-            technicalData[table.key] = [];
-        }
-    }
-    console.log("Dados técnicos carregados:", technicalData);
-    return technicalData;
 }

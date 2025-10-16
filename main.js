@@ -1,4 +1,4 @@
-// Arquivo: main.js (VERSÃO FINAL OTIMIZADA)
+// Arquivo: main.js
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -7,42 +7,27 @@ import * as utils from './utils.js';
 import { supabase } from './supabaseClient.js';
 
 let currentUserProfile = null;
-let technicalData = null;
 let allClients = [];
 let lastCalculationResults = null;
 
-const calculatorWorker = new Worker('./calculator.worker.js');
-
 async function handleLogin() {
-    console.log("1. Tentando fazer login...");
     const email = document.getElementById('emailLogin').value;
     const password = document.getElementById('password').value;
     const userProfile = await auth.signInUser(email, password);
-    console.log("2. Resposta do signInUser recebida:", userProfile);
-
     if (userProfile) {
-        console.log("3. Perfil do usuário válido.");
         if (userProfile.is_approved) {
-            console.log("4. Usuário aprovado. Configurando a aplicação...");
             currentUserProfile = userProfile;
             ui.showAppView(currentUserProfile);
-            technicalData = await api.fetchTechnicalData();
-            console.log("5. Dados técnicos recebidos:", technicalData);
-            if (technicalData) {
-                ui.setupDynamicData(technicalData);
-                await handleNewProject(false);
-                await handleSearch();
-            }
-            console.log("6. Login concluído com sucesso.");
+            ui.setupDynamicData(null); // Não precisa mais de dados técnicos
+            await handleNewProject(false);
+            await handleSearch();
         } else {
-            console.error("ERRO: Usuário não aprovado.");
             alert('Seu cadastro ainda não foi aprovado por um administrador.');
             await auth.signOutUser();
         }
-    } else {
-        console.error("ERRO: userProfile é nulo ou inválido após a tentativa de login.");
     }
 }
+
 async function handleLogout() { await auth.signOutUser(); }
 async function handleRegister(event) { event.preventDefault(); const email = document.getElementById('regEmail').value; const password = document.getElementById('regPassword').value; const details = { nome: document.getElementById('regNome').value, cpf: document.getElementById('regCpf').value, telefone: document.getElementById('regTelefone').value, crea: document.getElementById('regCrea').value, email: email }; const { error } = await auth.signUpUser(email, password, details); if (!error) { alert('Cadastro realizado com sucesso! Aguarde a aprovação de um administrador.'); ui.closeModal('registerModalOverlay'); event.target.reset(); } }
 async function handleForgotPassword(event) { event.preventDefault(); const email = document.getElementById('forgotEmail').value; const { error } = await auth.sendPasswordResetEmail(email); if (error) { alert("Erro ao enviar e-mail: " + error.message); } else { alert("Se o e-mail estiver cadastrado, um link de redefinição foi enviado!"); ui.closeModal('forgotPasswordModalOverlay'); event.target.reset(); } }
@@ -55,41 +40,30 @@ function handleConfirmClientSelection(isChange = false) { const select = documen
 function handleContinueWithoutClient() { ui.resetForm(true, null); ui.closeModal('selectClientModalOverlay'); }
 
 async function handleSaveProject() {
-    if (!currentUserProfile) {
-        alert("Você precisa estar logado para salvar um projeto.");
-        return;
-    }
+    if (!currentUserProfile) { alert("Você precisa estar logado para salvar um projeto."); return; }
     const nomeObra = document.getElementById('obra').value.trim();
-    if (!nomeObra) {
-        alert("Por favor, insira um 'Nome da Obra' para salvar.");
-        return;
-    }
+    if (!nomeObra) { alert("Por favor, insira um 'Nome da Obra' para salvar."); return; }
 
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = loadingOverlay.querySelector('p');
-    
     loadingText.textContent = 'Salvando dados da obra...';
     loadingOverlay.classList.add('visible');
     
     try {
-        await new Promise(resolve => setTimeout(resolve, 50)); // Delay para renderizar overlay
-        
-        const projectData = getFullFormData(true); // Pega os dados para salvar
+        await new Promise(resolve => setTimeout(resolve, 50));
+        const projectData = getFullFormData(true);
         const currentProjectId = document.getElementById('currentProjectId').value;
-
         const { data, error } = await api.saveProject(projectData, currentProjectId);
         if (error) throw error;
-        
         alert(`Obra "${data.project_name}" salva com sucesso!`);
         document.getElementById('currentProjectId').value = data.id;
         document.getElementById('project_code').value = data.project_code;
         await handleSearch();
-
     } catch (error) {
         alert('Erro ao salvar obra: ' + error.message);
     } finally {
         loadingOverlay.classList.remove('visible');
-        loadingText.textContent = 'Calculando, por favor aguarde...'; // Reseta texto
+        loadingText.textContent = 'Calculando, por favor aguarde...';
     }
 }
 
@@ -121,97 +95,55 @@ async function handleAdminUserActions(event) { const target = event.target; cons
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
 function getFullFormData(forSave = false) {
-    const mainData = {};
-    document.querySelectorAll('#main-form input, #main-form textarea, #main-form select').forEach(el => {
-        if (el.id && !['currentProjectId', 'currentClientId'].includes(el.id)) {
-            mainData[el.id] = el.value;
-        }
-    });
-
+    const mainData = { obra: document.getElementById('obra').value, cidadeObra: document.getElementById('cidadeObra').value, enderecoObra: document.getElementById('enderecoObra').value, areaObra: document.getElementById('areaObra').value, unidadesResidenciais: document.getElementById('unidadesResidenciais').value, unidadesComerciais: document.getElementById('unidadesComerciais').value, observacoes: document.getElementById('observacoes').value, projectCode: document.getElementById('project_code').value };
     const feederDataForSave = {};
     const feederDataForCalc = { id: 'Geral', nomeCircuito: "Alimentador Geral" };
-    document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(el => {
-        const value = el.type === 'checkbox' ? el.checked : el.value;
-        feederDataForSave[el.id] = value;
-        const key = el.id.replace('feeder', '').charAt(0).toLowerCase() + el.id.replace('feeder', '').slice(1);
-        feederDataForCalc[key] = isNaN(parseFloat(value)) || !isFinite(value) ? value : parseFloat(value);
-    });
-
+    document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(el => { const value = el.type === 'checkbox' ? el.checked : el.value; feederDataForSave[el.id] = value; const key = el.id.replace('feeder', '').charAt(0).toLowerCase() + el.id.replace('feeder', '').slice(1); feederDataForCalc[key] = isNaN(parseFloat(value)) || !isFinite(value) ? value : parseFloat(value); });
     const circuitsDataForSave = [];
     const circuitsDataForCalc = [];
-    document.querySelectorAll('#circuits-container .circuit-block').forEach(block => {
-        const circuitForSave = { id: block.dataset.id };
-        const circuitForCalc = { id: block.dataset.id };
-        block.querySelectorAll('input, select').forEach(el => {
-            const value = el.type === 'checkbox' ? el.checked : el.value;
-            if (el.id.startsWith('potenciaBTU')) { circuitForSave['potenciaBTU_value'] = value; } 
-            else if (el.id.startsWith('potenciaCV')) { circuitForSave['potenciaCV_value'] = value; }
-            circuitForSave[el.id] = value;
-            const key = el.id.replace(`-${circuitForSave.id}`, '');
-            circuitForCalc[key] = isNaN(parseFloat(value)) || !isFinite(value) ? value : parseFloat(value);
-        });
-        circuitsDataForSave.push(circuitForSave);
-        circuitsDataForCalc.push(circuitForCalc);
-    });
-    
+    document.querySelectorAll('#circuits-container .circuit-block').forEach(block => { const circuitId = block.dataset.id; const circuitForSave = { id: circuitId }; const circuitForCalc = { id: circuitId }; block.querySelectorAll('input, select').forEach(el => { const value = el.type === 'checkbox' ? el.checked : el.value; circuitForSave[el.id] = value; const key = el.id.replace(`-${circuitId}`, ''); circuitForCalc[key] = isNaN(parseFloat(value)) || !isFinite(value) ? value : parseFloat(value); }); circuitsDataForSave.push(circuitForSave); circuitsDataForCalc.push(circuitForCalc); });
     const currentClientId = document.getElementById('currentClientId').value;
     const client = allClients.find(c => c.id == currentClientId);
-    const clientProfile = client ? { 
-        cliente: client.nome,
-        tipoDocumento: client.documento_tipo,
-        documento: client.documento_valor,
-        celular: client.celular,
-        telefone: client.telefone,
-        email: client.email,
-        enderecoCliente: client.endereco
-    } : {};
-
-
-    if (forSave) {
-        return {
-            project_name: mainData.obra,
-            project_code: document.getElementById('project_code').value || null,
-            client_id: currentClientId || null,
-            main_data: mainData,
-            tech_data: {
-                respTecnico: document.getElementById('respTecnico').value,
-                titulo: document.getElementById('titulo').value,
-                crea: document.getElementById('crea').value
-            },
-            feeder_data: feederDataForSave,
-            circuits_data: circuitsDataForSave,
-            owner_id: currentUserProfile.id
-        };
-    }
-
-    return { 
-        mainData, 
-        feederData: feederDataForCalc, 
-        circuitsData: circuitsDataForCalc, 
-        clientProfile 
-    };
+    const clientProfile = client ? { cliente: client.nome, tipoDocumento: client.documento_tipo, documento: client.documento_valor, celular: client.celular, telefone: client.telefone, email: client.email, enderecoCliente: client.endereco } : {};
+    
+    if (forSave) { return { project_name: mainData.obra, project_code: mainData.projectCode || null, client_id: currentClientId || null, main_data: mainData, tech_data: { respTecnico: document.getElementById('respTecnico').value, titulo: document.getElementById('titulo').value, crea: document.getElementById('crea').value }, feeder_data: feederDataForSave, circuits_data: circuitsDataForSave, owner_id: currentUserProfile.id }; }
+    return { mainData, feederData: feederDataForCalc, circuitsData: circuitsDataForCalc, clientProfile };
 }
 
-function handleCalculate() {
+async function handleCalculate() {
     const loadingOverlay = document.getElementById('loadingOverlay');
     lastCalculationResults = null;
     loadingOverlay.classList.add('visible');
+    
     const formData = getFullFormData(false);
-    calculatorWorker.postMessage({ formData, technicalData });
+
+    try {
+        const { data: results, error } = await supabase.functions.invoke('calculate', {
+            body: { formData },
+        });
+
+        if (error) throw new Error(`Erro na rede: ${error.message}`);
+        if (results.error) throw new Error(`Erro no cálculo: ${results.error}`);
+
+        lastCalculationResults = results;
+        ui.renderReport(results);
+        ui.renderUnifilarDiagram(results);
+        alert("Memorial de Cálculo e Diagrama Unifilar gerados na tela. Agora você pode salvá-los como PDF.");
+
+    } catch (error) {
+        console.error("Erro ao chamar a função de cálculo:", error);
+        alert("Ocorreu um erro inesperado durante o cálculo: " + error.message);
+    } finally {
+        loadingOverlay.classList.remove('visible');
+    }
 }
 
 async function handleGenerateMemorialPdf() {
-    if (!lastCalculationResults) {
-        alert("Por favor, gere o cálculo primeiro clicando em '1. Gerar Memorial e Diagrama'.");
-        return;
-    }
-    
+    if (!lastCalculationResults) { alert("Por favor, gere o cálculo primeiro clicando em '1. Gerar Memorial e Diagrama'."); return; }
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = loadingOverlay.querySelector('p');
-    
     loadingText.textContent = 'Gerando PDF do memorial, aguarde...';
     loadingOverlay.classList.add('visible');
-    
     try {
         await new Promise(resolve => setTimeout(resolve, 50)); 
         ui.generateMemorialPdf(lastCalculationResults, currentUserProfile);
@@ -225,17 +157,11 @@ async function handleGenerateMemorialPdf() {
 }
 
 async function handleGenerateUnifilarPdf() {
-    if (!lastCalculationResults) {
-        alert("Por favor, gere o cálculo primeiro clicando em '1. Gerar Memorial e Diagrama'.");
-        return;
-    }
-
+    if (!lastCalculationResults) { alert("Por favor, gere o cálculo primeiro clicando em '1. Gerar Memorial e Diagrama'."); return; }
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = loadingOverlay.querySelector('p');
-    
     loadingText.textContent = 'Gerando PDF do diagrama, aguarde...';
     loadingOverlay.classList.add('visible');
-    
     try {
         await new Promise(resolve => setTimeout(resolve, 50));
         await ui.generateUnifilarPdf();
@@ -249,24 +175,6 @@ async function handleGenerateUnifilarPdf() {
 }
 
 function setupEventListeners() {
-    calculatorWorker.onmessage = function(e) {
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        loadingOverlay.classList.remove('visible');
-        
-        const results = e.data;
-
-        if (results.error) {
-            console.error("Erro retornado pelo Worker:", results.error);
-            alert("Ocorreu um erro inesperado durante o cálculo: " + results.error);
-            return;
-        }
-
-        lastCalculationResults = results;
-        ui.renderReport(results);
-        ui.renderUnifilarDiagram(results);
-        alert("Memorial de Cálculo e Diagrama Unifilar gerados na tela. Agora você pode salvá-los como PDF.");
-    };
-
     document.getElementById('loginBtn').addEventListener('click', handleLogin);
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
     document.getElementById('registerBtn').addEventListener('click', () => ui.openModal('registerModalOverlay'));
@@ -284,10 +192,8 @@ function setupEventListeners() {
     document.getElementById('searchInput').addEventListener('input', debouncedSearch);
     document.getElementById('addCircuitBtn').addEventListener('click', () => ui.addCircuit());
     
-    // >>>>>>>>>>>> ALTERAÇÃO IMPORTANTE <<<<<<<<<<<<<<
-    // Listener único para todos os eventos dentro do container de circuitos
     const circuitsContainer = document.getElementById('circuits-container');
-    circuitsContainer.addEventListener('change', ui.handleCircuitContainerInteraction);
+    circuitsContainer.addEventListener('input', ui.handleCircuitContainerInteraction);
     circuitsContainer.addEventListener('click', ui.handleCircuitContainerInteraction);
     
     document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
@@ -327,20 +233,16 @@ function main() {
                 if (userProfile && userProfile.is_approved) {
                     currentUserProfile = userProfile;
                     ui.showAppView(currentUserProfile);
-                    allClients = await api.fetchClients(); // Carrega clientes no login
-                    technicalData = await api.fetchTechnicalData();
-                    if (technicalData) {
-                        ui.setupDynamicData(technicalData);
-                        await handleNewProject(false);
-                        await handleSearch();
-                    }
+                    allClients = await api.fetchClients();
+                    ui.setupDynamicData(null);
+                    await handleNewProject(false);
+                    await handleSearch();
                 }
             } else {
                 ui.showLoginView();
             }
         } else if (event === 'SIGNED_OUT') {
             currentUserProfile = null;
-            technicalData = null;
             allClients = [];
             ui.showLoginView();
         } else if (event === 'PASSWORD_RECOVERY') {
