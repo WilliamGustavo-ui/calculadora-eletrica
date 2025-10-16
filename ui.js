@@ -1,4 +1,4 @@
-// Arquivo: ui.js
+// Arquivo: ui.js (VERSÃO 100% COMPLETA E CORRIGIDA)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
@@ -6,7 +6,8 @@ import { Canvg } from 'https://cdn.skypack.dev/canvg';
 let circuitCount = 0;
 
 export function setupDynamicData(techData) {
-    // Função mantida para compatibilidade, mas não precisa fazer nada.
+    // Função mantida para compatibilidade, mas não precisa fazer nada,
+    // pois os dados técnicos são agora processados no back-end.
 }
 
 function updateFeederPowerDisplay() {
@@ -26,7 +27,15 @@ function updateFeederPowerDisplay() {
 
 // --- FUNÇÕES DE VISIBILIDADE E MODAIS ---
 export function showLoginView() { document.getElementById('loginContainer').style.display = 'block'; document.getElementById('appContainer').style.display = 'none'; document.getElementById('resetPasswordContainer').style.display = 'none'; }
-export function showAppView(userProfile) { document.getElementById('loginContainer').style.display = 'none'; document.getElementById('appContainer').style.display = 'block'; document.getElementById('resetPasswordContainer').style.display = 'none'; const isAdmin = userProfile?.is_admin || false; document.getElementById('adminPanelBtn').style.display = isAdmin ? 'block' : 'none'; document.getElementById('manageClientsBtn').style.display = 'block'; document.getElementById('manageProjectsBtn').style.display = 'block'; }
+export function showAppView(userProfile) {
+    document.getElementById('loginContainer').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'block';
+    document.getElementById('resetPasswordContainer').style.display = 'none';
+    const isAdmin = userProfile?.is_admin || false;
+    document.getElementById('adminPanelBtn').style.display = isAdmin ? 'block' : 'none';
+    document.getElementById('manageClientsBtn').style.display = 'block';
+    document.getElementById('manageProjectsBtn').style.display = 'block';
+}
 export function showResetPasswordView() { document.getElementById('loginContainer').style.display = 'none'; document.getElementById('appContainer').style.display = 'none'; document.getElementById('resetPasswordContainer').style.display = 'block'; }
 export function openModal(modalId) { document.getElementById(modalId).style.display = 'flex'; }
 export function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
@@ -90,22 +99,9 @@ function getCircuitHTML(id) {
         </div>
         <div class="circuit-content">
             <div class="form-grid">
-                <div class="form-group">
-                    <label for="nomeCircuito-${id}">Nome do Circuito</label>
-                    <input type="text" id="nomeCircuito-${id}" value="Circuito ${id}">
-                </div>
+                <div class="form-group"> <label for="nomeCircuito-${id}">Nome do Circuito</label> <input type="text" id="nomeCircuito-${id}" value="Circuito ${id}"> </div>
                 <div class="full-width potencia-group">
-                    <div class="form-group">
-                        <label for="tipoCircuito-${id}">Tipo de Circuito</label>
-                        <select id="tipoCircuito-${id}">
-                            <option value="iluminacao">Iluminação</option>
-                            <option value="tug" selected>Tomadas de Uso Geral (TUG)</option>
-                            <option value="tue">Tomadas de Uso Específico (TUE)</option>
-                            <option value="aquecimento">Aquecimento</option>
-                            <option value="motores">Circuito de Motores</option>
-                            <option value="ar_condicionado">Ar Condicionado</option>
-                        </select>
-                    </div>
+                    <div class="form-group"> <label for="tipoCircuito-${id}">Tipo de Circuito</label> <select id="tipoCircuito-${id}"> <option value="iluminacao">Iluminação</option> <option value="tug" selected>Tomadas de Uso Geral (TUG)</option> <option value="tue">Tomadas de Uso Específico (TUE)</option> <option value="aquecimento">Aquecimento</option> <option value="motores">Circuito de Motores</option> <option value="ar_condicionado">Ar Condicionado</option> </select> </div>
                     <div class="form-group hidden" id="potenciaBTU_group-${id}"> <label for="potenciaBTU-${id}">Potência (BTU/h)</label> <select id="potenciaBTU-${id}"></select> </div>
                     <div class="form-group hidden" id="potenciaCV_group-${id}"> <label for="potenciaCV-${id}">Potência do Motor (CV)</label> <select id="potenciaCV-${id}"></select> </div>
                     <div class="form-group"> <label for="potenciaW-${id}">Potência (W)</label> <input type="number" id="potenciaW-${id}" value="2500"> </div>
@@ -113,7 +109,7 @@ function getCircuitHTML(id) {
                 <div class="form-group"> <label for="fatorDemanda-${id}">Fator de Demanda (%)</label> <input type="number" id="fatorDemanda-${id}" value="100" step="1"> </div>
                 <div class="form-group"> <label for="fases-${id}">Sistema de Fases</label> <select id="fases-${id}"> <option value="Monofasico" selected>Monofásico</option> <option value="Bifasico">Bifásico</option> <option value="Trifasico">Trifásico</option> </select> </div>
                 <div class="form-group"> <label for="tipoLigacao-${id}">Tipo de Ligação</label> <select id="tipoLigacao-${id}"></select> </div>
-                <div class="form-group"> <label for="tensaoV-${id}">Tensão (V)</label> <select id="tensaoV-${id}"><option value="12">12 V</option><option value="24">24 V</option><option value="36">36 V</option><option value="127">127 V</option><option value="220" selected>220 V</option><option value="380">380 V</option><option value="440">440 V</option><option value="760">760 V</option></select> </div>
+                <div class="form-group"> <label for="tensaoV-${id}">Tensão (V)</label> <select id="tensaoV-${id}"><option value="127">127 V</option><option value="220" selected>220 V</option><option value="380">380 V</option><option value="440">440 V</option></select> </div>
                 <div class="form-group"> <label for="fatorPotencia-${id}">Fator de Potência</label> <input type="number" id="fatorPotencia-${id}" step="0.01" value="0.92"> </div>
                 <div class="form-group"> <label for="comprimentoM-${id}">Comprimento (m)</label> <input type="number" id="comprimentoM-${id}" value="20"> </div>
                 <div class="form-group"> <label for="tipoIsolacao-${id}">Tipo de Isolação</label> <select id="tipoIsolacao-${id}"><option value="PVC" selected>PVC 70°C</option><option value="EPR">EPR 90°C</option><option value="XLPE">XLPE 90°C</option></select> </div>
@@ -145,7 +141,6 @@ export function handleCircuitContainerInteraction(event) {
     const circuitBlock = target.closest('.circuit-block');
     if (!circuitBlock) return;
     const id = circuitBlock.dataset.id;
-
     if (header && !target.classList.contains('remove-btn')) { circuitBlock.classList.toggle('collapsed'); return; }
     if (target.id === `nomeCircuito-${id}`) { document.getElementById(`nomeCircuitoLabel-${id}`).textContent = target.value; }
     if (target.classList.contains('remove-btn')) { removeCircuit(target.dataset.circuitId); }
@@ -182,7 +177,7 @@ function handleCircuitTypeChange(id) {
     updateFeederPowerDisplay();
 }
 
-// --- Funções de preenchimento de formulário (agora completas) ---
+// --- Funções de preenchimento de formulário ---
 export function populateProjectList(projects) {
     const select = document.getElementById('savedProjectsSelect');
     select.innerHTML = '<option value="">-- Selecione uma obra --</option>';
@@ -223,18 +218,14 @@ export function populateUsersPanel(users) {
     const list = document.getElementById('adminUserList');
     list.innerHTML = '';
     if (!users || users.length === 0) { list.innerHTML = '<li>Nenhum usuário encontrado.</li>'; return; }
-    users.forEach(user => {
-        const li = document.createElement('li');
-        li.innerHTML = `<span><strong>${user.nome || 'Nome não preenchido'}</strong><br><small>${user.email}</small></span><div class="admin-user-actions">${!user.is_approved ? `<button class="approve-user-btn btn-success" data-user-id="${user.id}">Aprovar</button>` : ''}<button class="edit-user-btn btn-secondary" data-user-id="${user.id}">Editar</button><button class="remove-user-btn btn-danger" data-user-id="${user.id}">Remover</button></div>`;
-        list.appendChild(li);
-    });
+    users.forEach(user => { const li = document.createElement('li'); li.innerHTML = `<span><strong>${user.nome || 'Nome não preenchido'}</strong><br><small>${user.email}</small></span><div class="admin-user-actions">${!user.is_approved ? `<button class="approve-user-btn btn-success" data-user-id="${user.id}">Aprovar</button>` : ''}<button class="edit-user-btn btn-secondary" data-user-id="${user.id}">Editar</button><button class="remove-user-btn btn-danger" data-user-id="${user.id}">Remover</button></div>`; list.appendChild(li); });
 }
 export function populateEditUserModal(userData) { document.getElementById('editUserId').value = userData.id; document.getElementById('editNome').value = userData.nome || ''; document.getElementById('editEmail').value = userData.email || ''; document.getElementById('editCpf').value = userData.cpf || ''; document.getElementById('editTelefone').value = userData.telefone || ''; document.getElementById('editCrea').value = userData.crea || ''; openModal('editUserModalOverlay'); }
 export function populateProjectsPanel(projects, clients, users, currentUserProfile) {
     const tableBody = document.getElementById('adminProjectsTableBody');
     const tableHead = document.querySelector('#adminProjectsTable thead tr');
     const isAdmin = currentUserProfile?.is_admin || false;
-    tableHead.innerHTML = `<th>Código</th><th>Obra</th><th>Dono (Login)</th><th>Cliente Vinculado</th><th>Ações</th>`;
+    tableHead.innerHTML = `<th>Código</th><th>Obra</th><th>Dono</th><th>Cliente</th><th>Ações</th>`;
     tableBody.innerHTML = '';
     projects.forEach(project => {
         const row = document.createElement('tr');
@@ -244,7 +235,7 @@ export function populateProjectsPanel(projects, clients, users, currentUserProfi
         actionsHtml += `<div class="action-group"><label>Cliente:</label><select class="transfer-client-select" data-project-id="${project.id}"><option value="">-- Desvincular --</option>${clientOptions}</select><button class="transfer-client-btn btn-success" data-project-id="${project.id}">Salvar</button></div>`;
         if (isAdmin) {
             const ownerOptions = users.map(u => `<option value="${u.id}" ${u.id === project.owner_id ? 'selected' : ''}>${u.nome || u.email}</option>`).join('');
-            actionsHtml += `<div class="action-group"><label>Transferir Dono:</label><select class="transfer-owner-select" data-project-id="${project.id}">${ownerOptions}</select><button class="transfer-owner-btn btn-secondary" data-project-id="${project.id}">Transferir</button></div>`;
+            actionsHtml += `<div class="action-group"><label>Dono:</label><select class="transfer-owner-select" data-project-id="${project.id}">${ownerOptions}</select><button class="transfer-owner-btn btn-secondary" data-project-id="${project.id}">Transferir</button></div>`;
         }
         actionsHtml += `</div>`;
         row.innerHTML = `<td>${project.project_code || 'S/C'}</td><td>${project.project_name}</td><td>${ownerName}</td><td>${project.client?.nome || 'Nenhum'}</td><td>${actionsHtml}</td>`;
@@ -266,88 +257,45 @@ export function resetClientForm() { const form = document.getElementById('client
 export function openEditClientForm(client) { document.getElementById('clientId').value = client.id; document.getElementById('clientNome').value = client.nome; document.getElementById('clientDocumentoTipo').value = client.documento_tipo; document.getElementById('clientDocumentoValor').value = client.documento_valor; document.getElementById('clientEmail').value = client.email; document.getElementById('clientCelular').value = client.celular; document.getElementById('clientTelefone').value = client.telefone; document.getElementById('clientEndereco').value = client.endereco; document.getElementById('clientFormTitle').textContent = 'Editar Cliente'; document.getElementById('clientFormSubmitBtn').textContent = 'Atualizar Cliente'; document.getElementById('clientFormCancelBtn').style.display = 'inline-block'; }
 export function populateSelectClientModal(clients, isChange = false) { const select = document.getElementById('clientSelectForNewProject'); select.innerHTML = '<option value="">-- Selecione um cliente --</option>'; clients.forEach(client => { const option = document.createElement('option'); option.value = client.id; option.textContent = `${client.nome} (${client.client_code})`; option.dataset.client = JSON.stringify(client); select.appendChild(option); }); const title = document.querySelector('#selectClientModalOverlay h3'); const confirmBtn = document.getElementById('confirmClientSelectionBtn'); if (isChange) { title.textContent = 'Vincular / Alterar Cliente da Obra'; confirmBtn.textContent = 'Confirmar Alteração'; } else { title.textContent = 'Vincular Cliente à Nova Obra'; confirmBtn.textContent = 'Vincular e Continuar'; } openModal('selectClientModalOverlay'); }
 
-
 // --- FUNÇÕES DE RENDERIZAÇÃO DE RELATÓRIO E DIAGRAMA ---
+
+function getDpsText(dpsInfo) { if (!dpsInfo) return 'Não'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
+
 export function renderReport(calculationResults){
     if(!calculationResults) return;
     const { feederResult, circuitResults } = calculationResults;
     const dataHora = (new Date).toLocaleString('pt-BR');
     const formatLine = (label, value) => (label + ':').padEnd(30, ' ') + value;
     let reportText = `======================================================\n==           RELATÓRIO DE PROJETO ELÉTRICO           ==\n======================================================\n${formatLine('Gerado em', dataHora)}\n`;
-    
     const reportData = feederResult.dados;
-    reportText += `\n-- DADOS DA OBRA E CLIENTE --\n`;
-    reportText += `${formatLine('Cliente', reportData.cliente || 'Não informado')}\n`;
-    reportText += `${formatLine(`Documento (${reportData.tipoDocumento})`, reportData.documento || 'Não informado')}\n`;
-    reportText += `${formatLine('Celular', reportData.celular || '-')}\n`;
-    reportText += `${formatLine('Telefone', reportData.telefone || '-')}\n`;
-    reportText += `${formatLine('E-mail', reportData.email || '-')}\n`;
-    reportText += `${formatLine('Endereço do Cliente', reportData.enderecoCliente || '-')}\n`;
     reportText += `\n-- DADOS DA OBRA --\n`;
     reportText += `${formatLine('Código da Obra', reportData.projectCode || '-')}\n`;
     reportText += `${formatLine('Nome da Obra', reportData.obra || '-')}\n`;
-    reportText += `${formatLine('Cidade da Obra', reportData.cidadeObra || '-')}\n`;
-    reportText += `${formatLine('Endereço da Obra', reportData.enderecoObra || '-')}\n`;
-    reportText += `${formatLine('Área da Obra (m²)', reportData.areaObra || '-')}\n`;
-    reportText += `${formatLine('Unid. Residenciais', reportData.unidadesResidenciais || '-')}\n`;
-    reportText += `${formatLine('Unid. Comerciais', reportData.unidadesComerciais || '-')}\n`;
-    reportText += `${formatLine('Observações', reportData.observacoes || '-')}\n`;
-
-    const respTecnico = document.getElementById('respTecnico').value;
-    if (respTecnico) {
-        reportText += `\n-- RESPONSÁVEL TÉCNICO --\n`;
-        reportText += `${formatLine('Nome', respTecnico)}\n`;
-        reportText += `${formatLine('CREA', document.getElementById('crea').value)}\n`;
-    }
-
     reportText += `\n-- QUADRO DE CARGAS RESUMIDO --\n`;
-    reportText += `- Alimentador Geral\n`;
-    circuitResults.forEach((result, index) => {
-        reportText += `${formatLine(`- Circuito ${index + 1}`, result.dados.nomeCircuito)}\n`;
-    });
-
+    circuitResults.forEach((result, index) => { reportText += `${formatLine(`- Circuito ${index + 1}`, result.dados.nomeCircuito)}\n`; });
     const allCalculations = [feederResult, ...circuitResults];
     allCalculations.forEach((result, index) => {
         const { dados, calculos } = result;
         const title = dados.id === 'Geral' ? 'ALIMENTADOR GERAL' : `CIRCUITO ${index}`;
-        const potenciaDemandadaVA = dados.fatorPotencia > 0 ? (calculos.potenciaDemandada / dados.fatorPotencia).toFixed(2) : "0.00";
         const correnteCorrigidaTexto = isFinite(calculos.correnteCorrigidaA) ? `${calculos.correnteCorrigidaA.toFixed(2)} A` : "Incalculável";
         reportText += `\n\n======================================================\n==           MEMORIAL DE CÁLCULO - ${title.padEnd(16, ' ')} ==\n======================================================\n`;
-        if (dados.id !== 'Geral') { reportText += `${formatLine('Nome do Circuito', dados.nomeCircuito)}\n`; reportText += `${formatLine('Tipo de Circuito', dados.tipoCircuito)}\n`; }
-        reportText += `${formatLine('Potência Instalada', `${calculos.potenciaInstalada.toFixed(2)} W`)}\n`;
-        reportText += `${formatLine('Fator de Demanda Aplicado (%)', `${dados.fatorDemanda}%`)}\n`;
-        reportText += `${formatLine('Potência Demandada', `${potenciaDemandadaVA} VA`)}\n`;
-        reportText += `${formatLine('Fator de Potência', dados.fatorPotencia)}\n`;
-        reportText += `${formatLine('Sistema de Fases', dados.fases)}\n`;
-        reportText += `${formatLine('Tipo de Ligação', dados.tipoLigacao)}\n`;
-        reportText += `${formatLine('Tensão (V)', `${dados.tensaoV} V`)}\n`;
-        reportText += `${formatLine('Comprimento (m)', `${dados.comprimentoM} m`)}\n`;
-        reportText += `${formatLine('Limite Queda de Tensão (%)', `${dados.limiteQuedaTensao} %`)}\n`;
-        reportText += `${formatLine('Corrente de Projeto', `${calculos.correnteInstalada.toFixed(2)} A`)}\n`;
+        if (dados.id !== 'Geral') { reportText += `${formatLine('Nome do Circuito', dados.nomeCircuito)}\n`; }
+        reportText += `${formatLine('Potência Demandada', `${calculos.potenciaDemandada.toFixed(2)} W`)}\n`;
         reportText += `${formatLine('Corrente Demandada (Ib)', `${calculos.correnteDemandada.toFixed(2)} A`)}\n`;
         reportText += `${formatLine('Corrente Corrigida (I\')', correnteCorrigidaTexto)}\n`;
         reportText += `${formatLine('Bitola Recomendada', `${calculos.bitolaRecomendadaMm2} mm²`)}\n`;
         reportText += `${formatLine('Queda de Tensão (DV)', `${calculos.quedaTensaoCalculada.toFixed(2)} %`)}\n`;
-        reportText += `${formatLine('Corrente Max. Cabo (Iz)', `${calculos.correnteMaximaCabo.toFixed(2)} A`)}\n`;
-        reportText += `${formatLine(`Disjuntor (${dados.tipoDisjuntor})`, `${calculos.disjuntorRecomendado.nome} (Icc: ${calculos.disjuntorRecomendado.icc} kA)`)}\n`;
+        reportText += `${formatLine('Disjuntor', `${calculos.disjuntorRecomendado.nome}`)}\n`;
         reportText += `${formatLine('Proteção DR 30mA', dados.requerDR ? `Sim` : 'Não')}\n`;
         reportText += `${formatLine('Proteção DPS', getDpsText(dados.dpsInfo))}\n`;
     });
     document.getElementById('report').textContent = reportText.trim();
 }
 
-// >>>>>>>>>>>> FUNÇÕES DE DESENHO DO DIAGRAMA (REFEITAS PARA PADRÃO PROFISSIONAL) <<<<<<<<<<<<<<
-
 function drawHeader(x, y, projectData, totalPower) {
     const title = projectData.obra || "Diagrama Unifilar";
     const powerText = `(${totalPower.toFixed(2)} W)`;
-
-    return `
-        <g text-anchor="end">
-            <text x="${x}" y="${y}" style="font-family: Arial; font-size: 16px; font-weight: bold;">Q.D. ${title.toUpperCase()}</text>
-            <text x="${x}" y="${y + 15}" style="font-family: Arial; font-size: 12px;">${powerText}</text>
-        </g>
-    `;
+    return `<g text-anchor="end"> <text x="${x}" y="${y}" style="font-family: Arial; font-size: 16px; font-weight: bold;">Q.D. ${title.toUpperCase()}</text> <text x="${x}" y="${y + 15}" style="font-family: Arial; font-size: 12px;">${powerText}</text> </g>`;
 }
 function drawDisjuntor(x, y, text, fases = 'Monofasico') {
     let symbolPath = '';
@@ -432,7 +380,7 @@ export function renderUnifilarDiagram(calculationResults) {
 export async function generateUnifilarPdf() {
     try {
         const svgElement = document.querySelector('#unifilar-drawing svg');
-        if (!svgElement) { alert("O diagrama unifilar não foi encontrado. Por favor, gere o cálculo primeiro."); return; }
+        if (!svgElement) { alert("O diagrama unifilar não foi encontrado."); return; }
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('l', 'mm', 'a4'); 
         const canvas = document.createElement('canvas');
@@ -471,6 +419,88 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
     addSection("DADOS DO CLIENTE");
     addLineItem("Cliente:", reportData.cliente);
     addLineItem(`Documento (${reportData.tipoDocumento}):`, reportData.documento);
-    // ... (resto da função de gerar PDF do memorial, sem alterações)
+    addLineItem("Celular:", reportData.celular);
+    addLineItem("Telefone:", reportData.telefone);
+    addLineItem("E-mail:", reportData.email);
+    addLineItem("Endereço do Cliente:", reportData.enderecoCliente);
+    yPos += 5;
+    addSection("DADOS DA OBRA");
+    addLineItem("Código da Obra:", reportData.projectCode);
+    addLineItem("Nome da Obra:", reportData.obra);
+    addLineItem("Cidade da Obra:", reportData.cidadeObra);
+    addLineItem("Endereço da Obra:", reportData.enderecoObra);
+    addLineItem("Área da Obra (m²):", reportData.areaObra);
+    addLineItem("Unid. Residenciais:", reportData.unidadesResidenciais);
+    addLineItem("Unid. Comerciais:", reportData.unidadesComerciais);
+    addLineItem("Observações:", reportData.observacoes);
+    yPos += 5;
+    addSection("INFORMAÇÕES DO RESPONSÁVEL TÉCNICO");
+    addLineItem("Nome:", document.getElementById('respTecnico').value);
+    addLineItem("Título:", document.getElementById('titulo').value);
+    addLineItem("CREA:", document.getElementById('crea').value);
+    yPos += 5;
+    addSection("INFORMAÇÕES DO RELATÓRIO");
+    const dataFormatada = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    addLineItem("Gerado em:", dataFormatada);
+    addLineItem("Gerado por:", currentUserProfile?.nome || 'N/A');
+    yPos += 5;
+    addSection("RESUMO DA ALIMENTAÇÃO GERAL");
+    const feederBreakerType = feederResult.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
+    const feederBreakerText = `${feederBreakerType} ${feederResult.calculos.disjuntorRecomendado.nome}`;
+    const feederHead = [['Tensão/Fases', 'Disjuntor Geral', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
+    const feederBody = [[ `${feederResult.dados.tensaoV}V - ${feederResult.dados.fases}`, feederBreakerText, feederResult.dados.requerDR ? 'Sim' : 'Nao', getDpsText(feederResult.dados.dpsInfo), `${feederResult.calculos.bitolaRecomendadaMm2} mm² (${feederResult.dados.tipoIsolacao})`, feederResult.calculos.dutoRecomendado ]];
+    doc.autoTable({ startY: yPos, head: feederHead, body: feederBody, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
+    yPos = doc.lastAutoTable.finalY + 10;
+    if (circuitResults.length > 0) {
+        addSection("RESUMO DOS CIRCUITOS");
+        const head = [['Ckt', 'Nome', 'Disjuntor', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
+        const body = circuitResults.map((r, index) => {
+            const circuitBreakerType = r.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
+            const circuitBreakerText = `${circuitBreakerType} ${r.calculos.disjuntorRecomendado.nome}`;
+            return [ index + 1, r.dados.nomeCircuito, circuitBreakerText, r.dados.requerDR ? 'Sim' : 'Nao', getDpsText(r.dados.dpsInfo), `${r.calculos.bitolaRecomendadaMm2} mm² (${r.dados.tipoIsolacao})`, r.calculos.dutoRecomendado ];
+        });
+        doc.autoTable({ startY: yPos, head: head, body: body, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
+    }
+    const allCalculationsForMemorial = [feederResult, ...circuitResults];
+    allCalculationsForMemorial.forEach((result, index) => {
+        doc.addPage();
+        yPos = 20;
+        const { dados, calculos } = result;
+        const potenciaDemandadaVA = dados.fatorPotencia > 0 ? (calculos.potenciaDemandada / dados.fatorPotencia).toFixed(2) : "0.00";
+        const correnteCorrigidaTexto = isFinite(calculos.correnteCorrigidaA) ? `${calculos.correnteCorrigidaA.toFixed(2)} A` : "Incalculável";
+        const title = dados.id === 'Geral' ? `MEMORIAL DE CÁLCULO - ALIMENTADOR GERAL` : `MEMORIAL DE CÁLCULO - CIRCUITO ${index}: ${dados.nomeCircuito}`;
+        addTitle(title);
+        addSection("-- PARÂMETROS DE ENTRADA --");
+        if (dados.id !== 'Geral') { addLineItem("Tipo de Circuito:", dados.tipoCircuito); }
+        addLineItem("Potência Instalada:", `${calculos.potenciaInstalada.toFixed(2)} W`);
+        addLineItem("Fator de Demanda:", `${dados.fatorDemanda}%`);
+        addLineItem("Potência Demandada:", `${potenciaDemandadaVA} VA`);
+        addLineItem("Fator de Potência:", dados.fatorPotencia);
+        addLineItem("Sistema de Fases:", dados.fases);
+        addLineItem("Tipo de Ligação:", dados.tipoLigacao);
+        addLineItem("Tensão (V):", `${dados.tensaoV} V`);
+        addLineItem("Comprimento:", `${dados.comprimentoM} m`);
+        addLineItem("Limite Queda de Tensão:", `${dados.limiteQuedaTensao}%`);
+        yPos += 5;
+        addSection("-- ESPECIFICAÇÕES DE INSTALAÇÃO E CORREÇÕES --");
+        addLineItem("Material / Isolação:", `${dados.materialCabo} / ${dados.tipoIsolacao}`);
+        addLineItem("Método de Instalação:", dados.metodoInstalacao);
+        addLineItem("Temperatura Ambiente:", `${dados.temperaturaAmbienteC}°C`);
+        if (dados.id !== 'Geral') { addLineItem("Circuitos Agrupados:", dados.numCircuitosAgrupados); if (dados.resistividadeSolo > 0) { addLineItem("Resist. do Solo (C.m/W):", dados.resistividadeSolo); } } 
+        else { if (dados.resistividadeSolo > 0) { addLineItem("Resist. do Solo (C.m/W):", dados.resistividadeSolo); } }
+        yPos += 5;
+        addSection("-- RESULTADOS DE CÁLCULO E DIMENSIONAMENTO --");
+        addLineItem("Corrente de Projeto:", `${calculos.correnteInstalada.toFixed(2)} A`);
+        addLineItem("Corrente Demandada (Ib):", `${calculos.correnteDemandada.toFixed(2)} A`);
+        addLineItem("Corrente Corrigida (I'):", correnteCorrigidaTexto);
+        addLineItem("Bitola Recomendada:", `${calculos.bitolaRecomendadaMm2} mm²`);
+        addLineItem("Queda de Tensão (DV):", `${calculos.quedaTensaoCalculada.toFixed(2)}%`);
+        addLineItem("Corrente Máx. Cabo (Iz):", `${calculos.correnteMaximaCabo.toFixed(2)} A`);
+        yPos += 5;
+        addSection("-- PROTEÇÕES RECOMENDADAS --");
+        addLineItem("Disjuntor:", `${dados.tipoDisjuntor}: ${calculos.disjuntorRecomendado.nome} (Icc: ${calculos.disjuntorRecomendado.icc} kA)`);
+        addLineItem("Proteção DR:", dados.requerDR ? `Sim (${calculos.disjuntorRecomendado.nome.replace('A','')}A / 30mA)` : 'Não');
+        addLineItem("Proteção DPS:", getDpsText(dados.dpsInfo));
+    });
     doc.save(`Memorial_${document.getElementById('obra').value || 'Projeto'}.pdf`);
 }
