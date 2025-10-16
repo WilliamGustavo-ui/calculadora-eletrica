@@ -1,10 +1,10 @@
-// Arquivo: ui.js (VERSÃO FINAL COM MENUS CORRIGIDOS)
+// Arquivo: ui.js (VERSÃO COM OPÇÕES DE TENSÃO CORRIGIDAS)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
 
 let circuitCount = 0;
-let uiData = null; // Armazena os dados para os menus suspensos
+let uiData = null;
 let tempOptions = { pvc: [], epr: [] };
 
 export function setupDynamicData(data) {
@@ -19,7 +19,6 @@ export function setupDynamicData(data) {
     }
 }
 
-// >>>>>>>>>>>> FUNÇÕES PARA POPULAR MENUS (REATIVADAS) <<<<<<<<<<<<<<
 function populateTemperatureDropdown(selectElement, temperatures) {
     const currentValue = selectElement.value;
     selectElement.innerHTML = '';
@@ -134,7 +133,6 @@ export function addCircuit() {
     atualizarLigacoes(circuitCount);
     handleCircuitTypeChange(circuitCount);
 
-    // >>>>>>>>>>>> CORREÇÃO: POPULA OS MENUS DO NOVO CIRCUITO <<<<<<<<<<<<<<
     const potenciaBTUSelect = document.getElementById(`potenciaBTU-${circuitCount}`);
     const potenciaCVSelect = document.getElementById(`potenciaCV-${circuitCount}`);
     const resistividadeSolo = document.getElementById(`resistividadeSolo-${circuitCount}`);
@@ -175,7 +173,9 @@ function getCircuitHTML(id) {
                 <div class="form-group"> <label for="fatorDemanda-${id}">Fator de Demanda (%)</label> <input type="number" id="fatorDemanda-${id}" value="100" step="1"> </div>
                 <div class="form-group"> <label for="fases-${id}">Sistema de Fases</label> <select id="fases-${id}"> <option value="Monofasico" selected>Monofásico</option> <option value="Bifasico">Bifásico</option> <option value="Trifasico">Trifásico</option> </select> </div>
                 <div class="form-group"> <label for="tipoLigacao-${id}">Tipo de Ligação</label> <select id="tipoLigacao-${id}"></select> </div>
-                <div class="form-group"> <label for="tensaoV-${id}">Tensão (V)</label> <select id="tensaoV-${id}"><option value="127">127 V</option><option value="220" selected>220 V</option><option value="380">380 V</option><option value="440">440 V</option></select> </div>
+                
+                <div class="form-group"> <label for="tensaoV-${id}">Tensão (V)</label> <select id="tensaoV-${id}"><option value="12">12 V</option><option value="24">24 V</option><option value="36">36 V</option><option value="127">127 V</option><option value="220" selected>220 V</option><option value="380">380 V</option><option value="440">440 V</option><option value="760">760 V</option></select> </div>
+                
                 <div class="form-group"> <label for="fatorPotencia-${id}">Fator de Potência</label> <input type="number" id="fatorPotencia-${id}" step="0.01" value="0.92"> </div>
                 <div class="form-group"> <label for="comprimentoM-${id}">Comprimento (m)</label> <input type="number" id="comprimentoM-${id}" value="20"> </div>
                 <div class="form-group"> <label for="tipoIsolacao-${id}">Tipo de Isolação</label> <select id="tipoIsolacao-${id}"><option value="PVC" selected>PVC 70°C</option><option value="EPR">EPR 90°C</option><option value="XLPE">XLPE 90°C</option></select> </div>
