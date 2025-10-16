@@ -150,15 +150,16 @@
     </div>
     
     <div id="loginContainer" class="container">
-        <h2>Login</h2>
-        <div class="form-group">
-            <label for="emailLogin">Email</label>
-            <input type="email" id="emailLogin" required>
-        </div>
-        <div class="form-group">
-            <label for="password">Senha</label>
-            <input type="password" id="password" required>
-        </div>
+        <form id="loginForm" autocomplete="on"> <h2>Login</h2>
+            <div class="form-group">
+                <label for="emailLogin">Email</label>
+                <input type="email" id="emailLogin" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" required autocomplete="current-password">
+            </div>
+        </form>
         <button id="loginBtn" class="btn-success" style="width:100%; margin-top: 10px;">Entrar</button>
         <button id="registerBtn" class="btn-secondary" style="width:100%; margin-top: 10px;">Registrar-se</button>
         <p style="text-align: center; margin-top: 15px;">
@@ -198,16 +199,15 @@
                     <label for="searchInput">Buscar por Nome da Obra, Código ou Cliente</label>
                     <input type="text" id="searchInput" placeholder="Digite para buscar...">
                 </div>
-                <div class="button-wrapper">
-                    <div class="form-group" style="flex-grow: 1;">
-                        <label for="savedProjectsSelect">Carregar Obra Salva</label>
-                        <select id="savedProjectsSelect"></select>
-                    </div>
-                    <button id="loadBtn" class="btn-secondary">Carregar</button>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="savedProjectsSelect">Selecionar Obra Salva</label>
+                    <select id="savedProjectsSelect"></select>
                 </div>
-                <div class="button-wrapper">
-                    <button id="newBtn" class="btn-primary">Nova Obra</button>
-                    <button id="saveBtn" class="btn-success">Salvar / Atualizar Obra</button>
+
+                <div class="button-wrapper full-width">
+                    <button id="newBtn" class="btn-secondary">Nova Obra</button>
+                    <button id="loadBtn" class="btn-load">Carregar Obra</button>
+                    <button id="saveBtn" class="btn-success">Salvar / Atualizar</button>
                     <button id="deleteBtn" class="btn-danger">Excluir Obra</button>
                 </div>
             </div>
@@ -242,29 +242,15 @@
             <h2>Alimentação Geral</h2>
             <form id="feeder-form" class="circuit-block" autocomplete="off">
                 <div class="form-grid">
-                    <div class="form-group">
-                        <label for="feederPotenciaInstalada">Potência Total Instalada (W)</label>
-                        <input type="text" id="feederPotenciaInstalada" value="0.00" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label for="feederPotenciaDemandada">Potência Total Demandada (W)</label>
-                        <input type="text" id="feederPotenciaDemandada" value="0.00" readonly>
-                    </div>
+                    <div class="form-group"> <label for="feederPotenciaInstalada">Potência Total Instalada (W)</label> <input type="text" id="feederPotenciaInstalada" value="0.00" readonly> </div>
+                    <div class="form-group"> <label for="feederPotenciaDemandada">Potência Total Demandada (W)</label> <input type="text" id="feederPotenciaDemandada" value="0.00" readonly> </div>
                     <div class="form-group"><label for="feederFatorDemanda">Fator de Demanda Geral (%)</label><input type="number" id="feederFatorDemanda" value="100" step="1"></div>
-                    
                     <div class="form-group"><label for="feederFases">Sistema de Fases</label><select id="feederFases"><option value="Monofasico">Monofasico</option><option value="Bifasico">Bifasico</option><option value="Trifasico" selected>Trifasico</option></select></div>
                     <div class="form-group"><label for="feederTipoLigacao">Tipo de Ligacao</label><select id="feederTipoLigacao"></select></div>
                     <div class="form-group"><label for="feederTensaoV">Tensao (V)</label><select id="feederTensaoV"><option value="12">12 V</option><option value="24">24 V</option><option value="36">36 V</option><option value="127">127 V</option><option value="220" selected>220 V</option><option value="380">380 V</option><option value="440">440 V</option><option value="760">760 V</option></select></div>
                     <div class="form-group"><label for="feederFatorPotencia">Fator de Potencia (eficiencia)</label><input type="number" id="feederFatorPotencia" step="0.01" value="0.92"></div>
                     <div class="form-group"><label for="feederComprimentoM">Comprimento (m)</label><input type="number" id="feederComprimentoM" value="15"></div>
-                    <div class="form-group">
-                        <label for="feederTipoIsolacao">Tipo de Isolacao</label>
-                        <select id="feederTipoIsolacao">
-                            <option value="PVC">PVC 70 C</option>
-                            <option value="EPR">EPR 90 C</option>
-                            <option value="XLPE">XLPE 90 C</option>
-                        </select>
-                    </div>
+                    <div class="form-group"> <label for="feederTipoIsolacao">Tipo de Isolacao</label> <select id="feederTipoIsolacao"> <option value="PVC">PVC 70 C</option> <option value="EPR">EPR 90 C</option> <option value="XLPE">XLPE 90 C</option> </select> </div>
                     <div class="form-group"><label for="feederMaterialCabo">Material do Condutor</label><select id="feederMaterialCabo"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Aluminio</option></select></div>
                     <div class="form-group"><label for="feederMetodoInstalacao">Metodo de Instalacao</label><select id="feederMetodoInstalacao"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select></div>
                     <div class="form-group"><label for="feederTemperaturaAmbienteC">Temperatura Ambiente (C)</label><select id="feederTemperaturaAmbienteC"></select></div>
@@ -308,3 +294,8 @@
     <script type="module" src="main.js"></script>
 </body>
 </html>
+
+/ SUPORTE
+/ Seg. a Sex. das 8h às 18h. 
+/ (47) 99659-8018 (Somente mensagens de WhatsApp)
+/ e-mail: williamguto0911@outlook.com

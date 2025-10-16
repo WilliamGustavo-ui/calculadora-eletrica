@@ -1,4 +1,4 @@
-/* Arquivo: style.css (REFORMULADO) */
+/* Arquivo: style.css (REFORMULADO COM NOVA PALETA DE CORES) */
 :root {
     --primary-color: #2c3e50;
     --secondary-color: #3498db;
@@ -6,9 +6,15 @@
     --white: #fff;
     --text-color: #34495e;
     --border-color: #dee2e6;
-    --success-color: #27ae60;
-    --danger-color: #e74c3c;
-    --warning-color: #f39c12;
+    
+    /* Nova Paleta de Cores para Botões */
+    --btn-green: #27ae60;      /* Salvar, Desbloquear, Aprovar */
+    --btn-red: #e74c3c;        /* Excluir, Remover, Fechar, Sair */
+    --btn-orange: #f39c12;     /* Bloquear */
+    --btn-blue-dark: #2c3e50;  /* Editar */
+    --btn-blue-light: #3498db; /* Carregar */
+    --btn-grey: #6c757d;       /* Nova Obra, Cancelar */
+    
     --light-gray: #ecf0f1;
 }
 
@@ -56,7 +62,6 @@ h2 {
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
-/* >>>>>>>>>>>> NOVO CABEÇALHO DO CIRCUITO <<<<<<<<<<<<<< */
 .circuit-header {
     display: flex;
     justify-content: space-between;
@@ -77,7 +82,7 @@ h2 {
     font-weight: 500;
     color: var(--text-color);
     text-align: center;
-    flex-grow: 1; /* Permite que o nome ocupe o espaço central */
+    flex-grow: 1;
 }
 .circuit-header-right {
     display: flex;
@@ -99,7 +104,6 @@ h2 {
 .circuit-block.collapsed .toggle-arrow {
     transform: rotate(-90deg);
 }
-/* <<< FIM DO NOVO CABEÇALHO */
 
 .circuit-content {
     padding: 25px;
@@ -136,6 +140,7 @@ input:focus, select:focus, textarea:focus {
 }
 input:read-only { background-color: var(--light-gray); cursor: not-allowed; }
 
+/* --- BOTÕES --- */
 button {
     padding: 12px 18px;
     color: white;
@@ -148,13 +153,35 @@ button {
 }
 button:hover { opacity: 0.9; }
 button:active { transform: scale(0.98); }
-.btn-danger { background-color: var(--danger-color); }
-.btn-primary { background-color: var(--primary-color); }
-.btn-secondary { background-color: var(--secondary-color); }
-.btn-success { background-color: var(--success-color); }
+
+/* Cores Padrão Antigas (agora usam as novas variáveis) */
+.btn-danger { background-color: var(--btn-red); }
+.btn-primary { background-color: var(--btn-blue-dark); }
+.btn-secondary { background-color: var(--btn-grey); }
+.btn-success { background-color: var(--btn-green); }
+.btn-warning { background-color: var(--btn-orange); }
+
+/* Novas Classes de Botão Específicas */
+.btn-load { background-color: var(--btn-blue-light); }
+.btn-edit { background-color: var(--btn-blue-dark); }
+.btn-block { background-color: var(--btn-orange); }
+.btn-red { background-color: var(--btn-red); }
+.btn-green { background-color: var(--btn-green); }
+
 .remove-btn {
+    background-color: var(--btn-red);
     padding: 6px 12px;
     font-size: 0.85rem;
+}
+
+/* Layout dos botões de gerenciamento de obra */
+.button-wrapper.full-width {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+.button-wrapper.full-width button {
+    flex-grow: 1; /* Faz os botões ocuparem o espaço disponível */
 }
 
 /* --- Outros estilos --- */
@@ -164,7 +191,25 @@ button:active { transform: scale(0.98); }
 .top-right-buttons { position: absolute; top: 15px; right: 15px; display: flex; gap: 10px; z-index: 2; }
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; }
 .modal-content { background: var(--white); padding: 30px; border-radius: 8px; max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; }
-.close-modal-btn { background: none; border: none; font-size: 1.5rem; color: var(--border-color); cursor: pointer; position: absolute; top: 10px; right: 15px; padding: 5px; line-height: 1; }
+.close-modal-btn {
+    background: var(--btn-red);
+    color: white;
+    border: none;
+    font-size: 1.2rem;
+    font-weight: bold;
+    line-height: 1;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 .loading-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.8); display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 2000; border-radius: 8px; }
 .loading-overlay.visible { display: flex; }
 .spinner { border: 5px solid #f3f3f3; border-top: 5px solid var(--secondary-color); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
@@ -172,3 +217,7 @@ button:active { transform: scale(0.98); }
 .diagram-container { margin-top: 30px; background-color: #fdfdfd; padding: 20px; border-radius: 5px; border: 1px solid var(--border-color); overflow-x: auto; }
 #unifilar-drawing svg { min-width: 800px; }
 #report { margin-top: 30px; background-color: #2c3e50; color: #ecf0f1; padding: 20px; border-radius: 5px; white-space: pre-wrap; font-family: "Courier New", Courier, monospace; font-size: 0.9rem; border: 1px solid var(--primary-color); }
+
+.admin-user-actions { display: flex; gap: 8px; }
+.admin-user-actions button { padding: 5px 10px; font-size: 0.8rem; }
+#adminUserList li { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
