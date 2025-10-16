@@ -1,4 +1,4 @@
-// Arquivo: api.js
+// Arquivo: api.js 
 
 import { supabase } from './supabaseClient.js';
 
@@ -65,15 +65,12 @@ export async function transferProjectClient(projectId, newClientId) {
     return { error };
 }
 export async function transferProjectOwner(projectId, newOwnerId) {
-    const { error } = await supabase
-        .from('projects')
-        .update({ owner_id: newOwnerId })
-        .eq('id', projectId);
+    const { error } = await supabase.from('projects').update({ owner_id: newOwnerId }).eq('id', projectId);
     if (error) console.error('Erro ao transferir propriedade da obra:', error.message);
     return { error };
 }
 
-// --- FUNÇÕES DE ADMINISTRAÇÃO E DADOS TÉCNICOS ---
+// --- FUNÇÕES DE ADMINISTRAÇÃO E DADOS ---
 export async function fetchAllUsers() {
     const { data, error } = await supabase.from('profiles').select('*').order('nome');
     if (error) console.error('Erro ao buscar todos os usuários:', error.message);
@@ -93,4 +90,28 @@ export async function fetchUserById(userId) {
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
     if (error) console.error('Erro ao buscar usuário por ID:', error.message);
     return data;
+}
+
+// >>>>>>>>>>>> NOVA FUNÇÃO PARA DADOS DA INTERFACE <<<<<<<<<<<<<<
+export async function fetchUiData() {
+    const uiData = {};
+    const tablesToFetch = [
+        { key: 'ar_condicionado_btu', name: 'ar_condicionado_btu' },
+        { key: 'motores_cv', name: 'motores_cv' },
+        { key: 'fatores_k2_solo', name: 'fatores_k2_solo' },
+        { key: 'fatores_k1_temperatura', name: 'fatores_k1_temperatura' },
+        { key: 'fatores_k1_temperatura_epr', name: 'fatores_k1_temperatura_epr' }
+    ];
+
+    for (const table of tablesToFetch) {
+        try {
+            const { data, error } = await supabase.from(table.name).select('*');
+            if (error) { throw new Error(error.message); }
+            uiData[table.key] = data;
+        } catch (err) {
+            console.error(`ERRO ao carregar dados de UI da tabela '${table.name}'. Detalhes: ${err.message}`);
+            uiData[table.key] = [];
+        }
+    }
+    return uiData;
 }

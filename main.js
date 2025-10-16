@@ -1,4 +1,4 @@
-// Arquivo: main.js (FINALIZADO - USA O BACK-END)
+// Arquivo: main.js (ATUALIZADO PARA BUSCAR DADOS DE UI)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -9,6 +9,7 @@ import { supabase } from './supabaseClient.js';
 let currentUserProfile = null;
 let allClients = [];
 let lastCalculationResults = null;
+let uiData = null; // Variável para armazenar os dados dos menus
 
 async function handleLogin() {
     const email = document.getElementById('emailLogin').value;
@@ -18,7 +19,14 @@ async function handleLogin() {
         if (userProfile.is_approved) {
             currentUserProfile = userProfile;
             ui.showAppView(currentUserProfile);
-            ui.setupDynamicData(null); // Não precisa mais de dados técnicos
+            
+            // >>>>>>>>>>>> ALTERAÇÃO AQUI <<<<<<<<<<<<<<
+            // Busca os dados para os menus e passa para o ui.js
+            uiData = await api.fetchUiData();
+            if (uiData) {
+                ui.setupDynamicData(uiData);
+            }
+            
             await handleNewProject(false);
             await handleSearch();
         } else {
@@ -234,7 +242,13 @@ function main() {
                     currentUserProfile = userProfile;
                     ui.showAppView(currentUserProfile);
                     allClients = await api.fetchClients();
-                    ui.setupDynamicData(null);
+                    
+                    // >>>>>>>>>>>> ALTERAÇÃO AQUI <<<<<<<<<<<<<<
+                    uiData = await api.fetchUiData();
+                    if (uiData) {
+                        ui.setupDynamicData(uiData);
+                    }
+
                     await handleNewProject(false);
                     await handleSearch();
                 }
@@ -244,6 +258,7 @@ function main() {
         } else if (event === 'SIGNED_OUT') {
             currentUserProfile = null;
             allClients = [];
+            uiData = null;
             ui.showLoginView();
         } else if (event === 'PASSWORD_RECOVERY') {
             ui.showResetPasswordView();

@@ -1,13 +1,74 @@
-// Arquivo: ui.js (VERSÃO 100% COMPLETA E CORRIGIDA)
+// Arquivo: ui.js (VERSÃO FINAL COM MENUS CORRIGIDOS)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
 
 let circuitCount = 0;
+let uiData = null; // Armazena os dados para os menus suspensos
+let tempOptions = { pvc: [], epr: [] };
 
-export function setupDynamicData(techData) {
-    // Função mantida para compatibilidade, mas não precisa fazer nada,
-    // pois os dados técnicos são agora processados no back-end.
+export function setupDynamicData(data) {
+    uiData = data;
+    if (uiData?.fatores_k1_temperatura) {
+        tempOptions.pvc = uiData.fatores_k1_temperatura.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
+    }
+    if (uiData?.fatores_k1_temperatura_epr) {
+        tempOptions.epr = uiData.fatores_k1_temperatura_epr.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
+    } else {
+        tempOptions.epr = tempOptions.pvc;
+    }
+}
+
+// >>>>>>>>>>>> FUNÇÕES PARA POPULAR MENUS (REATIVADAS) <<<<<<<<<<<<<<
+function populateTemperatureDropdown(selectElement, temperatures) {
+    const currentValue = selectElement.value;
+    selectElement.innerHTML = '';
+    temperatures.forEach(temp => {
+        const option = document.createElement('option');
+        option.value = temp;
+        option.textContent = `${temp}°C`;
+        selectElement.appendChild(option);
+    });
+    if (temperatures.includes(parseInt(currentValue))) {
+        selectElement.value = currentValue;
+    } else if (temperatures.includes(30)) {
+        selectElement.value = '30';
+    } else if (temperatures.length > 0) {
+        selectElement.value = temperatures[0];
+    }
+}
+
+function populateBtuDropdown(selectElement, btuData) {
+    selectElement.innerHTML = '';
+    if (!btuData) return;
+    btuData.sort((a, b) => a.valor_btu - b.valor_btu).forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.valor_btu;
+        option.textContent = item.descricao;
+        selectElement.appendChild(option);
+    });
+}
+
+function populateCvDropdown(selectElement, cvData) {
+    selectElement.innerHTML = '';
+    if (!cvData) return;
+    cvData.sort((a, b) => a.valor_cv - b.valor_cv).forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.valor_cv;
+        option.textContent = item.descricao;
+        selectElement.appendChild(option);
+    });
+}
+
+function populateSoilResistivityDropdown(selectElement, soilData) {
+    selectElement.innerHTML = '<option value="0">Não Aplicável</option>';
+    if (!soilData) return;
+    soilData.sort((a, b) => a.resistividade - b.resistividade).forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.resistividade;
+        option.textContent = `${item.resistividade}`;
+        selectElement.appendChild(option);
+    });
 }
 
 function updateFeederPowerDisplay() {
@@ -27,15 +88,7 @@ function updateFeederPowerDisplay() {
 
 // --- FUNÇÕES DE VISIBILIDADE E MODAIS ---
 export function showLoginView() { document.getElementById('loginContainer').style.display = 'block'; document.getElementById('appContainer').style.display = 'none'; document.getElementById('resetPasswordContainer').style.display = 'none'; }
-export function showAppView(userProfile) {
-    document.getElementById('loginContainer').style.display = 'none';
-    document.getElementById('appContainer').style.display = 'block';
-    document.getElementById('resetPasswordContainer').style.display = 'none';
-    const isAdmin = userProfile?.is_admin || false;
-    document.getElementById('adminPanelBtn').style.display = isAdmin ? 'block' : 'none';
-    document.getElementById('manageClientsBtn').style.display = 'block';
-    document.getElementById('manageProjectsBtn').style.display = 'block';
-}
+export function showAppView(userProfile) { document.getElementById('loginContainer').style.display = 'none'; document.getElementById('appContainer').style.display = 'block'; document.getElementById('resetPasswordContainer').style.display = 'none'; const isAdmin = userProfile?.is_admin || false; document.getElementById('adminPanelBtn').style.display = isAdmin ? 'block' : 'none'; document.getElementById('manageClientsBtn').style.display = 'block'; document.getElementById('manageProjectsBtn').style.display = 'block'; }
 export function showResetPasswordView() { document.getElementById('loginContainer').style.display = 'none'; document.getElementById('appContainer').style.display = 'none'; document.getElementById('resetPasswordContainer').style.display = 'block'; }
 export function openModal(modalId) { document.getElementById(modalId).style.display = 'flex'; }
 export function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
@@ -80,6 +133,19 @@ export function addCircuit() {
     
     atualizarLigacoes(circuitCount);
     handleCircuitTypeChange(circuitCount);
+
+    // >>>>>>>>>>>> CORREÇÃO: POPULA OS MENUS DO NOVO CIRCUITO <<<<<<<<<<<<<<
+    const potenciaBTUSelect = document.getElementById(`potenciaBTU-${circuitCount}`);
+    const potenciaCVSelect = document.getElementById(`potenciaCV-${circuitCount}`);
+    const resistividadeSolo = document.getElementById(`resistividadeSolo-${circuitCount}`);
+    const temperaturaAmbiente = document.getElementById(`temperaturaAmbienteC-${circuitCount}`);
+    
+    if(uiData) {
+        populateBtuDropdown(potenciaBTUSelect, uiData.ar_condicionado_btu);
+        populateCvDropdown(potenciaCVSelect, uiData.motores_cv);
+        populateSoilResistivityDropdown(resistividadeSolo, uiData.fatores_k2_solo);
+        populateTemperatureDropdown(temperaturaAmbiente, tempOptions.pvc);
+    }
 }
 
 export function removeCircuit(id) {
@@ -115,8 +181,8 @@ function getCircuitHTML(id) {
                 <div class="form-group"> <label for="tipoIsolacao-${id}">Tipo de Isolação</label> <select id="tipoIsolacao-${id}"><option value="PVC" selected>PVC 70°C</option><option value="EPR">EPR 90°C</option><option value="XLPE">XLPE 90°C</option></select> </div>
                 <div class="form-group"> <label for="materialCabo-${id}">Material do Condutor</label> <select id="materialCabo-${id}"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Alumínio</option></select> </div>
                 <div class="form-group"> <label for="metodoInstalacao-${id}">Método de Instalação</label> <select id="metodoInstalacao-${id}"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select> </div>
-                <div class="form-group"> <label for="temperaturaAmbienteC-${id}">Temperatura Ambiente (°C)</label> <input type="number" id="temperaturaAmbienteC-${id}" value="30"> </div>
-                <div class="form-group"> <label for="resistividadeSolo-${id}">Resistividade T. do Solo</label> <input type="number" id="resistividadeSolo-${id}" value="0"> </div>
+                <div class="form-group"> <label for="temperaturaAmbienteC-${id}">Temperatura Ambiente (°C)</label> <select id="temperaturaAmbienteC-${id}"></select> </div>
+                <div class="form-group"> <label for="resistividadeSolo-${id}">Resistividade T. do Solo</label> <select id="resistividadeSolo-${id}"></select> </div>
                 <div class="form-group"> <label for="numCircuitosAgrupados-${id}">N° Circuitos Agrupados</label> <select id="numCircuitosAgrupados-${id}"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select> </div>
                 <div class="form-group"> <label for="limiteQuedaTensao-${id}">Limite Queda de Tensão (%)</label> <input type="number" id="limiteQuedaTensao-${id}" step="0.1" value="4.0"> </div>
                 <div class="form-group"> <label for="tipoDisjuntor-${id}">Tipo de Disjuntor</label> <select id="tipoDisjuntor-${id}"><option value="Minidisjuntor (DIN)">Minidisjuntor (DIN)</option><option value="Caixa Moldada (MCCB)">Caixa Moldada (MCCB)</option></select> </div>
@@ -130,9 +196,32 @@ function getCircuitHTML(id) {
 function initializeFeederListeners() {
     const fases = document.getElementById('feederFases');
     const tipoLigacao = document.getElementById('feederTipoLigacao');
-    const atualizarLigacoesFeeder = () => { const faseSelecionada = fases.value; const ligacoesDisponiveis = ligacoes[faseSelecionada] || []; tipoLigacao.innerHTML = ''; ligacoesDisponiveis.forEach(opt => { const option = document.createElement('option'); option.value = opt.value; option.textContent = opt.text; tipoLigacao.appendChild(option); }); };
+    const tipoIsolacao = document.getElementById('feederTipoIsolacao');
+    const temperaturaAmbiente = document.getElementById('feederTemperaturaAmbienteC');
+    const resistividadeSolo = document.getElementById('feederResistividadeSolo');
+
+    if (uiData) {
+        populateSoilResistivityDropdown(resistividadeSolo, uiData.fatores_k2_solo);
+    }
+
+    const atualizarLigacoesFeeder = () => {
+        const faseSelecionada = fases.value;
+        const ligacoesDisponiveis = ligacoes[faseSelecionada] || [];
+        tipoLigacao.innerHTML = '';
+        ligacoesDisponiveis.forEach(opt => { const option = document.createElement('option'); option.value = opt.value; option.textContent = opt.text; tipoLigacao.appendChild(option); });
+    };
+
+    const handleFeederInsulationChange = () => {
+        const selectedInsulation = tipoIsolacao.value;
+        const temps = (selectedInsulation === 'EPR' || selectedInsulation === 'XLPE') ? tempOptions.epr : tempOptions.pvc;
+        populateTemperatureDropdown(temperaturaAmbiente, temps);
+    };
+
     fases.addEventListener('change', atualizarLigacoesFeeder);
+    tipoIsolacao.addEventListener('change', handleFeederInsulationChange);
+
     atualizarLigacoesFeeder();
+    handleFeederInsulationChange();
 }
 
 export function handleCircuitContainerInteraction(event) {
@@ -146,6 +235,7 @@ export function handleCircuitContainerInteraction(event) {
     if (target.classList.contains('remove-btn')) { removeCircuit(target.dataset.circuitId); }
     else if (target.id === `tipoCircuito-${id}`) { handleCircuitTypeChange(id); }
     else if (target.id === `fases-${id}`) { atualizarLigacoes(id); }
+    else if (target.id === `tipoIsolacao-${id}`) { handleInsulationChange(id); }
     else if (target.id === `potenciaW-${id}` || target.id === `fatorDemanda-${id}`) { updateFeederPowerDisplay(); }
 }
 
@@ -156,6 +246,14 @@ function atualizarLigacoes(id) {
     const ligacoesDisponiveis = ligacoes[faseSelecionada] || [];
     tipoLigacao.innerHTML = '';
     ligacoesDisponiveis.forEach(opt => { const option = document.createElement('option'); option.value = opt.value; option.textContent = opt.text; tipoLigacao.appendChild(option); });
+}
+
+function handleInsulationChange(id) {
+    const tipoIsolacao = document.getElementById(`tipoIsolacao-${id}`);
+    const temperaturaAmbiente = document.getElementById(`temperaturaAmbienteC-${id}`);
+    const selectedInsulation = tipoIsolacao.value;
+    const temps = (selectedInsulation === 'EPR' || selectedInsulation === 'XLPE') ? tempOptions.epr : tempOptions.pvc;
+    populateTemperatureDropdown(temperaturaAmbiente, temps);
 }
 
 function handleCircuitTypeChange(id) {
@@ -258,7 +356,6 @@ export function openEditClientForm(client) { document.getElementById('clientId')
 export function populateSelectClientModal(clients, isChange = false) { const select = document.getElementById('clientSelectForNewProject'); select.innerHTML = '<option value="">-- Selecione um cliente --</option>'; clients.forEach(client => { const option = document.createElement('option'); option.value = client.id; option.textContent = `${client.nome} (${client.client_code})`; option.dataset.client = JSON.stringify(client); select.appendChild(option); }); const title = document.querySelector('#selectClientModalOverlay h3'); const confirmBtn = document.getElementById('confirmClientSelectionBtn'); if (isChange) { title.textContent = 'Vincular / Alterar Cliente da Obra'; confirmBtn.textContent = 'Confirmar Alteração'; } else { title.textContent = 'Vincular Cliente à Nova Obra'; confirmBtn.textContent = 'Vincular e Continuar'; } openModal('selectClientModalOverlay'); }
 
 // --- FUNÇÕES DE RENDERIZAÇÃO DE RELATÓRIO E DIAGRAMA ---
-
 function getDpsText(dpsInfo) { if (!dpsInfo) return 'Não'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
 
 export function renderReport(calculationResults){
