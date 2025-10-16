@@ -1,4 +1,4 @@
-// Arquivo: main.js (ATUALIZADO PARA BUSCAR DADOS DE UI)
+// Arquivo: main.js (COM AÇÕES DE ADMIN INTEGRADAS)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -9,7 +9,7 @@ import { supabase } from './supabaseClient.js';
 let currentUserProfile = null;
 let allClients = [];
 let lastCalculationResults = null;
-let uiData = null; // Variável para armazenar os dados dos menus
+let uiData = null; 
 
 async function handleLogin() {
     const email = document.getElementById('emailLogin').value;
@@ -20,8 +20,6 @@ async function handleLogin() {
             currentUserProfile = userProfile;
             ui.showAppView(currentUserProfile);
             
-            // >>>>>>>>>>>> ALTERAÇÃO AQUI <<<<<<<<<<<<<<
-            // Busca os dados para os menus e passa para o ui.js
             uiData = await api.fetchUiData();
             if (uiData) {
                 ui.setupDynamicData(uiData);
@@ -29,10 +27,8 @@ async function handleLogin() {
             
             await handleNewProject(false);
             await handleSearch();
-        } else {
-            alert('Seu cadastro ainda não foi aprovado por um administrador.');
-            await auth.signOutUser();
-        }
+        } 
+        // A verificação de bloqueio agora está dentro do auth.js
     }
 }
 
@@ -97,9 +93,45 @@ async function handleLoadProject() {
 async function handleDeleteProject() { const projectId = document.getElementById('savedProjectsSelect').value; const projectName = document.getElementById('savedProjectsSelect').options[document.getElementById('savedProjectsSelect').selectedIndex].text; if (!projectId || !confirm(`Tem certeza que deseja excluir a obra "${projectName}"?`)) return; const { error } = await api.deleteProject(projectId); if (error) { alert('Erro ao excluir obra: ' + error.message); } else { alert("Obra excluída."); ui.resetForm(true, null); await handleSearch(); } }
 async function handleSearch(term = '') { if (!currentUserProfile) return; const projects = await api.fetchProjects(term); ui.populateProjectList(projects); }
 async function showManageProjectsPanel() { const projects = await api.fetchProjects(''); allClients = await api.fetchClients(); const allUsers = await api.fetchAllUsers(); ui.populateProjectsPanel(projects, allClients, allUsers, currentUserProfile); ui.openModal('manageProjectsModalOverlay'); }
-async function handleProjectPanelClick(event) { const target = event.target; const projectId = target.dataset.projectId; if (target.classList.contains('transfer-client-btn')) { const select = target.parentElement.querySelector('.transfer-client-select'); const newClientId = select.value || null; const { error } = await api.transferProjectClient(projectId, newClientId); if (error) { alert('Erro ao transferir cliente: ' + error.message); } else { alert('Cliente da obra atualizado com sucesso!'); await showManageProjectsPanel(); } } if (target.classList.contains('transfer-owner-btn')) { const select = target.parentElement.querySelector('.transfer-owner-select'); const newOwnerId = select.value; if (newOwnerId && confirm('Tem certeza que deseja transferir a propriedade desta obra? Você perderá o acesso a ela se transferir para outro usuário.')) { const { error } = await api.transferProjectOwner(projectId, newOwnerId); if (error) { alert('Propriedade da obra transferida com sucesso!'); await showManageProjectsPanel(); } } } }
-async function showAdminPanel() { const users = await api.fetchAllUsers(); ui.populateUsersPanel(users); ui.openModal('adminPanelOverlay'); }
-async function handleAdminUserActions(event) { const target = event.target; const userId = target.dataset.userId; if (target.classList.contains('approve-user-btn')) { await api.approveUser(userId); await showAdminPanel(); } if (target.classList.contains('edit-user-btn')) { const user = await api.fetchUserById(userId); if (user) ui.populateEditUserModal(user); } }
+async function handleProjectPanelClick(event) { const target = event.target; const projectId = target.dataset.projectId; if (target.classList.contains('transfer-client-btn')) { const select = target.parentElement.querySelector('.transfer-client-select'); const newClientId = select.value || null; const { error } = await api.transferProjectClient(projectId, newClientId); if (error) { alert('Erro ao transferir cliente: ' + error.message); } else { alert('Cliente da obra atualizado com sucesso!'); await showManageProjectsPanel(); } } if (target.classList.contains('transfer-owner-btn')) { const select = target.parentElement.querySelector('.transfer-owner-select'); const newOwnerId = select.value; if (newOwnerId && confirm('Tem certeza que deseja transferir a propriedade desta obra? Você perderá o acesso a ela se transferir para outro usuário.')) { const { error } = await api.transferProjectOwner(projectId, newOwnerId); if (error) { alert('Erro ao transferir propriedade: ' + error.message); } else { alert('Propriedade da obra transferida com sucesso!'); await showManageProjectsPanel(); } } } }
+async function showAdminPanel() { const users = await api.fetchAllUsers(); ui.populateUsersPanel(users); ui.openModal('adminPanelModalOverlay'); }
+
+async function handleAdminUserActions(event) {
+    const target = event.target;
+    const userId = target.dataset.userId;
+
+    if (target.classList.contains('approve-user-btn')) {
+        await api.approveUser(userId);
+        await showAdminPanel();
+    }
+    
+    if (target.classList.contains('edit-user-btn')) {
+        const user = await api.fetchUserById(userId);
+        if (user) ui.populateEditUserModal(user);
+    }
+    
+    if (target.classList.contains('block-user-btn')) {
+        const shouldBlock = target.dataset.isBlocked === 'true';
+        const actionText = shouldBlock ? 'bloquear' : 'desbloquear';
+        if (confirm(`Tem certeza que deseja ${actionText} este usuário?`)) {
+            await api.toggleUserBlock(userId, shouldBlock);
+            await showAdminPanel();
+        }
+    }
+    
+    if (target.classList.contains('remove-user-btn')) {
+        if (confirm('ATENÇÃO: Esta ação é irreversível e excluirá permanentemente o usuário e todos os seus projetos. Deseja continuar?')) {
+            const { error } = await api.deleteUserFromAdmin(userId);
+            if (error) {
+                alert('Erro ao excluir usuário: ' + error.message);
+            } else {
+                alert('Usuário excluído com sucesso.');
+                await showAdminPanel();
+            }
+        }
+    }
+}
+
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
 function getFullFormData(forSave = false) {
@@ -243,7 +275,6 @@ function main() {
                     ui.showAppView(currentUserProfile);
                     allClients = await api.fetchClients();
                     
-                    // >>>>>>>>>>>> ALTERAÇÃO AQUI <<<<<<<<<<<<<<
                     uiData = await api.fetchUiData();
                     if (uiData) {
                         ui.setupDynamicData(uiData);

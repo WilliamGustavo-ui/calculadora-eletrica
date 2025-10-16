@@ -1,4 +1,4 @@
-// Arquivo: api.js 
+// Arquivo: api.js (COM NOVAS FUNÇÕES DE BLOQUEIO E EXCLUSÃO)
 
 import { supabase } from './supabaseClient.js';
 
@@ -65,7 +65,10 @@ export async function transferProjectClient(projectId, newClientId) {
     return { error };
 }
 export async function transferProjectOwner(projectId, newOwnerId) {
-    const { error } = await supabase.from('projects').update({ owner_id: newOwnerId }).eq('id', projectId);
+    const { error } = await supabase
+        .from('projects')
+        .update({ owner_id: newOwnerId })
+        .eq('id', projectId);
     if (error) console.error('Erro ao transferir propriedade da obra:', error.message);
     return { error };
 }
@@ -91,8 +94,6 @@ export async function fetchUserById(userId) {
     if (error) console.error('Erro ao buscar usuário por ID:', error.message);
     return data;
 }
-
-// >>>>>>>>>>>> NOVA FUNÇÃO PARA DADOS DA INTERFACE <<<<<<<<<<<<<<
 export async function fetchUiData() {
     const uiData = {};
     const tablesToFetch = [
@@ -114,4 +115,24 @@ export async function fetchUiData() {
         }
     }
     return uiData;
+}
+
+
+// >>>>>>>>>>>> FUNÇÃO ADICIONADA: BLOQUEAR/DESBLOQUEAR USUÁRIO <<<<<<<<<<<<<<
+export async function toggleUserBlock(userId, isBlocked) {
+    const { error } = await supabase
+        .from('profiles')
+        .update({ is_blocked: isBlocked })
+        .eq('id', userId);
+    if (error) console.error(`Erro ao ${isBlocked ? 'bloquear' : 'desbloquear'} usuário:`, error.message);
+    return { error };
+}
+
+// >>>>>>>>>>>> FUNÇÃO ADICIONADA: EXCLUIR USUÁRIO (chama a Edge Function) <<<<<<<<<<<<<<
+export async function deleteUserFromAdmin(userIdToDelete) {
+    const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userIdToDelete },
+    });
+    if (error) console.error('Erro ao chamar a função de exclusão:', error.message);
+    return { data, error };
 }

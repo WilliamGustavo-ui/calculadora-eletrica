@@ -1,35 +1,74 @@
+// Arquivo: auth.js (COM VERIFICAÇÃO DE BLOQUEIO NO LOGIN)
+
 import { supabase } from './supabaseClient.js';
 
 export async function signInUser(email, password) {
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-    if (authError) { alert('Erro no login: ' + authError.message); return null; }
+    if (authError) {
+        alert('Erro no login: ' + authError.message);
+        return null;
+    }
     if (authData.user) {
-        const { data: profile, error: profileError } = await supabase.from('profiles').select('*').eq('id', authData.user.id).single();
-        if (profileError) { alert('Erro ao buscar perfil do usuário: ' + profileError.message); await supabase.auth.signOut(); return null; }
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', authData.user.id)
+            .single();
+
+        if (profileError) {
+            alert('Erro ao buscar perfil do usuário: ' + profileError.message);
+            await supabase.auth.signOut();
+            return null;
+        }
+
+        // >>>>>>>>>>>> NOVA VERIFICAÇÃO DE BLOQUEIO <<<<<<<<<<<<<<
+        if (profile.is_blocked) {
+            alert('Este usuário está temporariamente bloqueado. Contate um administrador.');
+            await supabase.auth.signOut(); // Desloga o usuário imediatamente
+            return null; // Retorna nulo para indicar falha no login
+        }
+
         return profile;
     }
     return null;
 }
 
 export async function signUpUser(email, password, details) {
-    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: details } });
-    if (error) { alert('Erro ao registrar: ' + error.message); }
+    const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+            data: details
+        }
+    });
+    if (error) {
+        alert('Erro ao registrar: ' + error.message);
+    }
     return { error };
 }
 
-export async function signOutUser() { await supabase.auth.signOut(); }
+export async function signOutUser() {
+    await supabase.auth.signOut();
+}
 
 export async function getSession() {
     const { data: { session }, error } = await supabase.auth.getSession();
-    if (error || !session) { return null; }
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+    if (error || !session) {
+        return null;
+    }
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
     return profile;
 }
 
 export async function sendPasswordResetEmail(email) {
-    // URL de redirecionamento dinâmica para funcionar em qualquer domínio
     const redirectTo = window.location.origin + window.location.pathname;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo
+    });
     return { error };
 }
 

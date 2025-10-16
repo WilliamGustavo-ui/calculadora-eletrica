@@ -1,4 +1,4 @@
-// Arquivo: ui.js (VERSÃO 100% COMPLETA E CORRIGIDA)
+// Arquivo: ui.js (COM NOVOS BOTÕES NO PAINEL DE ADMIN)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
@@ -340,7 +340,27 @@ export function populateUsersPanel(users) {
     const list = document.getElementById('adminUserList');
     list.innerHTML = '';
     if (!users || users.length === 0) { list.innerHTML = '<li>Nenhum usuário encontrado.</li>'; return; }
-    users.forEach(user => { const li = document.createElement('li'); li.innerHTML = `<span><strong>${user.nome || 'Nome não preenchido'}</strong><br><small>${user.email}</small></span><div class="admin-user-actions">${!user.is_approved ? `<button class="approve-user-btn btn-success" data-user-id="${user.id}">Aprovar</button>` : ''}<button class="edit-user-btn btn-secondary" data-user-id="${user.id}">Editar</button><button class="remove-user-btn btn-danger" data-user-id="${user.id}">Remover</button></div>`; list.appendChild(li); });
+    
+    users.forEach(user => {
+        const li = document.createElement('li');
+        let actionsHtml = '<div class="admin-user-actions">';
+        if (!user.is_approved) {
+            actionsHtml += `<button class="approve-user-btn btn-success" data-user-id="${user.id}">Aprovar</button>`;
+        } else {
+            if (user.is_blocked) {
+                actionsHtml += `<button class="block-user-btn btn-success" data-user-id="${user.id}" data-is-blocked="false">Desbloquear</button>`;
+            } else {
+                actionsHtml += `<button class="block-user-btn btn-warning" data-user-id="${user.id}" data-is-blocked="true">Bloquear</button>`;
+            }
+        }
+        actionsHtml += `<button class="edit-user-btn btn-secondary" data-user-id="${user.id}">Editar</button>`;
+        actionsHtml += `<button class="remove-user-btn btn-danger" data-user-id="${user.id}">Excluir</button>`;
+        actionsHtml += '</div>';
+
+        const userStatus = user.is_blocked ? '<small style="color:var(--danger-color);">(Bloqueado)</small>' : '';
+        li.innerHTML = `<span><strong>${user.nome || user.email}</strong> ${userStatus}<br><small>${user.email}</small></span>${actionsHtml}`;
+        list.appendChild(li);
+    });
 }
 export function populateEditUserModal(userData) { document.getElementById('editUserId').value = userData.id; document.getElementById('editNome').value = userData.nome || ''; document.getElementById('editEmail').value = userData.email || ''; document.getElementById('editCpf').value = userData.cpf || ''; document.getElementById('editTelefone').value = userData.telefone || ''; document.getElementById('editCrea').value = userData.crea || ''; openModal('editUserModalOverlay'); }
 export function populateProjectsPanel(projects, clients, users, currentUserProfile) {
@@ -378,7 +398,6 @@ export function populateClientManagementModal(clients) {
 export function resetClientForm() { const form = document.getElementById('clientForm'); form.reset(); document.getElementById('clientId').value = ''; document.getElementById('clientFormTitle').textContent = 'Cadastrar Novo Cliente'; document.getElementById('clientFormSubmitBtn').textContent = 'Salvar Cliente'; document.getElementById('clientFormCancelBtn').style.display = 'none'; }
 export function openEditClientForm(client) { document.getElementById('clientId').value = client.id; document.getElementById('clientNome').value = client.nome; document.getElementById('clientDocumentoTipo').value = client.documento_tipo; document.getElementById('clientDocumentoValor').value = client.documento_valor; document.getElementById('clientEmail').value = client.email; document.getElementById('clientCelular').value = client.celular; document.getElementById('clientTelefone').value = client.telefone; document.getElementById('clientEndereco').value = client.endereco; document.getElementById('clientFormTitle').textContent = 'Editar Cliente'; document.getElementById('clientFormSubmitBtn').textContent = 'Atualizar Cliente'; document.getElementById('clientFormCancelBtn').style.display = 'inline-block'; }
 export function populateSelectClientModal(clients, isChange = false) { const select = document.getElementById('clientSelectForNewProject'); select.innerHTML = '<option value="">-- Selecione um cliente --</option>'; clients.forEach(client => { const option = document.createElement('option'); option.value = client.id; option.textContent = `${client.nome} (${client.client_code})`; option.dataset.client = JSON.stringify(client); select.appendChild(option); }); const title = document.querySelector('#selectClientModalOverlay h3'); const confirmBtn = document.getElementById('confirmClientSelectionBtn'); if (isChange) { title.textContent = 'Vincular / Alterar Cliente da Obra'; confirmBtn.textContent = 'Confirmar Alteração'; } else { title.textContent = 'Vincular Cliente à Nova Obra'; confirmBtn.textContent = 'Vincular e Continuar'; } openModal('selectClientModalOverlay'); }
-
 
 // --- FUNÇÕES DE RENDERIZAÇÃO DE RELATÓRIO E DIAGRAMA ---
 function getDpsText(dpsInfo) { if (!dpsInfo) return 'Não'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
