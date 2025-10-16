@@ -1,4 +1,4 @@
-// Arquivo: ui.js (COM NOVOS BOTÕES NO PAINEL DE ADMIN)
+// Arquivo: ui.js (VERSÃO COM DIAGRAMA PROFISSIONAL HORIZONTAL)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
@@ -157,7 +157,7 @@ function getCircuitHTML(id) {
             <h3 class="circuit-header-left">Circuito <span class="circuit-number"></span></h3>
             <h3 class="circuit-header-center" id="nomeCircuitoLabel-${id}">Circuito ${id}</h3>
             <div class="circuit-header-right">
-                <button type="button" class="remove-btn btn-danger" data-circuit-id="${id}">Remover</button>
+                <button type="button" class="remove-btn" data-circuit-id="${id}">Remover</button>
                 <span class="toggle-arrow">▼</span>
             </div>
         </div>
@@ -345,19 +345,19 @@ export function populateUsersPanel(users) {
         const li = document.createElement('li');
         let actionsHtml = '<div class="admin-user-actions">';
         if (!user.is_approved) {
-            actionsHtml += `<button class="approve-user-btn btn-success" data-user-id="${user.id}">Aprovar</button>`;
+            actionsHtml += `<button class="approve-user-btn btn-green" data-user-id="${user.id}">Aprovar</button>`;
         } else {
             if (user.is_blocked) {
-                actionsHtml += `<button class="block-user-btn btn-success" data-user-id="${user.id}" data-is-blocked="false">Desbloquear</button>`;
+                actionsHtml += `<button class="block-user-btn btn-green" data-user-id="${user.id}" data-is-blocked="false">Desbloquear</button>`;
             } else {
-                actionsHtml += `<button class="block-user-btn btn-warning" data-user-id="${user.id}" data-is-blocked="true">Bloquear</button>`;
+                actionsHtml += `<button class="block-user-btn btn-block" data-user-id="${user.id}" data-is-blocked="true">Bloquear</button>`;
             }
         }
-        actionsHtml += `<button class="edit-user-btn btn-secondary" data-user-id="${user.id}">Editar</button>`;
-        actionsHtml += `<button class="remove-user-btn btn-danger" data-user-id="${user.id}">Excluir</button>`;
+        actionsHtml += `<button class="edit-user-btn btn-edit" data-user-id="${user.id}">Editar</button>`;
+        actionsHtml += `<button class="remove-user-btn btn-red" data-user-id="${user.id}">Excluir</button>`;
         actionsHtml += '</div>';
 
-        const userStatus = user.is_blocked ? '<small style="color:var(--danger-color);">(Bloqueado)</small>' : '';
+        const userStatus = user.is_blocked ? '<small style="color:var(--btn-red);">(Bloqueado)</small>' : '';
         li.innerHTML = `<span><strong>${user.nome || user.email}</strong> ${userStatus}<br><small>${user.email}</small></span>${actionsHtml}`;
         list.appendChild(li);
     });
@@ -374,10 +374,10 @@ export function populateProjectsPanel(projects, clients, users, currentUserProfi
         const ownerName = project.owner?.nome || project.owner?.email || 'Desconhecido';
         let actionsHtml = `<div class="action-cell">`;
         const clientOptions = clients.map(c => `<option value="${c.id}" ${c.id === project.client_id ? 'selected' : ''}>${c.nome}</option>`).join('');
-        actionsHtml += `<div class="action-group"><label>Cliente:</label><select class="transfer-client-select" data-project-id="${project.id}"><option value="">-- Desvincular --</option>${clientOptions}</select><button class="transfer-client-btn btn-success" data-project-id="${project.id}">Salvar</button></div>`;
+        actionsHtml += `<div class="action-group"><label>Cliente:</label><select class="transfer-client-select" data-project-id="${project.id}"><option value="">-- Desvincular --</option>${clientOptions}</select><button class="transfer-client-btn btn-green" data-project-id="${project.id}">Salvar</button></div>`;
         if (isAdmin) {
             const ownerOptions = users.map(u => `<option value="${u.id}" ${u.id === project.owner_id ? 'selected' : ''}>${u.nome || u.email}</option>`).join('');
-            actionsHtml += `<div class="action-group"><label>Dono:</label><select class="transfer-owner-select" data-project-id="${project.id}">${ownerOptions}</select><button class="transfer-owner-btn btn-secondary" data-project-id="${project.id}">Transferir</button></div>`;
+            actionsHtml += `<div class="action-group"><label>Dono:</label><select class="transfer-owner-select" data-project-id="${project.id}">${ownerOptions}</select><button class="transfer-owner-btn btn-grey" data-project-id="${project.id}">Transferir</button></div>`;
         }
         actionsHtml += `</div>`;
         row.innerHTML = `<td>${project.project_code || 'S/C'}</td><td>${project.project_name}</td><td>${ownerName}</td><td>${project.client?.nome || 'Nenhum'}</td><td>${actionsHtml}</td>`;
@@ -391,13 +391,14 @@ export function populateClientManagementModal(clients) {
     clients.forEach(client => {
         const hasProjects = client.projects && client.projects.length > 0;
         const li = document.createElement('li');
-        li.innerHTML = `<span><strong>${client.nome}</strong> (${client.client_code || 'S/C'})<br><small>${client.documento_valor || 'Sem documento'} - ${client.email || 'Sem email'}</small></span><div class="client-actions"><button class="edit-client-btn btn-secondary" data-client-id="${client.id}">Editar</button><button class="delete-client-btn btn-danger" data-client-id="${client.id}" ${hasProjects ? 'disabled title="Cliente possui obras vinculadas"' : ''}>Excluir</button></div>`;
+        li.innerHTML = `<span><strong>${client.nome}</strong> (${client.client_code || 'S/C'})<br><small>${client.documento_valor || 'Sem documento'} - ${client.email || 'Sem email'}</small></span><div class="client-actions"><button class="edit-client-btn btn-edit" data-client-id="${client.id}">Editar</button><button class="delete-client-btn btn-red" data-client-id="${client.id}" ${hasProjects ? 'disabled title="Cliente possui obras vinculadas"' : ''}>Excluir</button></div>`;
         list.appendChild(li);
     });
 }
 export function resetClientForm() { const form = document.getElementById('clientForm'); form.reset(); document.getElementById('clientId').value = ''; document.getElementById('clientFormTitle').textContent = 'Cadastrar Novo Cliente'; document.getElementById('clientFormSubmitBtn').textContent = 'Salvar Cliente'; document.getElementById('clientFormCancelBtn').style.display = 'none'; }
 export function openEditClientForm(client) { document.getElementById('clientId').value = client.id; document.getElementById('clientNome').value = client.nome; document.getElementById('clientDocumentoTipo').value = client.documento_tipo; document.getElementById('clientDocumentoValor').value = client.documento_valor; document.getElementById('clientEmail').value = client.email; document.getElementById('clientCelular').value = client.celular; document.getElementById('clientTelefone').value = client.telefone; document.getElementById('clientEndereco').value = client.endereco; document.getElementById('clientFormTitle').textContent = 'Editar Cliente'; document.getElementById('clientFormSubmitBtn').textContent = 'Atualizar Cliente'; document.getElementById('clientFormCancelBtn').style.display = 'inline-block'; }
 export function populateSelectClientModal(clients, isChange = false) { const select = document.getElementById('clientSelectForNewProject'); select.innerHTML = '<option value="">-- Selecione um cliente --</option>'; clients.forEach(client => { const option = document.createElement('option'); option.value = client.id; option.textContent = `${client.nome} (${client.client_code})`; option.dataset.client = JSON.stringify(client); select.appendChild(option); }); const title = document.querySelector('#selectClientModalOverlay h3'); const confirmBtn = document.getElementById('confirmClientSelectionBtn'); if (isChange) { title.textContent = 'Vincular / Alterar Cliente da Obra'; confirmBtn.textContent = 'Confirmar Alteração'; } else { title.textContent = 'Vincular Cliente à Nova Obra'; confirmBtn.textContent = 'Vincular e Continuar'; } openModal('selectClientModalOverlay'); }
+
 
 // --- FUNÇÕES DE RENDERIZAÇÃO DE RELATÓRIO E DIAGRAMA ---
 function getDpsText(dpsInfo) { if (!dpsInfo) return 'Não'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
