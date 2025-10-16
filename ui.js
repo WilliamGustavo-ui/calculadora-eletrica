@@ -1,4 +1,4 @@
-// Arquivo: ui.js (VERSÃO COM CÁLCULO AUTOMÁTICO DE POTÊNCIA)
+// Arquivo: ui.js (VERSÃO 100% COMPLETA E CORRIGIDA)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
@@ -222,7 +222,6 @@ function initializeFeederListeners() {
     handleFeederInsulationChange();
 }
 
-// >>>>>>>>>>>> FUNÇÃO DE CONVERSÃO (REATIVADA) <<<<<<<<<<<<<<
 function handlePowerUnitChange(id, type) {
     const potenciaWInput = document.getElementById(`potenciaW-${id}`);
     if (type === 'btu') {
@@ -244,7 +243,6 @@ export function handleCircuitContainerInteraction(event) {
     if (header && !target.classList.contains('remove-btn')) { circuitBlock.classList.toggle('collapsed'); return; }
     if (target.id === `nomeCircuito-${id}`) { document.getElementById(`nomeCircuitoLabel-${id}`).textContent = target.value; }
     
-    // >>>>>>>>>>>> LÓGICA DE EVENTOS RESTAURADA <<<<<<<<<<<<<<
     if (target.classList.contains('remove-btn')) { removeCircuit(target.dataset.circuitId); }
     else if (target.id === `tipoCircuito-${id}`) { handleCircuitTypeChange(id); }
     else if (target.id === `fases-${id}`) { atualizarLigacoes(id); }
@@ -286,12 +284,12 @@ function handleCircuitTypeChange(id) {
     if (selectedType === 'ar_condicionado') { 
         potenciaBTUGroup.classList.remove('hidden'); 
         potenciaWInput.readOnly = true; 
-        handlePowerUnitChange(id, 'btu'); // Calcula a potência inicial
+        handlePowerUnitChange(id, 'btu');
     } 
     else if (selectedType === 'motores') { 
         potenciaCVGroup.classList.remove('hidden'); 
         potenciaWInput.readOnly = true; 
-        handlePowerUnitChange(id, 'cv'); // Calcula a potência inicial
+        handlePowerUnitChange(id, 'cv');
     } 
     else if (selectedType === 'aquecimento') { 
         if (fatorDemandaInput.value !== '100') { 
@@ -301,6 +299,43 @@ function handleCircuitTypeChange(id) {
     updateFeederPowerDisplay();
 }
 
+// --- Funções de preenchimento de formulário ---
+export function populateProjectList(projects) {
+    const select = document.getElementById('savedProjectsSelect');
+    select.innerHTML = '<option value="">-- Selecione uma obra --</option>';
+    projects.forEach(project => {
+        const option = document.createElement('option');
+        option.value = project.id;
+        option.textContent = `${project.project_code || 'S/C'} - ${project.project_name}`;
+        select.appendChild(option);
+    });
+}
+export function populateFormWithProjectData(project) {
+    resetForm(false, project.client);
+    document.getElementById('currentProjectId').value = project.id;
+    if (project.main_data) { Object.keys(project.main_data).forEach(id => { const el = document.getElementById(id); if (el) { el.value = project.main_data[id] || ''; } }); }
+    document.getElementById('project_code').value = project.project_code || '';
+    if (project.tech_data) { Object.keys(project.tech_data).forEach(id => { const el = document.getElementById(id); if (el) el.value = project.tech_data[id]; }); }
+    if (project.feeder_data) { Object.keys(project.feeder_data).forEach(id => { const el = document.getElementById(id); if (el) { if (el.type === 'checkbox') el.checked = project.feeder_data[id]; else el.value = project.feeder_data[id]; } }); document.getElementById('feederFases').dispatchEvent(new Event('change')); document.getElementById('feederTipoLigacao').value = project.feeder_data['feederTipoLigacao']; }
+    if (project.circuits_data) {
+        project.circuits_data.forEach((savedCircuitData, index) => {
+            addCircuit();
+            const currentId = circuitCount;
+            if (index > 0) { document.getElementById(`circuit-${currentId}`).classList.add('collapsed'); }
+            Object.keys(savedCircuitData).forEach(savedId => {
+                if (savedId === 'id') return;
+                const newId = savedId.replace(`-${savedCircuitData.id}`, `-${currentId}`);
+                const element = document.getElementById(newId);
+                if (element) { if (element.type === 'checkbox') { element.checked = savedCircuitData[savedId]; } else { element.value = savedCircuitData[savedId]; } }
+            });
+            document.getElementById(`fases-${currentId}`).dispatchEvent(new Event('change'));
+            document.getElementById(`tipoLigacao-${currentId}`).value = savedCircuitData[`tipoLigacao-${savedCircuitData.id}`];
+            document.getElementById(`tipoCircuito-${currentId}`).dispatchEvent(new Event('change'));
+            document.getElementById(`nomeCircuito-${currentId}`).dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    }
+    updateFeederPowerDisplay();
+}
 export function populateUsersPanel(users) {
     const list = document.getElementById('adminUserList');
     list.innerHTML = '';
@@ -343,6 +378,7 @@ export function populateClientManagementModal(clients) {
 export function resetClientForm() { const form = document.getElementById('clientForm'); form.reset(); document.getElementById('clientId').value = ''; document.getElementById('clientFormTitle').textContent = 'Cadastrar Novo Cliente'; document.getElementById('clientFormSubmitBtn').textContent = 'Salvar Cliente'; document.getElementById('clientFormCancelBtn').style.display = 'none'; }
 export function openEditClientForm(client) { document.getElementById('clientId').value = client.id; document.getElementById('clientNome').value = client.nome; document.getElementById('clientDocumentoTipo').value = client.documento_tipo; document.getElementById('clientDocumentoValor').value = client.documento_valor; document.getElementById('clientEmail').value = client.email; document.getElementById('clientCelular').value = client.celular; document.getElementById('clientTelefone').value = client.telefone; document.getElementById('clientEndereco').value = client.endereco; document.getElementById('clientFormTitle').textContent = 'Editar Cliente'; document.getElementById('clientFormSubmitBtn').textContent = 'Atualizar Cliente'; document.getElementById('clientFormCancelBtn').style.display = 'inline-block'; }
 export function populateSelectClientModal(clients, isChange = false) { const select = document.getElementById('clientSelectForNewProject'); select.innerHTML = '<option value="">-- Selecione um cliente --</option>'; clients.forEach(client => { const option = document.createElement('option'); option.value = client.id; option.textContent = `${client.nome} (${client.client_code})`; option.dataset.client = JSON.stringify(client); select.appendChild(option); }); const title = document.querySelector('#selectClientModalOverlay h3'); const confirmBtn = document.getElementById('confirmClientSelectionBtn'); if (isChange) { title.textContent = 'Vincular / Alterar Cliente da Obra'; confirmBtn.textContent = 'Confirmar Alteração'; } else { title.textContent = 'Vincular Cliente à Nova Obra'; confirmBtn.textContent = 'Vincular e Continuar'; } openModal('selectClientModalOverlay'); }
+
 
 // --- FUNÇÕES DE RENDERIZAÇÃO DE RELATÓRIO E DIAGRAMA ---
 function getDpsText(dpsInfo) { if (!dpsInfo) return 'Não'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
