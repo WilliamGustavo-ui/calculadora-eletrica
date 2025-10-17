@@ -7,8 +7,8 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdn.skypack.dev/canvg"></script>
-</head>
+    
+    </head>
 <body>
 
     <div id="registerModalOverlay" class="modal-overlay">
@@ -18,7 +18,7 @@
             <form id="registerForm" autocomplete="off">
                 <div class="form-grid">
                     <div class="form-group"><label for="regNome">Nome Completo</label><input type="text" id="regNome" required></div>
-                    <div class="form-group"><label for="regEmail">E-mail</label><input type="email" id="regEmail" required></div>
+                    <div class="form-group"><label for="regEmail">E-mail</label><input type="email" id="regEmail" required autocomplete="username"></div>
                     <div class="form-group"><label for="regPassword">Senha (mín. 6 caracteres)</label><input type="password" id="regPassword" required autocomplete="new-password"></div>
                     <div class="form-group"><label for="regCpf">CPF</label><input type="text" id="regCpf"></div>
                     <div class="form-group"><label for="regTelefone">Celular</label><input type="text" id="regTelefone"></div>
@@ -26,7 +26,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn-green">Registrar</button>
-                    <button type="button" class="close-modal-btn btn-grey" data-modal-id="registerModalOverlay">Cancelar</button>
+                    <button type="button" class="btn-grey close-modal-btn" data-modal-id="registerModalOverlay">Cancelar</button>
                 </div>
             </form>
         </div>
@@ -42,7 +42,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn-blue-dark">Enviar Link</button>
-                    <button type="button" class="close-modal-btn btn-grey" data-modal-id="forgotPasswordModalOverlay">Cancelar</button>
+                    <button type="button" class="btn-grey close-modal-btn" data-modal-id="forgotPasswordModalOverlay">Cancelar</button>
                 </div>
             </form>
         </div>
@@ -53,7 +53,7 @@
             <h3>Painel de Administrador - Gerenciar Usuários</h3>
             <ul id="adminUserList"></ul>
             <div class="modal-footer">
-                <button type="button" class="close-modal-btn btn-grey" data-modal-id="adminPanelModalOverlay">Fechar</button>
+                <button type="button" class="btn-grey close-modal-btn" data-modal-id="adminPanelModalOverlay">Fechar</button>
             </div>
         </div>
     </div>
@@ -72,7 +72,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn-green">Salvar Alterações</button>
-                    <button type="button" class="close-modal-btn btn-grey" data-modal-id="editUserModalOverlay">Cancelar</button>
+                    <button type="button" class="btn-grey close-modal-btn" data-modal-id="editUserModalOverlay">Cancelar</button>
                 </div>
             </form>
         </div>
@@ -86,7 +86,7 @@
                 <tbody id="adminProjectsTableBody"></tbody>
             </table>
             <div class="modal-footer">
-                <button type="button" class="close-modal-btn btn-grey" data-modal-id="manageProjectsModalOverlay">Fechar</button>
+                <button type="button" class="btn-grey close-modal-btn" data-modal-id="manageProjectsModalOverlay">Fechar</button>
             </div>
         </div>
     </div>
@@ -137,20 +137,6 @@
         </div>
     </div>
 
-    <div id="qdcManagerModalOverlay" class="modal-overlay">
-        <div class="modal-content large">
-            <button type="button" class="close-modal-btn" data-modal-id="qdcManagerModalOverlay">&times;</button>
-            <h3>Gerenciador de Quadros de Distribuição (QDCs)</h3>
-            <p>Arraste e solte os quadros para reorganizar a hierarquia. O quadro no nível mais alto será o QDC Principal.</p>
-            <div id="qdcTreeContainer" class="qdc-tree">
-                </div>
-            <div class="modal-footer">
-                <button type="button" id="saveQdcHierarchyBtn" class="btn-green">Salvar Alterações</button>
-                <button type="button" class="close-modal-btn btn-grey" data-modal-id="qdcManagerModalOverlay">Fechar</button>
-            </div>
-        </div>
-    </div>
-    
     <div id="loginContainer" class="container">
         <form id="loginForm" autocomplete="on"> <h2>Login</h2>
             <div class="form-group">
@@ -172,6 +158,7 @@
     <div id="resetPasswordContainer" class="container" style="display: none; max-width: 450px;">
         <h2>Crie sua Nova Senha</h2>
         <form id="resetPasswordForm" autocomplete="off">
+            <input type="text" name="username" autocomplete="username" style="display:none;">
             <div class="form-group">
                 <label for="newPassword">Nova Senha (mínimo 6 caracteres)</label>
                 <input type="password" id="newPassword" required autocomplete="new-password">
@@ -181,106 +168,7 @@
     </div>
 
     <div id="appContainer" class="container" style="display: none;">
-        <div id="loadingOverlay" class="loading-overlay">
-            <div class="spinner"></div>
-            <p>Calculando, por favor aguarde...</p>
         </div>
-
-        <div class="top-right-buttons">
-            <button id="manageClientsBtn" class="btn-blue-dark">Gerenciar Clientes</button>
-            <button id="manageProjectsBtn" class="btn-blue-dark">Gerenciar Obras</button>
-            <button id="adminPanelBtn" class="btn-orange">Gerenciar Usuários</button>
-            <button id="logoutBtn" class="btn-red">Sair</button>
-        </div>
-        <h1>Calculadora de Projetos Elétricos</h1>
-        
-        <div id="project-controls">
-            <h2>Gerenciamento de Obras</h2>
-            <div class="controls-grid">
-                <div class="form-group">
-                    <label for="searchInput">Buscar por Nome da Obra, Código ou Cliente</label>
-                    <input type="text" id="searchInput" placeholder="Digite para buscar...">
-                </div>
-                <div class="form-group" style="grid-column: 1 / -1;">
-                    <label for="savedProjectsSelect">Selecionar Obra Salva</label>
-                    <select id="savedProjectsSelect"></select>
-                </div>
-                <div class="button-wrapper full-width">
-                    <button id="newBtn" class="btn-grey">Nova Obra</button>
-                    <button id="loadBtn" class="btn-load">Carregar Obra</button>
-                    <button id="saveBtn" class="btn-green">Salvar / Atualizar</button>
-                    <button id="deleteBtn" class="btn-red">Excluir Obra</button>
-                </div>
-            </div>
-        </div>
-
-        <form id="main-form" autocomplete="off">
-            <input type="hidden" id="currentProjectId">
-            <input type="hidden" id="currentClientId">
-            <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <h2>Informações da Obra</h2>
-                <button type="button" id="changeClientBtn" class="btn-grey" style="padding: 5px 10px; font-size: 0.8rem;">Vincular / Alterar Cliente</button>
-            </div>
-            <div id="clientLinkDisplay">Cliente: Nenhum</div>
-            <div class="form-grid-3-col">
-                <div class="form-group"><label for="project_code">Código da Obra</label><input type="text" id="project_code" readonly placeholder="Gerado ao salvar"></div>
-                <div class="form-group"><label for="obra">Nome da Obra</label><input type="text" id="obra"></div>
-                <div class="form-group"><label for="cidadeObra">Cidade da Obra</label><input type="text" id="cidadeObra"></div>
-                <div class="form-group full-width"><label for="enderecoObra">Endereço da Obra</label><input type="text" id="enderecoObra"></div>
-                <div class="form-group"><label for="areaObra">Área da Obra (m²)</label><input type="number" id="areaObra"></div>
-                <div class="form-group"><label for="unidadesResidenciais">Qnt. Unid. Residenciais</label><input type="number" id="unidadesResidenciais" value="1"></div>
-                <div class="form-group"><label for="unidadesComerciais">Qnt. Unid. Comerciais</label><input type="number" id="unidadesComerciais" value="0"></div>
-                <div class="form-group full-width"> <label for="observacoes">Observações</label> <textarea id="observacoes" rows="4"></textarea> </div>
-            </div>
-        </form>
-
-        <div id="feeder-container">
-            <h2>Alimentação Geral</h2>
-            <form id="feeder-form" class="circuit-block" autocomplete="off">
-                <div class="form-grid">
-                    <div class="form-group"> <label for="feederPotenciaInstalada">Potência Total Instalada (W)</label> <input type="text" id="feederPotenciaInstalada" value="0.00" readonly> </div>
-                    <div class="form-group"> <label for="feederPotenciaDemandada">Potência Total Demandada (W)</label> <input type="text" id="feederPotenciaDemandada" value="0.00" readonly> </div>
-                    <div class="form-group"><label for="feederFatorDemanda">Fator de Demanda Geral (%)</label><input type="number" id="feederFatorDemanda" value="100" step="1"></div>
-                    <div class="form-group"><label for="feederFases">Sistema de Fases</label><select id="feederFases"><option value="Monofasico">Monofasico</option><option value="Bifasico">Bifasico</option><option value="Trifasico" selected>Trifasico</option></select></div>
-                    <div class="form-group"><label for="feederTipoLigacao">Tipo de Ligacao</label><select id="feederTipoLigacao"></select></div>
-                    <div class="form-group"><label for="feederTensaoV">Tensao (V)</label><select id="feederTensaoV"><option value="12">12 V</option><option value="24">24 V</option><option value="36">36 V</option><option value="127">127 V</option><option value="220" selected>220 V</option><option value="380">380 V</option><option value="440">440 V</option><option value="760">760 V</option></select></div>
-                    <div class="form-group"><label for="feederFatorPotencia">Fator de Potencia (eficiencia)</label><input type="number" id="feederFatorPotencia" step="0.01" value="0.92"></div>
-                    <div class="form-group"><label for="feederComprimentoM">Comprimento (m)</label><input type="number" id="feederComprimentoM" value="15"></div>
-                    <div class="form-group"> <label for="feederTipoIsolacao">Tipo de Isolacao</label> <select id="feederTipoIsolacao"> <option value="PVC">PVC 70 C</option> <option value="EPR">EPR 90 C</option> <option value="XLPE">XLPE 90 C</option> </select> </div>
-                    <div class="form-group"><label for="feederMaterialCabo">Material do Condutor</label><select id="feederMaterialCabo"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Aluminio</option></select></div>
-                    <div class="form-group"><label for="feederMetodoInstalacao">Metodo de Instalacao</label><select id="feederMetodoInstalacao"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select></div>
-                    <div class="form-group"><label for="feederTemperaturaAmbienteC">Temperatura Ambiente (C)</label><select id="feederTemperaturaAmbienteC"></select></div>
-                    <div class="form-group"><label for="feederResistividadeSolo">Resistividade T. do Solo (C.m/W)</label><select id="feederResistividadeSolo"></select></div>
-                    <div class="form-group"><label for="feederLimiteQuedaTensao">Limite Queda de Tensao (%)</label><input type="number" id="feederLimiteQuedaTensao" step="0.1" value="5.0"></div>
-                    <div class="form-group"><label for="feederTipoDisjuntor">Tipo de Disjuntor</label><select id="feederTipoDisjuntor"><option value="Minidisjuntor (DIN)">Minidisjuntor (DIN)</option><option value="Caixa Moldada (MCCB)" selected>Caixa Moldada (MCCB)</option></select></div>
-                    <div class="form-group"><label for="feederDpsClasse">Classe DPS</label><select id="feederDpsClasse"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select></div>
-                    <div class="checkbox-group"><input type="checkbox" id="feederRequerDR" checked><label for="feederRequerDR">Requer Protecao DR Geral</label></div>
-                </div>
-            </form>
-        </div>
-
-        <div id="qdc-container">
-            </div>
-
-        <div class="add-buttons-container" style="margin-top: 20px; display: flex; gap: 10px;">
-            <button id="addQdcBtn" class="btn-primary">Adicionar QDC</button>
-            <button id="manageQdcsBtn" class="btn-secondary">Gerenciar Hierarquia de QDCs</button>
-        </div>
-        
-        <form id="tech-form" autocomplete="off">
-            <h2>Responsável Técnico</h2>
-            <div class="form-grid">
-                <div class="form-group"><label for="respTecnico">Nome</label><input type="text" id="respTecnico"></div>
-                <div class="form-group"><label for="titulo">Título</label><input type="text" id="titulo"></div>
-                <div class="form-group"><label for="crea">CREA</label><input type="text" id="crea"></div>
-            </div>
-        </form>
-
-        <div class="button-container">
-             <button id="calculateAndPdfBtn" class="btn-green">Gerar e Baixar PDFs</button>
-        </div>
-        
-    </div>
 
     <script type="module" src="main.js"></script>
 </body>
