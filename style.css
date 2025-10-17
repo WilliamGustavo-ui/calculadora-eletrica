@@ -1,223 +1,675 @@
-/* Arquivo: style.css (REFORMULADO COM NOVA PALETA DE CORES) */
+/* style.css */
+
 :root {
-    --primary-color: #2c3e50;
-    --secondary-color: #3498db;
-    --background-color: #f4f7f9;
-    --white: #fff;
-    --text-color: #34495e;
-    --border-color: #dee2e6;
-    
-    /* Nova Paleta de Cores para Botões */
-    --btn-green: #27ae60;      /* Salvar, Desbloquear, Aprovar */
-    --btn-red: #e74c3c;        /* Excluir, Remover, Fechar, Sair */
-    --btn-orange: #f39c12;     /* Bloquear */
-    --btn-blue-dark: #2c3e50;  /* Editar */
-    --btn-blue-light: #3498db; /* Carregar */
-    --btn-grey: #6c757d;       /* Nova Obra, Cancelar */
-    
-    --light-gray: #ecf0f1;
+    --primary-color: #4CAF50; /* Verde principal */
+    --primary-hover-color: #45a049;
+    --secondary-color: #2196F3; /* Azul secundário */
+    --secondary-hover-color: #1976D2;
+    --background-color: #f0f2f5; /* Fundo mais claro */
+    --container-bg-color: #ffffff; /* Fundo dos cards/containers */
+    --border-color: #e0e0e0; /* Cor da borda mais suave */
+    --text-color: #333333; /* Texto escuro */
+    --label-color: #555555; /* Cor para labels */
+    --input-bg-color: #fcfcfc;
+    --input-border-color: #cccccc;
+    --header-bg-color: #3f51b5; /* Azul índigo para headers principais */
+    --header-text-color: #ffffff;
+    --danger-color: #f44336; /* Vermelho */
+    --danger-hover-color: #d32f2f;
+    --warning-color: #ff9800; /* Laranja */
+    --warning-hover-color: #fb8c00;
+    --info-color: #00bcd4; /* Ciano */
+    --info-hover-color: #00acc1;
+    --grey-btn-color: #9e9e9e; /* Cinza para botões neutros */
+    --grey-btn-hover-color: #757575;
+
+    /* Cores para os botões específicos */
+    --btn-green: #28a745;
+    --btn-green-hover: #218838;
+    --btn-red: #dc3545;
+    --btn-red-hover: #c82333;
+    --btn-blue-dark: #007bff;
+    --btn-blue-dark-hover: #0056b3;
+    --btn-load: #17a2b8; /* Cor para carregar (info) */
+    --btn-load-hover: #138496;
+    --btn-grey: #6c757d;
+    --btn-grey-hover: #5a6268;
+    --btn-orange: #fd7e14; /* Nova cor para Gerenciar Usuários */
+    --btn-orange-hover: #e66a0d;
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
     padding: 20px;
     background-color: var(--background-color);
     color: var(--text-color);
-    font-size: 15px;
+    line-height: 1.6;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* Alinha no topo, para não centralizar verticalmente em conteúdos longos */
+    min-height: 100vh;
+}
+
+h1, h2, h3 {
+    color: var(--header-bg-color); /* Usar azul índigo para títulos */
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+h1 {
+    font-size: 2.2em;
+    text-align: center;
+    color: var(--primary-color);
+    margin-bottom: 30px;
+}
+
+h2 {
+    font-size: 1.6em;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 8px;
+    margin-top: 25px;
+    color: var(--secondary-color);
+}
+
+h3 {
+    font-size: 1.2em;
+    color: var(--label-color);
 }
 
 .container {
-    max-width: 1200px;
-    margin: 20px auto;
-    background-color: var(--white);
+    background-color: var(--container-bg-color);
     padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.07);
-    position: relative;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    width: 100%;
+    max-width: 900px;
+    margin: 20px auto;
+    box-sizing: border-box;
 }
 
-h1, h2, h3, h4 {
-    color: var(--primary-color);
-    margin-bottom: 25px;
+#loginContainer {
+    max-width: 400px;
+    text-align: center;
 }
-h1 { text-align: center; }
-h2 {
-    border-top: 1px solid var(--border-color);
-    padding-top: 25px;
+
+.top-right-buttons {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+/* Formulários e Inputs */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.form-grid-3-col {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: var(--label-color);
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group select,
+.form-group textarea {
+    padding: 10px 12px;
+    border: 1px solid var(--input-border-color);
+    border-radius: 5px;
+    font-size: 1em;
+    background-color: var(--input-bg-color);
+    color: var(--text-color);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+    outline: none;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.full-width {
+    grid-column: 1 / -1;
+}
+
+/* Botões */
+.btn-primary,
+.btn-green,
+.btn-red,
+.btn-blue-dark,
+.btn-load,
+.btn-grey,
+.btn-orange,
+.btn-warning,
+.btn-danger,
+.btn-edit,
+.btn-block {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 600;
+    color: #ffffff;
+    transition: background-color 0.2s, transform 0.1s;
+    flex-shrink: 0; /* Evita que os botões encolham em flex containers */
+}
+
+.btn-primary { background-color: var(--primary-color); }
+.btn-primary:hover { background-color: var(--primary-hover-color); transform: translateY(-1px); }
+
+.btn-green { background-color: var(--btn-green); }
+.btn-green:hover { background-color: var(--btn-green-hover); transform: translateY(-1px); }
+
+.btn-red { background-color: var(--btn-red); }
+.btn-red:hover { background-color: var(--btn-red-hover); transform: translateY(-1px); }
+
+.btn-blue-dark { background-color: var(--btn-blue-dark); }
+.btn-blue-dark:hover { background-color: var(--btn-blue-dark-hover); transform: translateY(-1px); }
+
+.btn-load { background-color: var(--btn-load); }
+.btn-load:hover { background-color: var(--btn-load-hover); transform: translateY(-1px); }
+
+.btn-grey { background-color: var(--btn-grey); color: #fff; }
+.btn-grey:hover { background-color: var(--btn-grey-hover); transform: translateY(-1px); }
+
+.btn-orange { background-color: var(--btn-orange); }
+.btn-orange:hover { background-color: var(--btn-orange-hover); transform: translateY(-1px); }
+
+.btn-edit { background-color: #6c757d; } /* Cinza para editar */
+.btn-edit:hover { background-color: #5a6268; }
+
+.btn-block { background-color: #ffc107; color: #333; } /* Amarelo para bloquear */
+.btn-block:hover { background-color: #e0a800; }
+
+.btn-danger { background-color: var(--danger-color); }
+.btn-danger:hover { background-color: var(--danger-hover-color); transform: translateY(-1px); }
+
+.btn-warning { background-color: var(--warning-color); color: #333; }
+.btn-warning:hover { background-color: var(--warning-hover-color); transform: translateY(-1px); }
+
+
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.button-container {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
     margin-top: 30px;
-    font-size: 1.5rem;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
 }
 
-/* --- Circuitos --- */
+.button-wrapper {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-start;
+    flex-wrap: wrap; /* Permite que os botões quebrem a linha em telas menores */
+}
+
+.button-wrapper button {
+    flex-grow: 1; /* Faz com que os botões ocupem o espaço disponível */
+    min-width: 120px; /* Garante um tamanho mínimo para cada botão */
+}
+
+/* Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    display: none; /* Escondido por padrão */
+}
+
+.modal-content {
+    background-color: var(--container-bg-color);
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 600px;
+    position: relative;
+    max-height: 90vh; /* Limita a altura do modal */
+    overflow-y: auto; /* Adiciona scroll se o conteúdo for muito grande */
+}
+
+.modal-content.large {
+    max-width: 900px;
+}
+
+.close-modal-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 1.8em;
+    color: var(--grey-btn-color);
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    transition: color 0.2s;
+}
+
+.close-modal-btn:hover {
+    color: var(--text-color);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-color);
+    padding-top: 15px;
+    margin-top: 25px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Circuitos */
 .circuit-block {
+    background-color: var(--input-bg-color);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    margin-top: 15px;
-    background-color: var(--white);
-    overflow: hidden;
-    transition: box-shadow 0.2s ease;
-}
-.circuit-block:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    margin-bottom: 15px;
+    overflow: hidden; /* Para esconder o conteúdo quando colapsado */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
 .circuit-header {
+    background-color: #f7f7f7;
+    padding: 12px 20px;
+    cursor: pointer;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 20px;
-    background-color: #f8f9fa;
-    cursor: pointer;
-    user-select: none;
-}
-.circuit-header:hover {
-    background-color: #f1f3f5;
-}
-.circuit-header-left {
     font-weight: 600;
-    color: var(--primary-color);
-}
-.circuit-header-center {
-    font-weight: 500;
-    color: var(--text-color);
-    text-align: center;
-    flex-grow: 1;
-}
-.circuit-header-right {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-.circuit-header h2, .circuit-header h3 {
-    margin: 0;
-    padding: 0;
-    border: none;
-    font-size: 1.1rem;
-}
-.toggle-arrow {
-    font-size: 1.2rem;
-    font-weight: bold;
-    transition: transform 0.3s ease;
-    transform-origin: center;
-}
-.circuit-block.collapsed .toggle-arrow {
-    transform: rotate(-90deg);
+    border-bottom: 1px solid var(--border-color);
 }
 
-.circuit-content {
-    padding: 25px;
-    border-top: 1px solid var(--border-color);
-    transition: max-height 0.3s ease-out, opacity 0.2s ease-in-out, padding 0.3s ease;
-    max-height: 2000px;
-    overflow: hidden;
-    opacity: 1;
+.circuit-header h3 {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 1.1em;
 }
+
+.circuit-header-left { flex-basis: 20%; text-align: left; }
+.circuit-header-center { flex-basis: 60%; text-align: center; }
+.circuit-header-right { flex-basis: 20%; text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
+
+.circuit-content {
+    padding: 20px;
+    max-height: 1000px; /* Grande o suficiente para a transição */
+    transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+}
+
 .circuit-block.collapsed .circuit-content {
     max-height: 0;
     padding-top: 0;
     padding-bottom: 0;
-    opacity: 0;
 }
 
-/* --- Estilos Gerais de Formulário --- */
-.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-.full-width { grid-column: 1 / -1; }
-.form-group { display: flex; flex-direction: column; }
-label { margin-bottom: 8px; font-weight: 500; font-size: 0.9rem; }
-input, select, textarea {
-    padding: 10px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    font-size: 1rem;
-    font-family: inherit;
-    transition: border-color 0.2s, box-shadow 0.2s;
+.circuit-block .toggle-arrow {
+    transition: transform 0.3s ease;
+    display: inline-block;
 }
-input:focus, select:focus, textarea:focus {
-    outline: none;
-    border-color: var(--secondary-color);
-    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+
+.circuit-block.collapsed .toggle-arrow {
+    transform: rotate(-90deg);
 }
-input:read-only { background-color: var(--light-gray); cursor: not-allowed; }
-
-/* --- BOTÕES --- */
-button {
-    padding: 12px 18px;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background-color 0.3s, transform 0.1s;
-    font-size: 1rem;
-    font-weight: 500;
-}
-button:hover { opacity: 0.9; }
-button:active { transform: scale(0.98); }
-
-/* Cores Padrão Antigas (agora usam as novas variáveis) */
-.btn-danger { background-color: var(--btn-red); }
-.btn-primary { background-color: var(--btn-blue-dark); }
-.btn-secondary { background-color: var(--btn-grey); }
-.btn-success { background-color: var(--btn-green); }
-.btn-warning { background-color: var(--btn-orange); }
-
-/* Novas Classes de Botão Específicas */
-.btn-load { background-color: var(--btn-blue-light); }
-.btn-edit { background-color: var(--btn-blue-dark); }
-.btn-block { background-color: var(--btn-orange); }
-.btn-red { background-color: var(--btn-red); }
-.btn-green { background-color: var(--btn-green); }
 
 .remove-btn {
-    background-color: var(--btn-red);
-    padding: 6px 12px;
-    font-size: 0.85rem;
+    background-color: var(--danger-color);
+    padding: 5px 10px;
+    font-size: 0.8em;
+}
+.remove-btn:hover {
+    background-color: var(--danger-hover-color);
 }
 
-/* Layout dos botões de gerenciamento de obra */
-.button-wrapper.full-width {
+.potencia-group {
     display: flex;
-    justify-content: space-between;
-    gap: 10px;
-}
-.button-wrapper.full-width button {
-    flex-grow: 1; /* Faz os botões ocuparem o espaço disponível */
+    gap: 15px;
 }
 
-/* --- Outros estilos --- */
-.hidden { display: none; }
-#loginContainer { max-width: 400px; margin: auto; }
-#project-controls { background-color: var(--light-gray); padding: 20px; border-radius: 8px; margin-bottom: 30px; }
-.top-right-buttons { position: absolute; top: 15px; right: 15px; display: flex; gap: 10px; z-index: 2; }
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; }
-.modal-content { background: var(--white); padding: 30px; border-radius: 8px; max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; }
-.close-modal-btn {
-    background: var(--btn-red);
-    color: white;
-    border: none;
-    font-size: 1.2rem;
-    font-weight: bold;
-    line-height: 1;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    cursor: pointer;
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    padding: 0;
+.potencia-group .form-group {
+    flex: 1;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Checkbox */
+.checkbox-group {
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
 }
-.loading-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.8); display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 2000; border-radius: 8px; }
-.loading-overlay.visible { display: flex; }
-.spinner { border: 5px solid #f3f3f3; border-top: 5px solid var(--secondary-color); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-.diagram-container { margin-top: 30px; background-color: #fdfdfd; padding: 20px; border-radius: 5px; border: 1px solid var(--border-color); overflow-x: auto; }
-#unifilar-drawing svg { min-width: 800px; }
-#report { margin-top: 30px; background-color: #2c3e50; color: #ecf0f1; padding: 20px; border-radius: 5px; white-space: pre-wrap; font-family: "Courier New", Courier, monospace; font-size: 0.9rem; border: 1px solid var(--primary-color); }
 
-.admin-user-actions { display: flex; gap: 8px; }
-.admin-user-actions button { padding: 5px 10px; font-size: 0.8rem; }
-#adminUserList li { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
+.checkbox-group input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+/* Project Controls (Nova Seção) */
+#project-controls {
+    background-color: var(--input-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+#project-controls h2 {
+    color: var(--secondary-color);
+    margin-top: 0;
+    margin-bottom: 15px;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.controls-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 15px;
+    align-items: end; /* Alinha os itens na parte inferior */
+}
+
+.controls-grid .form-group {
+    margin-bottom: 0; /* Remove margem inferior padrão */
+}
+
+.controls-grid .button-wrapper {
+    grid-column: 1 / -1; /* Ocupa todas as colunas */
+    margin-top: 10px;
+}
+
+#clientLinkDisplay {
+    font-size: 0.95em;
+    color: var(--label-color);
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1001;
+    color: white;
+    font-size: 1.5em;
+    font-weight: bold;
+    visibility: hidden; /* Inicia oculto */
+    opacity: 0;
+    transition: visibility 0s, opacity 0.3s linear;
+}
+
+.loading-overlay.visible {
+    visibility: visible;
+    opacity: 1;
+}
+
+.spinner {
+    border: 8px solid rgba(255, 255, 255, 0.3);
+    border-top: 8px solid #ffffff;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Estilos para tabelas de gerenciamento */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 0.9em;
+}
+
+table th, table td {
+    padding: 10px 15px;
+    border: 1px solid var(--border-color);
+    text-align: left;
+}
+
+table th {
+    background-color: var(--header-bg-color);
+    color: var(--header-text-color);
+    font-weight: 600;
+}
+
+table tr:nth-child(even) {
+    background-color: #f8f8f8;
+}
+
+table tr:hover {
+    background-color: #f1f1f1;
+}
+
+.action-cell {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.action-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.action-group label {
+    font-size: 0.9em;
+    font-weight: 500;
+    color: var(--label-color);
+    margin-right: 5px;
+}
+
+.action-group select {
+    padding: 6px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--input-border-color);
+    background-color: var(--input-bg-color);
+    font-size: 0.9em;
+    min-width: 120px;
+}
+
+.action-group button {
+    padding: 6px 12px;
+    font-size: 0.85em;
+}
+
+#adminUserList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#adminUserList li {
+    background-color: var(--input-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 10px 15px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+#adminUserList li span {
+    flex-grow: 1;
+    min-width: 150px;
+}
+
+.admin-user-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.admin-user-actions button {
+    padding: 6px 12px;
+    font-size: 0.85em;
+}
+
+#clientList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#clientList li {
+    background-color: var(--input-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 10px 15px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.client-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.client-actions button {
+    padding: 6px 12px;
+    font-size: 0.85em;
+}
+
+.document-group {
+    display: flex;
+    gap: 5px;
+}
+
+.document-group select {
+    flex-basis: 35%; /* Ajusta a largura do select */
+    min-width: 80px;
+}
+
+.document-group input {
+    flex-grow: 1;
+}
+
+/* Ajustes responsivos */
+@media (max-width: 768px) {
+    .form-grid, .form-grid-3-col {
+        grid-template-columns: 1fr;
+    }
+
+    .top-right-buttons {
+        position: static;
+        margin-bottom: 20px;
+        justify-content: center;
+    }
+    
+    .container {
+        padding: 20px;
+        margin: 10px auto;
+    }
+
+    .circuit-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+
+    .circuit-header-left,
+    .circuit-header-center,
+    .circuit-header-right {
+        flex-basis: auto;
+        width: 100%;
+        text-align: left;
+        justify-content: flex-start;
+    }
+
+    .circuit-header-right {
+        margin-top: 5px;
+        justify-content: space-between;
+    }
+
+    .potencia-group {
+        flex-direction: column;
+        gap: 0; /* Remove gap para flex vertical */
+    }
+
+    .controls-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    h1 { font-size: 1.8em; }
+    h2 { font-size: 1.4em; }
+
+    .btn-primary, .btn-green, .btn-red, .btn-blue-dark, .btn-load, .btn-grey, .btn-orange, .btn-edit, .btn-block {
+        padding: 8px 15px;
+        font-size: 0.9em;
+    }
+
+    .button-wrapper button {
+        min-width: 100px;
+    }
+}
