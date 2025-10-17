@@ -136,6 +136,20 @@
             <button type="button" id="addNewClientFromSelectModalBtn" style="width:100%;" class="btn-green">Cadastrar Novo Cliente</button>
         </div>
     </div>
+
+    <div id="qdcManagerModalOverlay" class="modal-overlay">
+        <div class="modal-content large">
+            <button type="button" class="close-modal-btn" data-modal-id="qdcManagerModalOverlay">&times;</button>
+            <h3>Gerenciador de Quadros de Distribuição (QDCs)</h3>
+            <p>Arraste e solte os quadros para reorganizar a hierarquia. O quadro no nível mais alto será o QDC Principal.</p>
+            <div id="qdcTreeContainer" class="qdc-tree">
+                </div>
+            <div class="modal-footer">
+                <button type="button" id="saveQdcHierarchyBtn" class="btn-green">Salvar Alterações</button>
+                <button type="button" class="close-modal-btn btn-grey" data-modal-id="qdcManagerModalOverlay">Fechar</button>
+            </div>
+        </div>
+    </div>
     
     <div id="loginContainer" class="container">
         <form id="loginForm" autocomplete="on"> <h2>Login</h2>
@@ -245,8 +259,13 @@
             </form>
         </div>
 
-        <div id="circuits-container"></div>
-        <button id="addCircuitBtn" class="btn-primary">Adicionar Circuito</button>
+        <div id="qdc-container">
+            </div>
+
+        <div class="add-buttons-container" style="margin-top: 20px; display: flex; gap: 10px;">
+            <button id="addQdcBtn" class="btn-primary">Adicionar QDC</button>
+            <button id="manageQdcsBtn" class="btn-secondary">Gerenciar Hierarquia de QDCs</button>
+        </div>
         
         <form id="tech-form" autocomplete="off">
             <h2>Responsável Técnico</h2>

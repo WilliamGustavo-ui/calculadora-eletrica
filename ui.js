@@ -1,16 +1,17 @@
-// Arquivo: ui.js (VERSÃO FINAL OTIMIZADA - SEM RENDERIZAÇÃO EM TELA)
+// Arquivo: ui.js (VERSÃO COM LÓGICA DE QDCs)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
 
 let circuitCount = 0;
+let qdcCount = 0; // Novo contador para QDCs
 let uiData = null;
 let tempOptions = { pvc: [], epr: [] };
 
 export function setupDynamicData(data) {
     uiData = data;
     if (uiData?.fatores_k1_temperatura) {
-        tempOptions.pvc = uiData.fatores_k1_temperatura.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
+        tempOptions.pvc = uiData.fatoros_k1_temperatura.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
     }
     if (uiData?.fatores_k1_temperatura_epr) {
         tempOptions.epr = uiData.fatores_k1_temperatura_epr.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
@@ -28,104 +29,113 @@ function populateTemperatureDropdown(selectElement, temperatures) {
         option.textContent = `${temp}°C`;
         selectElement.appendChild(option);
     });
-    if (temperatures.includes(parseInt(currentValue))) {
-        selectElement.value = currentValue;
-    } else if (temperatures.includes(30)) {
-        selectElement.value = '30';
-    } else if (temperatures.length > 0) {
-        selectElement.value = temperatures[0];
-    }
+    if (temperatures.includes(parseInt(currentValue))) { selectElement.value = currentValue; }
+    else if (temperatures.includes(30)) { selectElement.value = '30'; }
+    else if (temperatures.length > 0) { selectElement.value = temperatures[0]; }
 }
 
 function populateBtuDropdown(selectElement, btuData) {
     selectElement.innerHTML = '';
     if (!btuData) return;
-    btuData.sort((a, b) => a.valor_btu - b.valor_btu).forEach(item => {
-        const option = document.createElement('option');
-        option.value = item.valor_btu;
-        option.textContent = item.descricao;
-        selectElement.appendChild(option);
-    });
+    btuData.sort((a, b) => a.valor_btu - b.valor_btu).forEach(item => { const option = document.createElement('option'); option.value = item.valor_btu; option.textContent = item.descricao; selectElement.appendChild(option); });
 }
 
 function populateCvDropdown(selectElement, cvData) {
     selectElement.innerHTML = '';
     if (!cvData) return;
-    cvData.sort((a, b) => a.valor_cv - b.valor_cv).forEach(item => {
-        const option = document.createElement('option');
-        option.value = item.valor_cv;
-        option.textContent = item.descricao;
-        selectElement.appendChild(option);
-    });
+    cvData.sort((a, b) => a.valor_cv - b.valor_cv).forEach(item => { const option = document.createElement('option'); option.value = item.valor_cv; option.textContent = item.descricao; selectElement.appendChild(option); });
 }
 
 function populateSoilResistivityDropdown(selectElement, soilData) {
     selectElement.innerHTML = '<option value="0">Não Aplicável</option>';
     if (!soilData) return;
-    soilData.sort((a, b) => a.resistividade - b.resistividade).forEach(item => {
-        const option = document.createElement('option');
-        option.value = item.resistividade;
-        option.textContent = `${item.resistividade}`;
-        selectElement.appendChild(option);
-    });
+    soilData.sort((a, b) => a.resistividade - b.resistividade).forEach(item => { const option = document.createElement('option'); option.value = item.resistividade; option.textContent = `${item.resistividade}`; selectElement.appendChild(option); });
 }
 
 function updateFeederPowerDisplay() {
+    // Esta função precisará de uma lógica mais complexa no futuro para somar as demandas dos QDCs principais.
+    // Por enquanto, vamos manter a soma simples.
     let totalInstalada = 0;
-    let totalDemandada = 0;
-    const circuitBlocks = document.querySelectorAll('#circuits-container .circuit-block');
-    circuitBlocks.forEach(block => {
+    document.querySelectorAll('.circuit-block').forEach(block => {
         const id = block.dataset.id;
         const potenciaW = parseFloat(document.getElementById(`potenciaW-${id}`).value) || 0;
-        const fatorDemanda = parseFloat(document.getElementById(`fatorDemanda-${id}`).value) || 100;
         totalInstalada += potenciaW;
-        totalDemandada += potenciaW * (fatorDemanda / 100);
     });
     document.getElementById('feederPotenciaInstalada').value = totalInstalada.toFixed(2);
-    document.getElementById('feederPotenciaDemandada').value = totalDemandada.toFixed(2);
+    // A potência demandada será calculada pelo back-end.
+    document.getElementById('feederPotenciaDemandada').value = 'Calculado no back-end';
 }
 
-// --- FUNÇÕES DE VISIBILIDADE E MODAIS ---
-export function showLoginView() { document.getElementById('loginContainer').style.display = 'block'; document.getElementById('appContainer').style.display = 'none'; document.getElementById('resetPasswordContainer').style.display = 'none'; }
-export function showAppView(userProfile) { document.getElementById('loginContainer').style.display = 'none'; document.getElementById('appContainer').style.display = 'block'; document.getElementById('resetPasswordContainer').style.display = 'none'; const isAdmin = userProfile?.is_admin || false; document.getElementById('adminPanelBtn').style.display = isAdmin ? 'block' : 'none'; document.getElementById('manageClientsBtn').style.display = 'block'; document.getElementById('manageProjectsBtn').style.display = 'block'; }
-export function showResetPasswordView() { document.getElementById('loginContainer').style.display = 'none'; document.getElementById('appContainer').style.display = 'none'; document.getElementById('resetPasswordContainer').style.display = 'block'; }
-export function openModal(modalId) { document.getElementById(modalId).style.display = 'flex'; }
-export function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
 
+// --- LÓGICA DE QDC ---
 
-// --- LÓGICA DE FORMULÁRIO E CIRCUITOS ---
-export function resetForm(addFirst = true, linkedClient = null) {
-    document.getElementById('main-form').reset();
-    document.getElementById('tech-form').reset();
-    document.getElementById('feeder-form').reset();
-    document.getElementById('currentProjectId').value = '';
-    document.getElementById('circuits-container').innerHTML = '';
-    document.getElementById('searchInput').value = '';
-
-    const clientLinkDisplay = document.getElementById('clientLinkDisplay');
-    const currentClientIdInput = document.getElementById('currentClientId');
-    if (linkedClient) {
-        clientLinkDisplay.textContent = `Cliente Vinculado: ${linkedClient.nome} (${linkedClient.client_code})`;
-        currentClientIdInput.value = linkedClient.id;
-    } else {
-        clientLinkDisplay.textContent = 'Cliente: Nenhum';
-        currentClientIdInput.value = '';
-    }
-
-    initializeFeederListeners();
-    circuitCount = 0;
-    if (addFirst) {
-        addCircuit();
-    } else {
-        updateFeederPowerDisplay();
-    }
+function getQdcHTML(id) {
+    return `
+    <div class="qdc-block" id="qdc-${id}" data-id="${id}">
+        <div class="qdc-header">
+            <div class="qdc-header-left">
+                <input type="text" id="qdcName-${id}" value="QDC ${id}" class="qdc-name-input">
+            </div>
+            <div class="qdc-header-center">
+                <label for="qdcParent-${id}">Alimentado por:</label>
+                <select id="qdcParent-${id}" class="qdc-parent-select"></select>
+            </div>
+            <div class="qdc-header-right">
+                <button type="button" class="add-circuit-to-qdc-btn btn-green" data-qdc-id="${id}">+ Circuito</button>
+                <button type="button" class="remove-qdc-btn btn-red" data-qdc-id="${id}">Remover QDC</button>
+                <span class="toggle-arrow">▼</span>
+            </div>
+        </div>
+        <div class="qdc-content">
+            <div id="circuits-for-qdc-${id}" class="circuits-container-internal">
+                </div>
+        </div>
+    </div>`;
 }
 
-export function addCircuit() {
+export function addQdcBlock() {
+    qdcCount++;
+    const newQdcDiv = document.createElement('div');
+    newQdcDiv.innerHTML = getQdcHTML(qdcCount);
+    
+    const qdcContainer = document.getElementById('qdc-container');
+    qdcContainer.appendChild(newQdcDiv.firstElementChild);
+
+    updateQdcParentDropdowns();
+    addCircuit(qdcCount); // Adiciona um circuito inicial ao novo QDC
+}
+
+function updateQdcParentDropdowns() {
+    const allQdcs = document.querySelectorAll('.qdc-block');
+    const options = ['<option value="feeder">Alimentador Geral</option>'];
+    allQdcs.forEach(qdc => {
+        const id = qdc.dataset.id;
+        const name = document.getElementById(`qdcName-${id}`).value || `QDC ${id}`;
+        options.push(`<option value="${id}">${name}</option>`);
+    });
+
+    allQdcs.forEach(qdc => {
+        const id = qdc.dataset.id;
+        const parentSelect = document.getElementById(`qdcParent-${id}`);
+        const currentParent = parentSelect.value;
+
+        // Filtra para não permitir que um QDC seja pai de si mesmo
+        const filteredOptions = options.filter(opt => !opt.includes(`value="${id}"`));
+        parentSelect.innerHTML = filteredOptions.join('');
+        parentSelect.value = currentParent;
+    });
+}
+
+
+// --- LÓGICA DE CIRCUITO (ADAPTADA PARA QDCs) ---
+
+export function addCircuit(qdcId) {
     circuitCount++;
     const newCircuitDiv = document.createElement('div');
     newCircuitDiv.innerHTML = getCircuitHTML(circuitCount);
-    document.getElementById('circuits-container').appendChild(newCircuitDiv.firstElementChild);
+    
+    const circuitContainer = document.getElementById(`circuits-for-qdc-${qdcId}`);
+    circuitContainer.appendChild(newCircuitDiv.firstElementChild);
     
     atualizarLigacoes(circuitCount);
     handleCircuitTypeChange(circuitCount);
