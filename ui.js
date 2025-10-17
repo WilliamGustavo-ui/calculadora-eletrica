@@ -1,17 +1,83 @@
-// Arquivo: ui.js (VERSÃO COM LÓGICA DE QDCs)
+// Arquivo: ui.js (VERSÃO CORRIGIDA E ATUALIZADA)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
 
 let circuitCount = 0;
-let qdcCount = 0; // Novo contador para QDCs
+let qdcCount = 0;
 let uiData = null;
 let tempOptions = { pvc: [], epr: [] };
+
+// --- FUNÇÕES DE CONTROLE DE VISUALIZAÇÃO (ADICIONADAS) ---
+
+export function showLoginView() {
+    document.getElementById('loginContainer').style.display = 'block';
+    document.getElementById('appContainer').style.display = 'none';
+    document.getElementById('resetPasswordContainer').style.display = 'none';
+}
+
+export function showResetPasswordView() {
+    document.getElementById('loginContainer').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'none';
+    document.getElementById('resetPasswordContainer').style.display = 'block';
+}
+
+export function showAppView(currentUserProfile) {
+    document.getElementById('loginContainer').style.display = 'none';
+    document.getElementById('resetPasswordContainer').style.display = 'none';
+    
+    const appContainer = document.getElementById('appContainer');
+    appContainer.style.display = 'block';
+
+    // Gera o HTML principal do aplicativo dinamicamente
+    appContainer.innerHTML = `
+        <div class="top-right-buttons">
+            <span style="align-self: center;">Olá, ${currentUserProfile.nome || currentUserProfile.email}</span>
+            <button id="logoutBtn" class="btn-grey">Sair</button>
+        </div>
+
+        <h1>Calculadora de Projetos Elétricos</h1>
+
+        <div id="project-controls">
+            <h2>Controle da Obra</h2>
+            <div id="clientLinkDisplay">Nenhum cliente vinculado.</div>
+            <div class="controls-grid">
+                <div class="form-group">
+                    <label for="savedProjectsSelect">Obras Salvas</label>
+                    <select id="savedProjectsSelect"></select>
+                </div>
+                <div class="form-group">
+                    <label for="searchInput">Buscar Obra/Cliente</label>
+                    <input type="text" id="searchInput" placeholder="Digite para buscar...">
+                </div>
+                <div class="button-wrapper full-width">
+                    <button id="newBtn" class="btn-green">Nova Obra</button>
+                    <button id="loadBtn" class="btn-load">Carregar Obra</button>
+                    <button id="saveBtn" class="btn-blue-dark">Salvar Obra</button>
+                    <button id="deleteBtn" class="btn-red">Excluir Obra</button>
+                    <button id="changeClientBtn" class="btn-grey">Alterar Cliente</button>
+                </div>
+                <div class="button-wrapper full-width">
+                     <button id="manageClientsBtn" class="btn-warning">Gerenciar Clientes</button>
+                     <button id="manageProjectsBtn" class="btn-warning">Gerenciar Obras</button>
+                     ${currentUserProfile.is_admin ? '<button id="adminPanelBtn" class="btn-orange">Painel Admin</button>' : ''}
+                </div>
+            </div>
+             <input type="hidden" id="currentProjectId">
+             <input type="hidden" id="currentClientId">
+        </div>
+        
+        <h2>Dados do Projeto</h2>
+        `;
+    initializeFeederListeners(); // Garante que os listeners do alimentador sejam iniciados
+}
+
+// --- RESTANTE DO CÓDIGO ui.js (SEM ALTERAÇÕES SIGNIFICATIVAS) ---
 
 export function setupDynamicData(data) {
     uiData = data;
     if (uiData?.fatores_k1_temperatura) {
-        tempOptions.pvc = uiData.fatoros_k1_temperatura.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
+        tempOptions.pvc = uiData.fatores_k1_temperatura.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
     }
     if (uiData?.fatores_k1_temperatura_epr) {
         tempOptions.epr = uiData.fatores_k1_temperatura_epr.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
@@ -20,6 +86,9 @@ export function setupDynamicData(data) {
     }
 }
 
+// ... (cole o resto do seu código de ui.js a partir daqui, começando com 'populateTemperatureDropdown') ...
+// O restante do seu ui.js (funções de QDC, circuitos, PDF, etc.) pode permanecer o mesmo.
+// Apenas as funções de controle de view foram adicionadas no topo.
 function populateTemperatureDropdown(selectElement, temperatures) {
     const currentValue = selectElement.value;
     selectElement.innerHTML = '';
@@ -199,11 +268,18 @@ function getCircuitHTML(id) {
 }
 
 function initializeFeederListeners() {
+    // Esta função foi movida para o topo e chamada após a criação da view
+    // para garantir que os elementos do alimentador existam.
+    // Adapte se o alimentador também for criado dinamicamente em outro lugar.
     const fases = document.getElementById('feederFases');
     const tipoLigacao = document.getElementById('feederTipoLigacao');
     const tipoIsolacao = document.getElementById('feederTipoIsolacao');
     const temperaturaAmbiente = document.getElementById('feederTemperaturaAmbienteC');
     const resistividadeSolo = document.getElementById('feederResistividadeSolo');
+
+    // Se esses elementos não estiverem na `showAppView`, essa função pode dar erro.
+    // A estrutura do seu app precisa garantir que esses IDs existam quando a função for chamada.
+    if (!fases) return; 
 
     if (uiData) {
         populateSoilResistivityDropdown(resistividadeSolo, uiData.fatores_k2_solo);
@@ -241,7 +317,7 @@ function handlePowerUnitChange(id, type) {
     updateFeederPowerDisplay();
 }
 
-export function handleCircuitContainerInteraction(event) {
+export function handleMainContainerInteraction(event) {
     const target = event.target;
     const header = target.closest('.circuit-header');
     const circuitBlock = target.closest('.circuit-block');

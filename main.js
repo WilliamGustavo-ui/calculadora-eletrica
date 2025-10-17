@@ -10,6 +10,44 @@ let currentUserProfile = null;
 let allClients = [];
 let uiData = null;
 
+// Função chamada após a UI do app ser renderizada
+function setupAppEventListeners() {
+    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+    
+    document.getElementById('saveBtn').addEventListener('click', handleSaveProject);
+    document.getElementById('loadBtn').addEventListener('click', handleLoadProject);
+    document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
+    document.getElementById('newBtn').addEventListener('click', () => handleNewProject(true));
+    
+    const debouncedSearch = utils.debounce((e) => handleSearch(e.target.value), 300);
+    document.getElementById('searchInput').addEventListener('input', debouncedSearch);
+    
+    // As linhas abaixo foram movidas para cá para garantir que os elementos existam
+    // document.getElementById('addQdcBtn').addEventListener('click', ui.addQdcBlock);
+    // document.getElementById('manageQdcsBtn').addEventListener('click', () => ui.openModal('qdcManagerModalOverlay'));
+    
+    const mainContainer = document.getElementById('appContainer');
+    mainContainer.addEventListener('input', ui.handleMainContainerInteraction);
+    mainContainer.addEventListener('click', ui.handleMainContainerInteraction);
+    
+    // document.getElementById('calculateAndPdfBtn').addEventListener('click', handleCalculateAndPdf);
+    
+    document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
+    
+    // O botão adminPanelBtn só existe se o usuário for admin, então o listener deve ser condicional
+    const adminBtn = document.getElementById('adminPanelBtn');
+    if (adminBtn) {
+        adminBtn.addEventListener('click', showAdminPanel);
+    }
+    
+    document.getElementById('manageClientsBtn').addEventListener('click', handleOpenClientManagement);
+    document.getElementById('changeClientBtn').addEventListener('click', async () => { 
+        allClients = await api.fetchClients(); 
+        ui.populateSelectClientModal(allClients, true); 
+    });
+}
+
+
 async function handleLogin() {
     const email = document.getElementById('emailLogin').value;
     const password = document.getElementById('password').value;
@@ -18,13 +56,14 @@ async function handleLogin() {
         if (userProfile.is_approved) {
             currentUserProfile = userProfile;
             ui.showAppView(currentUserProfile);
+            setupAppEventListeners(); // <<<<<<<<<<< ADICIONA LISTENERS APÓS CRIAR A VIEW
             
             uiData = await api.fetchUiData();
             if (uiData) {
                 ui.setupDynamicData(uiData);
             }
             
-            ui.resetForm(); 
+            // ui.resetForm(); 
             await handleSearch();
         } 
     }
@@ -69,9 +108,9 @@ async function handleCalculateAndPdf() {
     alert("A lógica de cálculo precisa ser atualizada para a nova estrutura de QDCs.");
 }
 
-function setupEventListeners() {
+// Event Listeners que rodam no início, para elementos que sempre existem
+function setupInitialEventListeners() {
     document.getElementById('loginBtn').addEventListener('click', handleLogin);
-    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
     document.getElementById('registerBtn').addEventListener('click', () => ui.openModal('registerModalOverlay'));
     document.getElementById('registerForm').addEventListener('submit', handleRegister);
     document.getElementById('forgotPasswordLink').addEventListener('click', (e) => { e.preventDefault(); ui.openModal('forgotPasswordModalOverlay'); });
@@ -79,38 +118,18 @@ function setupEventListeners() {
     document.getElementById('resetPasswordForm').addEventListener('submit', handleResetPassword);
     document.querySelectorAll('.close-modal-btn').forEach(btn => { btn.addEventListener('click', (e) => ui.closeModal(e.target.closest('.modal-overlay').id)); });
     
-    document.getElementById('saveBtn').addEventListener('click', handleSaveProject);
-    document.getElementById('loadBtn').addEventListener('click', handleLoadProject);
-    document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
-    document.getElementById('newBtn').addEventListener('click', () => handleNewProject(true));
-    const debouncedSearch = utils.debounce((e) => handleSearch(e.target.value), 300);
-    document.getElementById('searchInput').addEventListener('input', debouncedSearch);
-    
-    // >>>>>>>>>>>> LINHA REMOVIDA QUE CAUSAVA O ERRO <<<<<<<<<<<<<<
-    // document.getElementById('addCircuitBtn').addEventListener('click', () => ui.addCircuit());
-    
-    document.getElementById('addQdcBtn').addEventListener('click', ui.addQdcBlock);
-    document.getElementById('manageQdcsBtn').addEventListener('click', () => ui.openModal('qdcManagerModalOverlay'));
-    
-    const mainContainer = document.getElementById('appContainer');
-    mainContainer.addEventListener('input', ui.handleMainContainerInteraction);
-    mainContainer.addEventListener('click', ui.handleMainContainerInteraction);
-    
-    document.getElementById('calculateAndPdfBtn').addEventListener('click', handleCalculateAndPdf);
-    
-    document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
+    // Listeners de Modais que podem ser abertos de qualquer tela
     document.getElementById('adminProjectsTableBody').addEventListener('click', handleProjectPanelClick);
-    document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
     document.getElementById('adminUserList').addEventListener('click', handleAdminUserActions);
     document.getElementById('editUserForm').addEventListener('submit', handleUpdateUser);
-    document.getElementById('manageClientsBtn').addEventListener('click', handleOpenClientManagement);
     document.getElementById('clientForm').addEventListener('submit', handleClientFormSubmit);
     document.getElementById('clientList').addEventListener('click', handleClientListClick);
     document.getElementById('clientFormCancelBtn').addEventListener('click', ui.resetClientForm);
     document.getElementById('confirmClientSelectionBtn').addEventListener('click', () => handleConfirmClientSelection(true));
     document.getElementById('continueWithoutClientBtn').addEventListener('click', handleContinueWithoutClient);
     document.getElementById('addNewClientFromSelectModalBtn').addEventListener('click', () => { ui.closeModal('selectClientModalOverlay'); handleOpenClientManagement(); });
-    document.getElementById('changeClientBtn').addEventListener('click', async () => { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients, true); });
+    
+    // Listeners de Máscaras
     document.getElementById('regCpf').addEventListener('input', utils.mascaraCPF);
     document.getElementById('regTelefone').addEventListener('input', utils.mascaraCelular);
     document.getElementById('editCpf').addEventListener('input', utils.mascaraCPF);
@@ -122,7 +141,7 @@ function setupEventListeners() {
 }
 
 function main() {
-    setupEventListeners();
+    setupInitialEventListeners(); // <<<<<<<<<<< SOMENTE LISTENERS INICIAIS
     
     supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
@@ -131,6 +150,8 @@ function main() {
                 if (userProfile && !userProfile.is_blocked && userProfile.is_approved) {
                     currentUserProfile = userProfile;
                     ui.showAppView(currentUserProfile);
+                    setupAppEventListeners(); // <<<<<<<<<<< ADICIONA LISTENERS DO APP AQUI
+                    
                     allClients = await api.fetchClients();
                     
                     uiData = await api.fetchUiData();
@@ -138,7 +159,7 @@ function main() {
                         ui.setupDynamicData(uiData);
                     }
 
-                    ui.resetForm();
+                    // ui.resetForm();
                     await handleSearch();
                 } else if (userProfile) {
                     await auth.signOutUser();
