@@ -1,4 +1,4 @@
-// Arquivo: main.js (COM AÇÕES DE ADMIN INTEGRADAS)
+// Arquivo: main.js (VERSÃO OTIMIZADA PARA GERAR PDFs DIRETAMENTE)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -8,7 +8,6 @@ import { supabase } from './supabaseClient.js';
 
 let currentUserProfile = null;
 let allClients = [];
-let lastCalculationResults = null;
 let uiData = null; 
 
 async function handleLogin() {
@@ -28,7 +27,6 @@ async function handleLogin() {
             await handleNewProject(false);
             await handleSearch();
         } 
-        // A verificação de bloqueio agora está dentro do auth.js
     }
 }
 
@@ -93,7 +91,7 @@ async function handleLoadProject() {
 async function handleDeleteProject() { const projectId = document.getElementById('savedProjectsSelect').value; const projectName = document.getElementById('savedProjectsSelect').options[document.getElementById('savedProjectsSelect').selectedIndex].text; if (!projectId || !confirm(`Tem certeza que deseja excluir a obra "${projectName}"?`)) return; const { error } = await api.deleteProject(projectId); if (error) { alert('Erro ao excluir obra: ' + error.message); } else { alert("Obra excluída."); ui.resetForm(true, null); await handleSearch(); } }
 async function handleSearch(term = '') { if (!currentUserProfile) return; const projects = await api.fetchProjects(term); ui.populateProjectList(projects); }
 async function showManageProjectsPanel() { const projects = await api.fetchProjects(''); allClients = await api.fetchClients(); const allUsers = await api.fetchAllUsers(); ui.populateProjectsPanel(projects, allClients, allUsers, currentUserProfile); ui.openModal('manageProjectsModalOverlay'); }
-async function handleProjectPanelClick(event) { const target = event.target; const projectId = target.dataset.projectId; if (target.classList.contains('transfer-client-btn')) { const select = target.parentElement.querySelector('.transfer-client-select'); const newClientId = select.value || null; const { error } = await api.transferProjectClient(projectId, newClientId); if (error) { alert('Erro ao transferir cliente: ' + error.message); } else { alert('Cliente da obra atualizado com sucesso!'); await showManageProjectsPanel(); } } if (target.classList.contains('transfer-owner-btn')) { const select = target.parentElement.querySelector('.transfer-owner-select'); const newOwnerId = select.value; if (newOwnerId && confirm('Tem certeza que deseja transferir a propriedade desta obra? Você perderá o acesso a ela se transferir para outro usuário.')) { const { error } = await api.transferProjectOwner(projectId, newOwnerId); if (error) { alert('Erro ao transferir propriedade: ' + error.message); } else { alert('Propriedade da obra transferida com sucesso!'); await showManageProjectsPanel(); } } } }
+async function handleProjectPanelClick(event) { const target = event.target; const projectId = target.dataset.projectId; if (target.classList.contains('transfer-client-btn')) { const select = target.parentElement.querySelector('.transfer-client-select'); const newClientId = select.value || null; const { error } = await api.transferProjectClient(projectId, newClientId); if (error) { alert('Erro ao transferir cliente: ' + error.message); } else { alert('Cliente da obra atualizado com sucesso!'); await showManageProjectsPanel(); } } if (target.classList.contains('transfer-owner-btn')) { const select = target.parentElement.querySelector('.transfer-owner-select'); const newOwnerId = select.value; if (newOwnerId && confirm('Tem certeza que deseja transferir a propriedade desta obra? Você perderá o acesso a ela se transferir para outro usuário.')) { const { error } = await api.transferProjectOwner(projectId, newOwnerId); if (error) { alert('Propriedade da obra transferida com sucesso!'); await showManageProjectsPanel(); } } } }
 async function showAdminPanel() { const users = await api.fetchAllUsers(); ui.populateUsersPanel(users); ui.openModal('adminPanelModalOverlay'); }
 
 async function handleAdminUserActions(event) {
@@ -131,7 +129,6 @@ async function handleAdminUserActions(event) {
         }
     }
 }
-
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
 function getFullFormData(forSave = false) {
@@ -150,67 +147,43 @@ function getFullFormData(forSave = false) {
     return { mainData, feederData: feederDataForCalc, circuitsData: circuitsDataForCalc, clientProfile };
 }
 
-async function handleCalculate() {
+
+// >>>>>>>>>>>> NOVA FUNÇÃO CENTRAL PARA CALCULAR E GERAR PDFS <<<<<<<<<<<<<<
+async function handleCalculateAndPdf() {
     const loadingOverlay = document.getElementById('loadingOverlay');
-    lastCalculationResults = null;
+    const loadingText = loadingOverlay.querySelector('p');
+    
+    loadingText.textContent = 'Calculando, por favor aguarde...';
     loadingOverlay.classList.add('visible');
     
     const formData = getFullFormData(false);
 
     try {
+        // Passo 1: Chamar a função de back-end para obter os resultados
         const { data: results, error } = await supabase.functions.invoke('calculate', {
             body: { formData },
         });
 
-        if (error) throw new Error(`Erro na rede: ${error.message}`);
+        if (error) throw new Error(`Erro na comunicação com o servidor: ${error.message}`);
         if (results.error) throw new Error(`Erro no cálculo: ${results.error}`);
 
-        lastCalculationResults = results;
-        ui.renderReport(results);
-        ui.renderUnifilarDiagram(results);
-        alert("Memorial de Cálculo e Diagrama Unifilar gerados na tela. Agora você pode salvá-los como PDF.");
+        // Passo 2: Mudar a mensagem e gerar os PDFs
+        loadingText.textContent = 'Gerando PDFs, por favor aguarde...';
+        await new Promise(resolve => setTimeout(resolve, 50)); // Pequena pausa para a UI atualizar o texto
+
+        // Gera e dispara o download dos dois PDFs, um após o outro
+        await ui.generateMemorialPdf(results, currentUserProfile);
+        await ui.generateUnifilarPdf(results);
+
+        alert("PDFs do Memorial e Diagrama Unifilar foram baixados com sucesso!");
 
     } catch (error) {
-        console.error("Erro ao chamar a função de cálculo:", error);
-        alert("Ocorreu um erro inesperado durante o cálculo: " + error.message);
+        console.error("Erro ao gerar PDFs:", error);
+        alert("Ocorreu um erro inesperado durante o processo: " + error.message);
     } finally {
+        // Garante que o overlay seja removido, mesmo que ocorra um erro
         loadingOverlay.classList.remove('visible');
-    }
-}
-
-async function handleGenerateMemorialPdf() {
-    if (!lastCalculationResults) { alert("Por favor, gere o cálculo primeiro clicando em '1. Gerar Memorial e Diagrama'."); return; }
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    const loadingText = loadingOverlay.querySelector('p');
-    loadingText.textContent = 'Gerando PDF do memorial, aguarde...';
-    loadingOverlay.classList.add('visible');
-    try {
-        await new Promise(resolve => setTimeout(resolve, 50)); 
-        ui.generateMemorialPdf(lastCalculationResults, currentUserProfile);
-    } catch (error) {
-        console.error("Erro ao gerar PDF do Memorial:", error);
-        alert("Ocorreu um erro ao gerar o PDF do memorial.");
-    } finally {
-        loadingOverlay.classList.remove('visible');
-        loadingText.textContent = 'Calculando, por favor aguarde...';
-    }
-}
-
-async function handleGenerateUnifilarPdf() {
-    if (!lastCalculationResults) { alert("Por favor, gere o cálculo primeiro clicando em '1. Gerar Memorial e Diagrama'."); return; }
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    const loadingText = loadingOverlay.querySelector('p');
-    loadingText.textContent = 'Gerando PDF do diagrama, aguarde...';
-    loadingOverlay.classList.add('visible');
-    try {
-        await new Promise(resolve => setTimeout(resolve, 50));
-        await ui.generateUnifilarPdf();
-    } catch (error) {
-        console.error("Erro ao gerar PDF do Unifilar:", error);
-        alert("Ocorreu um erro ao gerar o PDF do diagrama.");
-    } finally {
-        loadingOverlay.classList.remove('visible');
-        loadingText.textContent = 'Calculando, por favor aguarde...';
+        loadingText.textContent = 'Calculando, por favor aguarde...'; // Reseta o texto
     }
 }
 
@@ -236,9 +209,8 @@ function setupEventListeners() {
     circuitsContainer.addEventListener('input', ui.handleCircuitContainerInteraction);
     circuitsContainer.addEventListener('click', ui.handleCircuitContainerInteraction);
     
-    document.getElementById('calculateBtn').addEventListener('click', handleCalculate);
-    document.getElementById('memorialPdfBtn').addEventListener('click', handleGenerateMemorialPdf);
-    document.getElementById('unifilarPdfBtn').addEventListener('click', handleGenerateUnifilarPdf);
+    // >>>>>>>>>>>> NOVO EVENT LISTENER ÚNICO <<<<<<<<<<<<<<
+    document.getElementById('calculateAndPdfBtn').addEventListener('click', handleCalculateAndPdf);
     
     document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
     document.getElementById('adminProjectsTableBody').addEventListener('click', handleProjectPanelClick);

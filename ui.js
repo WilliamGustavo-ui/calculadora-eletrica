@@ -1,4 +1,4 @@
-// Arquivo: ui.js (VERSÃO COM DIAGRAMA PROFISSIONAL HORIZONTAL)
+// Arquivo: ui.js (VERSÃO FINAL OTIMIZADA - SEM RENDERIZAÇÃO EM TELA)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
@@ -100,10 +100,7 @@ export function resetForm(addFirst = true, linkedClient = null) {
     document.getElementById('feeder-form').reset();
     document.getElementById('currentProjectId').value = '';
     document.getElementById('circuits-container').innerHTML = '';
-    document.getElementById('report').textContent = 'O relatório aparecerá aqui.';
     document.getElementById('searchInput').value = '';
-    const unifilarContainer = document.getElementById('unifilar-drawing');
-    if (unifilarContainer) unifilarContainer.innerHTML = '';
 
     const clientLinkDisplay = document.getElementById('clientLinkDisplay');
     const currentClientIdInput = document.getElementById('currentClientId');
@@ -399,40 +396,8 @@ export function resetClientForm() { const form = document.getElementById('client
 export function openEditClientForm(client) { document.getElementById('clientId').value = client.id; document.getElementById('clientNome').value = client.nome; document.getElementById('clientDocumentoTipo').value = client.documento_tipo; document.getElementById('clientDocumentoValor').value = client.documento_valor; document.getElementById('clientEmail').value = client.email; document.getElementById('clientCelular').value = client.celular; document.getElementById('clientTelefone').value = client.telefone; document.getElementById('clientEndereco').value = client.endereco; document.getElementById('clientFormTitle').textContent = 'Editar Cliente'; document.getElementById('clientFormSubmitBtn').textContent = 'Atualizar Cliente'; document.getElementById('clientFormCancelBtn').style.display = 'inline-block'; }
 export function populateSelectClientModal(clients, isChange = false) { const select = document.getElementById('clientSelectForNewProject'); select.innerHTML = '<option value="">-- Selecione um cliente --</option>'; clients.forEach(client => { const option = document.createElement('option'); option.value = client.id; option.textContent = `${client.nome} (${client.client_code})`; option.dataset.client = JSON.stringify(client); select.appendChild(option); }); const title = document.querySelector('#selectClientModalOverlay h3'); const confirmBtn = document.getElementById('confirmClientSelectionBtn'); if (isChange) { title.textContent = 'Vincular / Alterar Cliente da Obra'; confirmBtn.textContent = 'Confirmar Alteração'; } else { title.textContent = 'Vincular Cliente à Nova Obra'; confirmBtn.textContent = 'Vincular e Continuar'; } openModal('selectClientModalOverlay'); }
 
-
-// --- FUNÇÕES DE RENDERIZAÇÃO DE RELATÓRIO E DIAGRAMA ---
+// --- FUNÇÕES DE GERAÇÃO DE PDF ---
 function getDpsText(dpsInfo) { if (!dpsInfo) return 'Não'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
-
-export function renderReport(calculationResults){
-    if(!calculationResults) return;
-    const { feederResult, circuitResults } = calculationResults;
-    const dataHora = (new Date).toLocaleString('pt-BR');
-    const formatLine = (label, value) => (label + ':').padEnd(30, ' ') + value;
-    let reportText = `======================================================\n==           RELATÓRIO DE PROJETO ELÉTRICO           ==\n======================================================\n${formatLine('Gerado em', dataHora)}\n`;
-    const reportData = feederResult.dados;
-    reportText += `\n-- DADOS DA OBRA --\n`;
-    reportText += `${formatLine('Código da Obra', reportData.projectCode || '-')}\n`;
-    reportText += `${formatLine('Nome da Obra', reportData.obra || '-')}\n`;
-    reportText += `\n-- QUADRO DE CARGAS RESUMIDO --\n`;
-    circuitResults.forEach((result, index) => { reportText += `${formatLine(`- Circuito ${index + 1}`, result.dados.nomeCircuito)}\n`; });
-    const allCalculations = [feederResult, ...circuitResults];
-    allCalculations.forEach((result, index) => {
-        const { dados, calculos } = result;
-        const title = dados.id === 'Geral' ? 'ALIMENTADOR GERAL' : `CIRCUITO ${index}`;
-        const correnteCorrigidaTexto = isFinite(calculos.correnteCorrigidaA) ? `${calculos.correnteCorrigidaA.toFixed(2)} A` : "Incalculável";
-        reportText += `\n\n======================================================\n==           MEMORIAL DE CÁLCULO - ${title.padEnd(16, ' ')} ==\n======================================================\n`;
-        if (dados.id !== 'Geral') { reportText += `${formatLine('Nome do Circuito', dados.nomeCircuito)}\n`; }
-        reportText += `${formatLine('Potência Demandada', `${calculos.potenciaDemandada.toFixed(2)} W`)}\n`;
-        reportText += `${formatLine('Corrente Demandada (Ib)', `${calculos.correnteDemandada.toFixed(2)} A`)}\n`;
-        reportText += `${formatLine('Corrente Corrigida (I\')', correnteCorrigidaTexto)}\n`;
-        reportText += `${formatLine('Bitola Recomendada', `${calculos.bitolaRecomendadaMm2} mm²`)}\n`;
-        reportText += `${formatLine('Queda de Tensão (DV)', `${calculos.quedaTensaoCalculada.toFixed(2)} %`)}\n`;
-        reportText += `${formatLine('Disjuntor', `${calculos.disjuntorRecomendado.nome}`)}\n`;
-        reportText += `${formatLine('Proteção DR 30mA', dados.requerDR ? `Sim` : 'Não')}\n`;
-        reportText += `${formatLine('Proteção DPS', getDpsText(dados.dpsInfo))}\n`;
-    });
-    document.getElementById('report').textContent = reportText.trim();
-}
 
 function drawHeader(x, y, projectData, totalPower) {
     const title = projectData.obra || "Diagrama Unifilar";
@@ -470,10 +435,8 @@ function drawCircuitLine(result, x, y, index) {
     const fontStyle = `font-family: Arial;`;
     return `<g text-anchor="middle"> ${drawDisjuntor(x, y, `${calculos.disjuntorRecomendado.nome}`, dados.fases)} <line x1="${x}" y1="${y + 12.5}" x2="${x}" y2="${yEnd}" stroke="black" stroke-width="1" /> ${drawConductorSymbol(x, y + 60, calculos.numCondutores)} <text x="${x}" y="${y + 90}" style="${fontStyle} font-size: 11px;">${calculos.bitolaRecomendadaMm2}</text> <text x="${x}" y="${yEnd + 20}" style="${fontStyle} font-size: 11px; font-weight: bold;">(${calculos.potenciaDemandada.toFixed(0)} W)</text> <text x="${x}" y="${yEnd + 35}" style="${fontStyle} font-size: 12px;">${index} - ${dados.nomeCircuito}</text> </g>`;
 }
-export function renderUnifilarDiagram(calculationResults) {
-    const container = document.getElementById('unifilar-drawing');
-    container.innerHTML = '';
-    if (!calculationResults || !calculationResults.circuitResults) { container.innerHTML = '<p>Dados insuficientes para gerar o diagrama.</p>'; return; }
+function buildUnifilarSvgString(calculationResults) {
+    if (!calculationResults || !calculationResults.circuitResults) { return null; }
     const { feederResult, circuitResults } = calculationResults;
     const circuitsComDR = circuitResults.filter(c => c.dados.requerDR);
     const circuitsSemDR = circuitResults.filter(c => !c.dados.requerDR);
@@ -517,33 +480,44 @@ export function renderUnifilarDiagram(calculationResults) {
         }
     });
     svgParts.push('</svg>');
-    container.innerHTML = svgParts.join('');
+    return svgParts.join('');
 }
-export async function generateUnifilarPdf() {
+export async function generateUnifilarPdf(calculationResults) {
+    const svgString = buildUnifilarSvgString(calculationResults);
+    if (!svgString) {
+        alert("Dados insuficientes para gerar o diagrama.");
+        return;
+    }
+
     try {
-        const svgElement = document.querySelector('#unifilar-drawing svg');
-        if (!svgElement) { alert("O diagrama unifilar não foi encontrado."); return; }
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('l', 'mm', 'a4'); 
+        const doc = new jsPDF('l', 'mm', 'a3'); 
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        const svgString = new XMLSerializer().serializeToString(svgElement);
-        const { width, height } = svgElement.getBoundingClientRect();
-        canvas.width = width;
-        canvas.height = height;
+        
+        // Estima a largura do SVG para o canvas
+        const svgWidth = (calculationResults.circuitResults.length * 100) + 120;
+        canvas.width = svgWidth;
+        canvas.height = 600;
+        
         const v = await Canvg.fromString(ctx, svgString);
         await v.render();
+
         const imgData = canvas.toDataURL('image/png');
         const pdfWidth = doc.internal.pageSize.getWidth();
         const pdfHeight = doc.internal.pageSize.getHeight();
         const margin = 10;
         const imgWidth = pdfWidth - (margin * 2);
-        const imgHeight = (height / width) * imgWidth;
+        const imgHeight = (canvas.height / canvas.width) * imgWidth;
         let finalY = margin;
         if (imgHeight < (pdfHeight - (margin * 2))) { finalY = (pdfHeight - imgHeight) / 2; }
+
         doc.addImage(imgData, 'PNG', margin, finalY, imgWidth, imgHeight);
         doc.save(`Unifilar_${document.getElementById('obra').value || 'Projeto'}.pdf`);
-    } catch (error) { console.error("Erro ao gerar PDF do Unifilar:", error); alert("Ocorreu um erro ao gerar o PDF do diagrama."); }
+    } catch (error) {
+        console.error("Erro ao gerar PDF do Unifilar:", error);
+        alert("Ocorreu um erro ao gerar o PDF do diagrama.");
+    }
 }
 export function generateMemorialPdf(calculationResults, currentUserProfile) {
     if (!calculationResults) { alert("Por favor, gere o cálculo primeiro."); return; }
