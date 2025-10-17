@@ -1,4 +1,4 @@
-// Arquivo: main.js (VERSÃO FINAL E CORRIGIDA PARA QDCs)
+// Arquivo: main.js (VERSÃO FINAL E CORRIGIDA)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -24,7 +24,6 @@ async function handleLogin() {
                 ui.setupDynamicData(uiData);
             }
             
-            // Inicia o formulário com o primeiro QDC
             ui.resetForm(); 
             await handleSearch();
         } 
@@ -39,19 +38,14 @@ async function handleResetPassword(event) { event.preventDefault(); const newPas
 async function handleOpenClientManagement() { allClients = await api.fetchClients(); ui.populateClientManagementModal(allClients); ui.openModal('clientManagementModalOverlay'); }
 async function handleClientFormSubmit(event) { event.preventDefault(); const clientId = document.getElementById('clientId').value; const clientData = { nome: document.getElementById('clientNome').value, documento_tipo: document.getElementById('clientDocumentoTipo').value, documento_valor: document.getElementById('clientDocumentoValor').value, email: document.getElementById('clientEmail').value, celular: document.getElementById('clientCelular').value, telefone: document.getElementById('clientTelefone').value, endereco: document.getElementById('clientEndereco').value, owner_id: currentUserProfile.id }; try { let result; if (clientId) { result = await api.updateClient(clientId, clientData); } else { result = await api.addClient(clientData); } if (result.error) { throw result.error; } alert(clientId ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!'); ui.resetClientForm(); await handleOpenClientManagement(); } catch (error) { alert('Erro ao salvar cliente: ' + error.message); } }
 async function handleClientListClick(event) { const target = event.target; const clientId = target.dataset.clientId; if (target.classList.contains('edit-client-btn')) { const clientToEdit = allClients.find(c => c.id == clientId); if (clientToEdit) ui.openEditClientForm(clientToEdit); } if (target.classList.contains('delete-client-btn')) { if (confirm('Tem certeza que deseja excluir este cliente?')) { const { error } = await api.deleteClient(clientId); if (error) { alert('Erro ao excluir cliente: ' + error.message); } else { await handleOpenClientManagement(); } } } }
-async function handleNewProject(showModal = true) { if (showModal) { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients); } else { ui.resetForm(true, null); } }
+async function handleNewProject(showModal = true) { if (showModal) { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients); } else { ui.resetForm(); } }
 function handleConfirmClientSelection(isChange = false) { const select = document.getElementById('clientSelectForNewProject'); const selectedOption = select.options[select.selectedIndex]; const currentProjectId = document.getElementById('currentProjectId').value; if (select.value) { const client = JSON.parse(selectedOption.dataset.client); if (isChange && currentProjectId) { document.getElementById('currentClientId').value = client.id; document.getElementById('clientLinkDisplay').textContent = `Cliente Vinculado: ${client.nome} (${client.client_code})`; } else { ui.resetForm(true, client); } } ui.closeModal('selectClientModalOverlay'); }
-function handleContinueWithoutClient() { ui.resetForm(true, null); ui.closeModal('selectClientModalOverlay'); }
+function handleContinueWithoutClient() { ui.resetForm(); ui.closeModal('selectClientModalOverlay'); }
 
-async function handleSaveProject() {
-    alert("Função 'Salvar Projeto' precisa ser atualizada para a nova estrutura de QDCs.");
-}
+async function handleSaveProject() { alert("Função 'Salvar Projeto' precisa ser atualizada para a nova estrutura de QDCs."); }
+async function handleLoadProject() { alert("Função 'Carregar Projeto' precisa ser atualizada para a nova estrutura de QDCs."); }
 
-async function handleLoadProject() {
-    alert("Função 'Carregar Projeto' precisa ser atualizada para a nova estrutura de QDCs.");
-}
-
-async function handleDeleteProject() { const projectId = document.getElementById('savedProjectsSelect').value; const projectName = document.getElementById('savedProjectsSelect').options[document.getElementById('savedProjectsSelect').selectedIndex].text; if (!projectId || !confirm(`Tem certeza que deseja excluir a obra "${projectName}"?`)) return; const { error } = await api.deleteProject(projectId); if (error) { alert('Erro ao excluir obra: ' + error.message); } else { alert("Obra excluída."); ui.resetForm(true, null); await handleSearch(); } }
+async function handleDeleteProject() { const projectId = document.getElementById('savedProjectsSelect').value; const projectName = document.getElementById('savedProjectsSelect').options[document.getElementById('savedProjectsSelect').selectedIndex].text; if (!projectId || !confirm(`Tem certeza que deseja excluir a obra "${projectName}"?`)) return; const { error } = await api.deleteProject(projectId); if (error) { alert('Erro ao excluir obra: ' + error.message); } else { alert("Obra excluída."); ui.resetForm(); await handleSearch(); } }
 async function handleSearch(term = '') { if (!currentUserProfile) return; const projects = await api.fetchProjects(term); ui.populateProjectList(projects); }
 async function showManageProjectsPanel() { const projects = await api.fetchProjects(''); allClients = await api.fetchClients(); const allUsers = await api.fetchAllUsers(); ui.populateProjectsPanel(projects, allClients, allUsers, currentUserProfile); ui.openModal('manageProjectsModalOverlay'); }
 async function handleProjectPanelClick(event) { const target = event.target; const projectId = target.dataset.projectId; if (target.classList.contains('transfer-client-btn')) { const select = target.parentElement.querySelector('.transfer-client-select'); const newClientId = select.value || null; const { error } = await api.transferProjectClient(projectId, newClientId); if (error) { alert('Erro ao transferir cliente: ' + error.message); } else { alert('Cliente da obra atualizado com sucesso!'); await showManageProjectsPanel(); } } if (target.classList.contains('transfer-owner-btn')) { const select = target.parentElement.querySelector('.transfer-owner-select'); const newOwnerId = select.value; if (newOwnerId && confirm('Tem certeza que deseja transferir a propriedade desta obra? Você perderá o acesso a ela se transferir para outro usuário.')) { const { error } = await api.transferProjectOwner(projectId, newOwnerId); if (error) { alert('Propriedade da obra transferida com sucesso!'); await showManageProjectsPanel(); } } } }
@@ -67,7 +61,7 @@ async function handleAdminUserActions(event) {
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
 function getFullFormData(forSave = false) {
-    // ... (Esta função será implementada em breve)
+    // Implementação futura
     return {};
 }
 
@@ -92,7 +86,9 @@ function setupEventListeners() {
     const debouncedSearch = utils.debounce((e) => handleSearch(e.target.value), 300);
     document.getElementById('searchInput').addEventListener('input', debouncedSearch);
     
-    // >>>>>>>>>>>> LISTENERS ATUALIZADOS <<<<<<<<<<<<<<
+    // >>>>>>>>>>>> LINHA REMOVIDA QUE CAUSAVA O ERRO <<<<<<<<<<<<<<
+    // document.getElementById('addCircuitBtn').addEventListener('click', () => ui.addCircuit());
+    
     document.getElementById('addQdcBtn').addEventListener('click', ui.addQdcBlock);
     document.getElementById('manageQdcsBtn').addEventListener('click', () => ui.openModal('qdcManagerModalOverlay'));
     
@@ -142,7 +138,7 @@ function main() {
                         ui.setupDynamicData(uiData);
                     }
 
-                    ui.resetForm(); // Inicia com um QDC padrão
+                    ui.resetForm();
                     await handleSearch();
                 } else if (userProfile) {
                     await auth.signOutUser();
