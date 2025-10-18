@@ -11,12 +11,14 @@ let tempOptions = { pvc: [], epr: [] };
 export function setupDynamicData(data) {
     uiData = data;
     
-    if (uiData?.fatores_k1) { // Nome da chave corrigido para bater com api.js
+    // CORREÇÃO: Corrigido nome da chave (era fatores_k1_temperatura no api.js)
+    if (uiData?.fatores_k1) { 
         tempOptions.pvc = uiData.fatores_k1.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
     } else {
         tempOptions.pvc = [30]; // Fallback padrão se dados falharem
     }
 
+    // CORREÇÃO: Corrigido nome da chave (era fatores_k1_temperatura_epr no api.js)
     if (uiData?.fatores_k1_epr) {
         tempOptions.epr = uiData.fatores_k1_epr.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
     } else {
@@ -70,7 +72,6 @@ function populateSoilResistivityDropdown(selectElement, soilData) {
     }
 }
 
-// CORREÇÃO 2 e 3: Função de atualização de potência reescrita
 function updateFeederPowerDisplay() {
     let totalInstaladaGeral = 0;
     let totalDemandadaGeral = 0;
@@ -96,7 +97,7 @@ function updateFeederPowerDisplay() {
             }
         });
 
-        // Atualiza os campos readonly do QDC (Solicitação 3)
+        // Atualiza os campos readonly do QDC
         const qdcPotInst = document.getElementById(`qdcPotenciaInstalada-${qdcId}`);
         const qdcPotDem = document.getElementById(`qdcPotenciaDemandada-${qdcId}`);
         if (qdcPotInst) qdcPotInst.value = totalInstaladaQDC.toFixed(2);
@@ -107,23 +108,18 @@ function updateFeederPowerDisplay() {
         totalDemandadaGeral += totalDemandadaQDC;
     });
 
-    // 2. Atualiza os campos do Alimentador Geral (Solicitação 2)
+    // 2. Atualiza os campos do Alimentador Geral
     const feederPotInstalada = document.getElementById('feederPotenciaInstalada');
     const feederSomaPotDemandada = document.getElementById('feederSomaPotenciaDemandada'); // O novo campo
     const feederFatorDemandaInput = document.getElementById('feederFatorDemanda');
     const feederPotDemandadaFinal = document.getElementById('feederPotenciaDemandada'); // O campo de demanda calculada
 
-    // Atualiza a soma total instalada
     if (feederPotInstalada) feederPotInstalada.value = totalInstaladaGeral.toFixed(2);
-    
-    // Atualiza a *soma* das demandas dos circuitos
     if (feederSomaPotDemandada) feederSomaPotDemandada.value = totalDemandadaGeral.toFixed(2);
     
-    // Calcula a *demanda final* com base no Fator de Demanda Geral
     const feederFatorDemanda = (parseFloat(feederFatorDemandaInput.value) || 100) / 100.0;
     const finalDemand = totalDemandadaGeral * feederFatorDemanda;
     
-    // Atualiza o campo de demanda final
     if (feederPotDemandadaFinal) feederPotDemandadaFinal.value = finalDemand.toFixed(2);
 }
 
@@ -167,7 +163,6 @@ export function resetForm(addDefaultQdc = true, linkedClient = null) {
     }
 }
 
-// CORREÇÃO 3: Adicionados campos de potência/demanda ao QDC
 function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
     return `
     <div class="qdc-block" id="qdc-${id}" data-id="${id}">
@@ -207,7 +202,7 @@ function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
 
 export function addQdcBlock(id = null, name = null, parentId = 'feeder') {
     const internalId = id || ++qdcCount;
-    if (!id) qdcCount = Math.max(qdcCount, internalId);
+    if (!id) qdcCount = Math.max(qdcCount, internalId); // Atualiza o contador se for NOVO
     const qdcName = name || `QDC ${internalId}`;
 
     const newQdcDiv = document.createElement('div');
@@ -253,6 +248,7 @@ export function updateQdcParentDropdowns() {
         if (!parentSelect) return; 
 
         const currentParent = parentSelect.dataset.initialParent || parentSelect.value;
+        
         const filteredOptions = options.filter(opt => !opt.includes(`value="qdc-${id}"`));
         parentSelect.innerHTML = filteredOptions.join('');
         
@@ -269,7 +265,7 @@ export function updateQdcParentDropdowns() {
 // --- LÓGICA DE CIRCUITO ---
 export function addCircuit(qdcId, savedCircuitData = null) {
     const internalId = savedCircuitData ? parseInt(savedCircuitData.id) : ++circuitCount;
-    if (!savedCircuitData) circuitCount = Math.max(circuitCount, internalId);
+    if (!savedCircuitData) circuitCount = Math.max(circuitCount, internalId); // Atualiza contador se for NOVO
 
     const newCircuitDiv = document.createElement('div');
     newCircuitDiv.innerHTML = getCircuitHTML(internalId);
@@ -308,7 +304,7 @@ export function addCircuit(qdcId, savedCircuitData = null) {
     if(uiData) {
         populateBtuDropdown(potenciaBTUSelect, uiData.ar_condicionado_btu);
         populateCvDropdown(potenciaCVSelect, uiData.motores_cv);
-        populateSoilResistivityDropdown(resistividadeSolo, uiData.fatores_k2); // Chave corrigida
+        populateSoilResistivityDropdown(resistividadeSolo, uiData.fatores_k2);
         populateTemperatureDropdown(temperaturaAmbiente, tempOptions.pvc); 
     }
 
@@ -336,23 +332,22 @@ function getCircuitHTML(id) {
     return `<div class="circuit-block" id="circuit-${id}" data-id="${id}"> <div class="circuit-header"> <h3 class="circuit-header-left">Circuito <span class="circuit-number"></span></h3> <h3 class="circuit-header-center" id="nomeCircuitoLabel-${id}">Circuito ${id}</h3> <div class="circuit-header-right"> <button type="button" class="remove-circuit-btn btn-red" data-circuit-id="${id}">Remover</button> <span class="toggle-arrow">▼</span> </div> </div> <div class="circuit-content"> <div class="form-grid"> <div class="form-group"> <label for="nomeCircuito-${id}">Nome do Circuito</label> <input type="text" id="nomeCircuito-${id}" value="Circuito ${id}"> </div> <div class="full-width potencia-group"> <div class="form-group"> <label for="tipoCircuito-${id}">Tipo de Circuito</label> <select id="tipoCircuito-${id}"> <option value="iluminacao">Iluminação</option> <option value="tug" selected>TUG</option> <option value="tue">TUE</option> <option value="aquecimento">Aquecimento</option> <option value="motores">Motores</option> <option value="ar_condicionado">Ar Condicionado</option> </select> </div> <div class="form-group hidden" id="potenciaBTU_group-${id}"> <label for="potenciaBTU-${id}">Potência (BTU/h)</label> <select id="potenciaBTU-${id}"></select> </div> <div class="form-group hidden" id="potenciaCV_group-${id}"> <label for="potenciaCV-${id}">Potência (CV)</label> <select id="potenciaCV-${id}"></select> </div> <div class="form-group"> <label for="potenciaW-${id}">Potência (W)</label> <input type="number" id="potenciaW-${id}" value="2500"> </div> </div> <div class="form-group"> <label for="fatorDemanda-${id}">Fator Demanda (%)</label> <input type="number" id="fatorDemanda-${id}" value="100" step="1"> </div> <div class="form-group"> <label for="fases-${id}">Fases</label> <select id="fases-${id}"> <option value="Monofasico" selected>Monofásico</option> <option value="Bifasico">Bifásico</option> <option value="Trifasico">Trifásico</option> </select> </div> <div class="form-group"> <label for="tipoLigacao-${id}">Ligação</label> <select id="tipoLigacao-${id}"></select> </div> <div class="form-group"> <label for="tensaoV-${id}">Tensão (V)</label> <select id="tensaoV-${id}"><option value="12">12</option><option value="24">24</option><option value="36">36</option><option value="127">127</option><option value="220" selected>220</option><option value="380">380</option><option value="440">440</option><option value="760">760</option></select> </div> <div class="form-group"> <label for="fatorPotencia-${id}">Fator Potência</label> <input type="number" id="fatorPotencia-${id}" step="0.01" value="0.92"> </div> <div class="form-group"> <label for="comprimentoM-${id}">Comprimento (m)</label> <input type="number" id="comprimentoM-${id}" value="20"> </div> <div class="form-group"> <label for="tipoIsolacao-${id}">Isolação</label> <select id="tipoIsolacao-${id}"><option value="PVC" selected>PVC 70°C</option><option value="EPR">EPR 90°C</option><option value="XLPE">XLPE 90°C</option></select> </div> <div class="form-group"> <label for="materialCabo-${id}">Condutor</label> <select id="materialCabo-${id}"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Alumínio</option></select> </div> <div class="form-group"> <label for="metodoInstalacao-${id}">Instalação</label> <select id="metodoInstalacao-${id}"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select> </div> <div class="form-group"> <label for="temperaturaAmbienteC-${id}">Temp. Ambiente</label> <select id="temperaturaAmbienteC-${id}"></select> </div> <div class="form-group"> <label for="resistividadeSolo-${id}">Resist. Solo</label> <select id="resistividadeSolo-${id}"></select> </div> <div class="form-group"> <label for="numCircuitosAgrupados-${id}">Ckt Agrupados</label> <select id="numCircuitosAgrupados-${id}"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select> </div> <div class="form-group"> <label for="limiteQuedaTensao-${id}">Limite DV (%)</label> <input type="number" id="limiteQuedaTensao-${id}" step="0.1" value="4.0"> </div> <div class="form-group"> <label for="tipoDisjuntor-${id}">Disjuntor</label> <select id="tipoDisjuntor-${id}"><option value="Minidisjuntor (DIN)">DIN</option><option value="Caixa Moldada (MCCB)">MCCB</option></select> </div> <div class="form-group"> <label for="dpsClasse-${id}">Classe DPS</label> <select id="dpsClasse-${id}"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select> </div> <div class="checkbox-group"> <input type="checkbox" id="requerDR-${id}"><label for="requerDR-${id}">Requer DR</label> </div> </div> </div> </div>`;
 }
 
-// CORREÇÃO 2: Adicionado listener para o Fator de Demanda do Alimentador
 function initializeFeederListeners() {
     const fases = document.getElementById('feederFases');
     const tipoLigacao = document.getElementById('feederTipoLigacao');
     const tipoIsolacao = document.getElementById('feederTipoIsolacao');
     const temperaturaAmbiente = document.getElementById('feederTemperaturaAmbienteC');
     const resistividadeSolo = document.getElementById('feederResistividadeSolo');
-    const fatorDemanda = document.getElementById('feederFatorDemanda'); // Novo
+    const fatorDemanda = document.getElementById('feederFatorDemanda'); 
     
-    if (uiData) { populateSoilResistivityDropdown(resistividadeSolo, uiData.fatores_k2); } // Chave corrigida
+    if (uiData) { populateSoilResistivityDropdown(resistividadeSolo, uiData.fatores_k2); } 
     
     const atualizarLigacoesFeeder = () => { const f = fases.value; const l = ligacoes[f] || []; tipoLigacao.innerHTML = ''; l.forEach(o => { const op = document.createElement('option'); op.value = o.value; op.textContent = o.text; tipoLigacao.appendChild(op); }); };
     const handleFeederInsulationChange = () => { const sel = tipoIsolacao.value; const t = (sel === 'EPR' || sel === 'XLPE') ? tempOptions.epr : tempOptions.pvc; populateTemperatureDropdown(temperaturaAmbiente, t); };
     
     if(fases) fases.addEventListener('change', atualizarLigacoesFeeder);
     if(tipoIsolacao) tipoIsolacao.addEventListener('change', handleFeederInsulationChange);
-    if(fatorDemanda) fatorDemanda.addEventListener('input', updateFeederPowerDisplay); // Adicionado listener
+    if(fatorDemanda) fatorDemanda.addEventListener('input', updateFeederPowerDisplay); 
     
     atualizarLigacoesFeeder();
     handleFeederInsulationChange();
@@ -431,18 +426,44 @@ export function populateFormWithProjectData(project) {
     if (project.feeder_data) { Object.keys(project.feeder_data).forEach(id => { const el = document.getElementById(id); if (el) { if (el.type === 'checkbox') el.checked = project.feeder_data[id]; else el.value = project.feeder_data[id]; } }); const feederFases = document.getElementById('feederFases'); if(feederFases) feederFases.dispatchEvent(new Event('change')); const feederTipoLig = document.getElementById('feederTipoLigacao'); if(feederTipoLig) feederTipoLig.value = project.feeder_data['feederTipoLigacao']; }
     
     const qdcContainer = document.getElementById('qdc-container'); if(qdcContainer) qdcContainer.innerHTML = ''; 
+    
+    // >>>>> INÍCIO DA CORREÇÃO <<<<<
+    // Reseta os contadores
     qdcCount = 0; 
     circuitCount = 0;
     
+    // Atualiza os contadores para o ID mais alto carregado
+    let maxQdcId = 0;
+    let maxCircuitId = 0;
+    if (project.qdcs_data && Array.isArray(project.qdcs_data)) {
+        project.qdcs_data.forEach(qdcData => {
+            maxQdcId = Math.max(maxQdcId, parseInt(qdcData.id) || 0);
+            if (qdcData.circuits && Array.isArray(qdcData.circuits)) {
+                qdcData.circuits.forEach(circuitData => {
+                    // O ID do circuito está no objeto circuitData
+                    maxCircuitId = Math.max(maxCircuitId, parseInt(circuitData.id) || 0);
+                });
+            }
+        });
+    }
+    qdcCount = maxQdcId; // Define o contador para o ID mais alto
+    circuitCount = maxCircuitId; // Define o contador para o ID mais alto
+    // >>>>> FIM DA CORREÇÃO <<<<<
+
+    
     if (project.qdcs_data && Array.isArray(project.qdcs_data)) {
         project.qdcs_data.forEach((qdcData, index) => {
+            // Passa o ID salvo para o addQdcBlock
             const newQdcId = addQdcBlock(parseInt(qdcData.id), qdcData.name, qdcData.parentId);
             if (qdcData.circuits && Array.isArray(qdcData.circuits)) {
-                qdcData.circuits.forEach(circuitData => { addCircuit(newQdcId, circuitData); });
+                qdcData.circuits.forEach(circuitData => {
+                    // Passa os dados salvos do circuito para o addCircuit
+                    addCircuit(newQdcId, circuitData); 
+                });
             }
             if (index > 0) { const qdcElem = document.getElementById(`qdc-${newQdcId}`); if(qdcElem) qdcElem.classList.add('collapsed'); }
         });
-    } else { addQdcBlock(); } 
+    } else { addQdcBlock(); } // Adiciona default se não houver QDCs
     
     updateQdcParentDropdowns();
     updateFeederPowerDisplay();
@@ -472,19 +493,15 @@ function drawDR(x, y, text, fases = 'Monofasico') { const dC='#27ae60'; let iS='
 function drawDPS(x, y, feederData) { const dC='#27ae60'; let n=feederData.fases==='Monofasico'?2:(feederData.fases==='Bifasico'?3:4); const dI=feederData.dpsInfo; const t=dI?`${n}x DPS Cl.${dI.classe} ${dI.corrente_ka}kA`:`${n}x DPS`; return `<g> <rect x="${x-45}" y="${y-12.5}" width="90" height="25" stroke="${dC}" stroke-width="1.5" fill="white"/> <text x="${x}" y="${y+4}" text-anchor="middle" style="font-family: Arial; font-size: 10px; fill:${dC};">${t}</text> <line x1="${x}" y1="${y+12.5}" x2="${x}" y2="${y+30}" stroke="black" stroke-width="1"/> ${drawGroundSymbol(x,y+30)} </g>`; }
 function drawGroundSymbol(x, y) { return `<line x1="${x}" y1="${y}" x2="${x}" y2="${y+5}" stroke="black" stroke-width="1"/> <line x1="${x-8}" y1="${y+5}" x2="${x+8}" y2="${y+5}" stroke="black" stroke-width="1.5"/> <line x1="${x-5}" y1="${y+8}" x2="${x+5}" y2="${y+8}" stroke="black" stroke-width="1.5"/> <line x1="${x-2}" y1="${y+11}" x2="${x+2}" y2="${y+11}" stroke="black" stroke-width="1.5"/>`; }
 function drawConductorSymbol(x, y, numConductors) { let p=''; for(let i=0;i<numConductors;i++){p+=` M ${x-5} ${y+5+(i*4)} l 10 -5`;} return `<path d="${p}" stroke="black" stroke-width="1" fill="none"/>`; }
-function drawCircuitLine(result, x, y, index) { const {dados,calculos}=result; const yE=y+250; const fS=`font-family: Arial;`; return `<g text-anchor="middle"> ${drawDisjuntor(x,y,`${calculos.disjuntorRecomendado.nome}`,dados.fases)} <line x1="${x}" y1="${y+12.5}" x2="${x}" y2="${yE}" stroke="black" stroke-width="1"/> ${drawConductorSymbol(x,y+60,calculos.numConductors)} <text x="${x}" y="${y+90}" style="${fS} font-size: 11px;">${calculos.bitolaRecomendadaMm2}</text> <text x="${x}" y="${yE+20}" style="${fS} font-size: 11px; font-weight: bold;">(${calculos.potenciaDemandada.toFixed(0)} W)</text> <text x="${x}" y="${yE+35}" style="${fS} font-size: 12px;">${index} - ${dados.nomeCircuito}</text> </g>`; }
+function drawCircuitLine(result, x, y, index) { const {dados,calculos}=result; const yE=y+250; const fS=`font-family: Arial;`; return `<g text-anchor="middle"> ${drawDisjuntor(x,y,`${calculos.disjuntorRecomendado.nome}`,dados.fases)} <line x1="${x}" y1="${y+12.5}" x2="${x}" y2="${yE}" stroke="black" stroke-width="1"/> ${drawConductorSymbol(x,y+60,calculos.numCondutores)} <text x="${x}" y="${y+90}" style="${fS} font-size: 11px;">${calculos.bitolaRecomendadaMm2}</text> <text x="${x}" y="${yE+20}" style="${fS} font-size: 11px; font-weight: bold;">(${calculos.potenciaDemandada.toFixed(0)} W)</text> <text x="${x}" y="${yE+35}" style="${fS} font-size: 12px;">${index} - ${dados.nomeCircuito}</text> </g>`; }
 
-// Esta função ainda é simplista e não trata múltiplos QDCs no *desenho*.
-// Ela agrupa todos os circuitos como se estivessem em um único quadro.
 function buildUnifilarSvgString(calculationResults) {
     if (!calculationResults) return null; 
     
     const { feederResult, circuitResults } = calculationResults;
-    // O worker retorna 'circuitResults' como um array plano, o que é perfeito para esta função.
-    
     if (!feederResult || !circuitResults || circuitResults.length === 0) return null;
     
-    const allCircuits = circuitResults; // Usar o array plano
+    const allCircuits = circuitResults; 
     
     const circuitsComDR = allCircuits.filter(c => c.dados.requerDR);
     const circuitsSemDR = allCircuits.filter(c => !c.dados.requerDR);
@@ -518,9 +535,92 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
     
     addT("RELATÓRIO DE PROJETO ELÉTRICO"); 
     const rD = feederResult.dados;
-    addS("DADOS GERAIS"); 
-    addL("Obra:", rD.obra); 
-    //... (adicionar mais campos do memorial se necessário)
-    
+   addSection("DADOS DO CLIENTE");
+    addLineItem("Cliente:", reportData.cliente);
+    addLineItem(`Documento (${reportData.tipoDocumento}):`, reportData.documento);
+    addLineItem("Celular:", reportData.celular);
+    addLineItem("Telefone:", reportData.telefone);
+    addLineItem("E-mail:", reportData.email);
+    addLineItem("Endereço do Cliente:", reportData.enderecoCliente);
+    yPos += 5;
+    addSection("DADOS DA OBRA");
+    addLineItem("Código da Obra:", reportData.projectCode);
+    addLineItem("Nome da Obra:", reportData.obra);
+    addLineItem("Cidade da Obra:", reportData.cidadeObra);
+    addLineItem("Endereço da Obra:", reportData.enderecoObra);
+    addLineItem("Área da Obra (m²):", reportData.areaObra);
+    addLineItem("Unid. Residenciais:", reportData.unidadesResidenciais);
+    addLineItem("Unid. Comerciais:", reportData.unidadesComerciais);
+    addLineItem("Observações:", reportData.observacoes);
+    yPos += 5;
+    addSection("INFORMAÇÕES DO RESPONSÁVEL TÉCNICO");
+    addLineItem("Nome:", document.getElementById('respTecnico').value);
+    addLineItem("Título:", document.getElementById('titulo').value);
+    addLineItem("CREA:", document.getElementById('crea').value);
+    yPos += 5;
+    addSection("INFORMAÇÕES DO RELATÓRIO");
+    const dataFormatada = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    addLineItem("Gerado em:", dataFormatada);
+    addLineItem("Gerado por:", currentUserProfile?.nome || 'N/A');
+    yPos += 5;
+    addSection("RESUMO DA ALIMENTAÇÃO GERAL");
+    const feederBreakerType = feederResult.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
+    const feederBreakerText = `${feederBreakerType} ${feederResult.calculos.disjuntorRecomendado.nome}`;
+    const feederHead = [['Tensão/Fases', 'Disjuntor Geral', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
+    const feederBody = [[ `${feederResult.dados.tensaoV}V - ${feederResult.dados.fases}`, feederBreakerText, feederResult.dados.requerDR ? 'Sim' : 'Nao', getDpsText(feederResult.dados.dpsInfo), `${feederResult.calculos.bitolaRecomendadaMm2} mm² (${feederResult.dados.tipoIsolacao})`, feederResult.calculos.dutoRecomendado ]];
+    doc.autoTable({ startY: yPos, head: feederHead, body: feederBody, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
+    yPos = doc.lastAutoTable.finalY + 10;
+    if (circuitResults.length > 0) {
+        addSection("RESUMO DOS CIRCUITOS");
+        const head = [['Ckt', 'Nome', 'Disjuntor', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
+        const body = circuitResults.map((r, index) => {
+            const circuitBreakerType = r.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
+            const circuitBreakerText = `${circuitBreakerType} ${r.calculos.disjuntorRecomendado.nome}`;
+            return [ index + 1, r.dados.nomeCircuito, circuitBreakerText, r.dados.requerDR ? 'Sim' : 'Nao', getDpsText(r.dados.dpsInfo), `${r.calculos.bitolaRecomendadaMm2} mm² (${r.dados.tipoIsolacao})`, r.calculos.dutoRecomendado ];
+        });
+        doc.autoTable({ startY: yPos, head: head, body: body, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
+    }
+    const allCalculationsForMemorial = [feederResult, ...circuitResults];
+    allCalculationsForMemorial.forEach((result, index) => {
+        doc.addPage();
+        yPos = 20;
+        const { dados, calculos } = result;
+        const potenciaDemandadaVA = dados.fatorPotencia > 0 ? (calculos.potenciaDemandada / dados.fatorPotencia).toFixed(2) : "0.00";
+        const correnteCorrigidaTexto = isFinite(calculos.correnteCorrigidaA) ? `${calculos.correnteCorrigidaA.toFixed(2)} A` : "Incalculável";
+        const title = dados.id === 'Geral' ? `MEMORIAL DE CÁLCULO - ALIMENTADOR GERAL` : `MEMORIAL DE CÁLCULO - CIRCUITO ${index}: ${dados.nomeCircuito}`;
+        addTitle(title);
+        addSection("-- PARÂMETROS DE ENTRADA --");
+        if (dados.id !== 'Geral') { addLineItem("Tipo de Circuito:", dados.tipoCircuito); }
+        addLineItem("Potência Instalada:", `${calculos.potenciaInstalada.toFixed(2)} W`);
+        addLineItem("Fator de Demanda:", `${dados.fatorDemanda}%`);
+        addLineItem("Potência Demandada:", `${potenciaDemandadaVA} VA`);
+        addLineItem("Fator de Potência:", dados.fatorPotencia);
+        addLineItem("Sistema de Fases:", dados.fases);
+        addLineItem("Tipo de Ligação:", dados.tipoLigacao);
+        addLineItem("Tensão (V):", `${dados.tensaoV} V`);
+        addLineItem("Comprimento:", `${dados.comprimentoM} m`);
+        addLineItem("Limite Queda de Tensão:", `${dados.limiteQuedaTensao}%`);
+        yPos += 5;
+        addSection("-- ESPECIFICAÇÕES DE INSTALAÇÃO E CORREÇÕES --");
+        addLineItem("Material / Isolação:", `${dados.materialCabo} / ${dados.tipoIsolacao}`);
+        addLineItem("Método de Instalação:", dados.metodoInstalacao);
+        addLineItem("Temperatura Ambiente:", `${dados.temperaturaAmbienteC}°C`);
+        if (dados.id !== 'Geral') { addLineItem("Circuitos Agrupados:", dados.numCircuitosAgrupados); if (dados.resistividadeSolo > 0) { addLineItem("Resist. do Solo (C.m/W):", dados.resistividadeSolo); } } 
+        else { if (dados.resistividadeSolo > 0) { addLineItem("Resist. do Solo (C.m/W):", dados.resistividadeSolo); } }
+        yPos += 5;
+        addSection("-- RESULTADOS DE CÁLCULO E DIMENSIONAMENTO --");
+        addLineItem("Corrente de Projeto:", `${calculos.correnteInstalada.toFixed(2)} A`);
+        addLineItem("Corrente Demandada (Ib):", `${calculos.correnteDemandada.toFixed(2)} A`);
+        addLineItem("Corrente Corrigida (I'):", correnteCorrigidaTexto);
+        addLineItem("Bitola Recomendada:", `${calculos.bitolaRecomendadaMm2} mm²`);
+        addLineItem("Queda de Tensão (DV):", `${calculos.quedaTensaoCalculada.toFixed(2)}%`);
+        addLineItem("Corrente Máx. Cabo (Iz):", `${calculos.correnteMaximaCabo.toFixed(2)} A`);
+        yPos += 5;
+        addSection("-- PROTEÇÕES RECOMENDADAS --");
+        addLineItem("Disjuntor:", `${dados.tipoDisjuntor}: ${calculos.disjuntorRecomendado.nome} (Icc: ${calculos.disjuntorRecomendado.icc} kA)`);
+        addLineItem("Proteção DR:", dados.requerDR ? `Sim (${calculos.disjuntorRecomendado.nome.replace('A','')}A / 30mA)` : 'Não');
+        addLineItem("Proteção DPS:", getDpsText(dados.dpsInfo));
+    });
+
     doc.save(`Memorial_${document.getElementById('obra').value || 'Projeto'}.pdf`);
 }
