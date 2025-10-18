@@ -80,7 +80,7 @@ function updateFeederPowerDisplay() {
     const feederPotInstalada = document.getElementById('feederPotenciaInstalada');
     const feederPotDemandada = document.getElementById('feederPotenciaDemandada');
     if (feederPotInstalada) feederPotInstalada.value = totalInstalada.toFixed(2);
-    if (feederPotDemandada) feederPotDemandada.value = 'Calculado no back-end';
+    if (feederPotDemandada) feederPotDemandada.value = totalDemandada.toFixed(2);
 }
 
 // --- FUNÇÕES DE VISIBILIDADE E MODAIS ---
