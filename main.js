@@ -8,7 +8,7 @@ import { supabase } from './supabaseClient.js';
 
 let currentUserProfile = null;
 let allClients = [];
-let uiData = null;
+let uiData = null; // Agora vai conter TODOS os dados técnicos
 
 async function handleLogin() {
     const email = document.getElementById('emailLogin').value;
@@ -19,6 +19,7 @@ async function handleLogin() {
             currentUserProfile = userProfile;
             ui.showAppView(currentUserProfile);
             
+            // Carrega TODOS os dados técnicos (cabos, disjuntores, etc.)
             uiData = await api.fetchUiData();
             if (uiData) {
                 ui.setupDynamicData(uiData);
@@ -58,6 +59,8 @@ function getFullFormData(forSave = false) {
     });
 
     const qdcsData = [];
+    const allCircuitsForCalc = []; // Array plano para o worker
+    
     document.querySelectorAll('#qdc-container .qdc-block').forEach(qdcBlock => {
         const qdcId = qdcBlock.dataset.id;
         const qdc = {
@@ -65,16 +68,24 @@ function getFullFormData(forSave = false) {
             name: document.getElementById(`qdcName-${qdcId}`).value,
             parentId: document.getElementById(`qdcParent-${qdcId}`).value,
             circuits: []
+            // NOTA: Os campos de config do QDC (solicitação 3) não são salvos
+            // pois o worker.js não faz cálculo hierárquico.
         };
 
         qdcBlock.querySelectorAll('.circuit-block').forEach(circuitBlock => {
             const circuitId = circuitBlock.dataset.id;
-            const circuitData = { id: circuitId };
+            const circuitData = { id: circuitId }; // Para salvar no JSON
+            const circuitDataForCalc = {}; // Para o worker
+            
             circuitBlock.querySelectorAll('input, select').forEach(el => {
                 const value = el.type === 'checkbox' ? el.checked : el.value;
                 circuitData[el.id] = value;
+                // Renomeia 'fases-${id}' para 'fases'
+                const key = el.id.replace(`-${circuitId}`, '');
+                circuitDataForCalc[key] = isNaN(parseFloat(value)) || !isFinite(value) ? value : parseFloat(value);
             });
             qdc.circuits.push(circuitData);
+            allCircuitsForCalc.push(circuitDataForCalc); // Adiciona ao array plano
         });
         qdcsData.push(qdc);
     });
@@ -96,10 +107,11 @@ function getFullFormData(forSave = false) {
         }; 
     }
     
+    // Para cálculo via worker (que é plano)
     return { 
         mainData, 
         feederData: feederDataForCalc,
-        qdcsData,
+        circuitsData: allCircuitsForCalc, // Envia o array plano de circuitos
         clientProfile 
     };
 }
@@ -169,27 +181,55 @@ async function handleAdminUserActions(event) {
 }
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro: " + error.message); } else { alert("Usuário atualizado!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
+// CORREÇÃO 1: Função modificada para usar o Worker local
 async function handleCalculateAndPdf() {
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = loadingOverlay.querySelector('p');
     loadingText.textContent = 'Calculando, por favor aguarde...';
     loadingOverlay.classList.add('visible');
     
+    // Pega os dados do formulário (agora retorna 'circuitsData' plano)
     const formData = getFullFormData(false);
 
     try {
-        // NOTA: A sua Edge Function 'calculate' precisa ser atualizada para 'calculate-hierarchical'
-        // e deve ser capaz de processar o objeto 'qdcsData'.
-        const { data: results, error } = await supabase.functions.invoke('calculate', {
-            body: { formData },
+        // ** NOVO: Usando o Web Worker (calculator.worker.js) **
+        const results = await new Promise((resolve, reject) => {
+            // Verifica se os dados técnicos (cabos, disjuntores...) foram carregados
+            if (!uiData || !uiData.cabos || !uiData.disjuntores) {
+                reject(new Error("Os dados técnicos (cabos, disjuntores, etc.) não foram carregados. Tente recarregar a página."));
+                return;
+            }
+
+            // Criar o worker
+            const worker = new Worker('calculator.worker.js', { type: 'module' });
+
+            // Lidar com mensagens de sucesso do worker
+            worker.onmessage = (e) => {
+                if (e.data.error) {
+                    reject(new Error(e.data.error));
+                } else {
+                    resolve(e.data); // Deve retornar { feederResult, circuitResults }
+                }
+                worker.terminate();
+            };
+
+            // Lidar com erros do worker
+            worker.onerror = (e) => {
+                reject(new Error(`Erro no Worker: ${e.message}`));
+                worker.terminate();
+            };
+
+            // Envia os dados para o worker
+            // O worker espera um objeto { formData, technicalData }
+            // uiData contém todos os dados técnicos (cabos, disjuntores, etc.)
+            worker.postMessage({ formData: formData, technicalData: uiData });
         });
-
-        if (error) throw new Error(`Erro na comunicação: ${error.message}`);
-        if (results.error) throw new Error(`Erro no cálculo: ${results.error}`);
-
+        
+        // Se chegou aqui, 'results' contém { feederResult, circuitResults }
         loadingText.textContent = 'Gerando PDFs...';
         await new Promise(resolve => setTimeout(resolve, 50));
 
+        // Passa os resultados para as funções de PDF
         await ui.generateMemorialPdf(results, currentUserProfile);
         await ui.generateUnifilarPdf(results);
 
@@ -203,6 +243,7 @@ async function handleCalculateAndPdf() {
         loadingText.textContent = 'Calculando...';
     }
 }
+
 
 function setupEventListeners() {
     document.getElementById('loginBtn').addEventListener('click', handleLogin);
@@ -221,11 +262,9 @@ function setupEventListeners() {
     const debouncedSearch = utils.debounce((e) => handleSearch(e.target.value), 300);
     document.getElementById('searchInput').addEventListener('input', debouncedSearch);
         
-    // --- Novos Listeners ---
     document.getElementById('addQdcBtn').addEventListener('click', ui.addQdcBlock);
     document.getElementById('manageQdcsBtn').addEventListener('click', () => ui.openModal('qdcManagerModalOverlay'));
     
-    // Listener delegado principal para QDCs e Circuitos
     const appContainer = document.getElementById('appContainer');
     if(appContainer) {
         appContainer.addEventListener('input', ui.handleMainContainerInteraction);
@@ -234,7 +273,6 @@ function setupEventListeners() {
     
     document.getElementById('calculateAndPdfBtn').addEventListener('click', handleCalculateAndPdf);
     
-    // --- Listeners de Admin e Cliente ---
     document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
     const projectsTableBody = document.getElementById('adminProjectsTableBody');
     if(projectsTableBody) projectsTableBody.addEventListener('click', handleProjectPanelClick);
@@ -290,6 +328,7 @@ function main() {
                     ui.showAppView(currentUserProfile);
                     allClients = await api.fetchClients();
                     
+                    // Carrega todos os dados (UI e Cálculo)
                     uiData = await api.fetchUiData();
                     if (uiData) {
                         ui.setupDynamicData(uiData);
@@ -298,7 +337,7 @@ function main() {
                     ui.resetForm();
                     await handleSearch();
                 } else if (userProfile) {
-                    await auth.signOutUser(); // Garante logout se bloqueado ou não aprovado
+                    await auth.signOutUser(); 
                 }
             } else {
                 ui.showLoginView();

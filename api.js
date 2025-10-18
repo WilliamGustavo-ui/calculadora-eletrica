@@ -94,24 +94,36 @@ export async function fetchUserById(userId) {
     if (error) console.error('Erro ao buscar usuário por ID:', error.message);
     return data;
 }
+
+// CORREÇÃO 1: Buscando todos os dados técnicos necessários para o Worker
 export async function fetchUiData() {
     const uiData = {};
+    
+    // Nomes das tabelas no Supabase e a chave que o worker.js espera
     const tablesToFetch = [
+        // Tabelas de UI
         { key: 'ar_condicionado_btu', name: 'ar_condicionado_btu' },
         { key: 'motores_cv', name: 'motores_cv' },
-        { key: 'fatores_k2_solo', name: 'fatores_k2_solo' },
-        { key: 'fatores_k1_temperatura', name: 'fatores_k1_temperatura' },
-        { key: 'fatores_k1_temperatura_epr', name: 'fatores_k1_temperatura_epr' }
+        
+        // Tabelas de Cálculo (para o worker)
+        { key: 'fatores_k1', name: 'fatores_k1_temperatura' },
+        { key: 'fatores_k1_epr', name: 'fatores_k1_temperatura_epr' },
+        { key: 'fatores_k2', name: 'fatores_k2_solo' },
+        { key: 'fatores_k3', name: 'fatores_k3' },
+        { key: 'disjuntores', name: 'disjuntores' },
+        { key: 'cabos', name: 'cabos' },
+        { key: 'eletrodutos', name: 'eletrodutos' },
+        { key: 'dps', name: 'dps' }
     ];
 
     for (const table of tablesToFetch) {
         try {
             const { data, error } = await supabase.from(table.name).select('*');
             if (error) { throw new Error(error.message); }
-            uiData[table.key] = data;
+            uiData[table.key] = data; // Atribui os dados à chave correta
         } catch (err) {
-            console.error(`ERRO ao carregar dados de UI da tabela '${table.name}'. Detalhes: ${err.message}`);
-            uiData[table.key] = [];
+            console.error(`ERRO ao carregar dados da tabela '${table.name}'. Detalhes: ${err.message}`);
+            uiData[table.key] = []; // Garante que a chave exista mesmo em caso de falha
         }
     }
     return uiData;

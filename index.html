@@ -238,7 +238,11 @@
             <form id="feeder-form" class="circuit-block" autocomplete="off">
                 <div class="form-grid">
                     <div class="form-group"> <label for="feederPotenciaInstalada">Potência Total Instalada (W)</label> <input type="text" id="feederPotenciaInstalada" value="0.00" readonly> </div>
-                    <div class="form-group"> <label for="feederPotenciaDemandada">Potência Total Demandada (W)</label> <input type="text" id="feederPotenciaDemandada" value="0.00" readonly> </div>
+                    
+                    <div class="form-group"> <label for="feederSomaPotenciaDemandada">Soma da Demanda dos Circuitos (W)</label> <input type="text" id="feederSomaPotenciaDemandada" value="0.00" readonly> </div>
+                    
+                    <div class="form-group"> <label for="feederPotenciaDemandada">Demanda Total Calculada (W)</label> <input type="text" id="feederPotenciaDemandada" value="0.00" readonly> </div>
+
                     <div class="form-group"><label for="feederFatorDemanda">Fator de Demanda Geral (%)</label><input type="number" id="feederFatorDemanda" value="100" step="1"></div>
                     <div class="form-group"><label for="feederFases">Sistema de Fases</label><select id="feederFases"><option value="Monofasico">Monofasico</option><option value="Bifasico">Bifasico</option><option value="Trifasico" selected>Trifasico</option></select></div>
                     <div class="form-group"><label for="feederTipoLigacao">Tipo de Ligacao</label><select id="feederTipoLigacao"></select></div>
