@@ -109,7 +109,7 @@ export async function fetchUiData() {
         { key: 'fatores_k1', name: 'fatores_k1_temperatura' },
         { key: 'fatores_k1_epr', name: 'fatores_k1_temperatura_epr' },
         { key: 'fatores_k2', name: 'fatores_k2_solo' },
-        { key: 'fatores_k3', name: 'fatores_k3' },
+        { key: 'fatores_k3_agrupamento', name: 'fatores_k3_agrupamento' },
         { key: 'disjuntores', name: 'disjuntores' },
         { key: 'cabos', name: 'cabos' },
         { key: 'eletrodutos', name: 'eletrodutos' },
