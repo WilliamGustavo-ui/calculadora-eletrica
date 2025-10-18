@@ -1,4 +1,4 @@
-// Arquivo: main.js (ATUALIZADO PARA SALVAR QDCs)
+// Arquivo: main.js (VERSÃO FINAL E CORRIGIDA PARA QDCs)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -18,32 +18,38 @@ async function handleLogin() {
         if (userProfile.is_approved) {
             currentUserProfile = userProfile;
             ui.showAppView(currentUserProfile);
+            
             uiData = await api.fetchUiData();
-            if (uiData) { ui.setupDynamicData(uiData); }
-            ui.resetForm();
+            if (uiData) {
+                ui.setupDynamicData(uiData);
+            }
+            
+            ui.resetForm(); // Inicia o formulário com o primeiro QDC
             await handleSearch();
-        }
+        } 
+        // A verificação de bloqueio já está no auth.js
     }
 }
 
-// --- Funções de Autenticação e Gerenciamento (sem alterações) ---
+// --- Funções de Autenticação e Gerenciamento ---
 async function handleLogout() { await auth.signOutUser(); }
-async function handleRegister(event) { event.preventDefault(); const email = document.getElementById('regEmail').value; const password = document.getElementById('regPassword').value; const details = { nome: document.getElementById('regNome').value, cpf: document.getElementById('regCpf').value, telefone: document.getElementById('regTelefone').value, crea: document.getElementById('regCrea').value, email: email }; const { error } = await auth.signUpUser(email, password, details); if (!error) { alert('Cadastro realizado com sucesso! Aguarde a aprovação.'); ui.closeModal('registerModalOverlay'); event.target.reset(); } }
-async function handleForgotPassword(event) { event.preventDefault(); const email = document.getElementById('forgotEmail').value; const { error } = await auth.sendPasswordResetEmail(email); if (error) { alert("Erro: " + error.message); } else { alert("Link de redefinição enviado!"); ui.closeModal('forgotPasswordModalOverlay'); event.target.reset(); } }
-async function handleResetPassword(event) { event.preventDefault(); const newPassword = document.getElementById('newPassword').value; if (!newPassword || newPassword.length < 6) { alert("Senha curta."); return; } const { error } = await auth.updatePassword(newPassword); if (error) { alert("Erro: " + error.message); } else { alert("Senha atualizada!"); window.location.hash = ''; window.location.reload(); } }
+async function handleRegister(event) { event.preventDefault(); const email = document.getElementById('regEmail').value; const password = document.getElementById('regPassword').value; const details = { nome: document.getElementById('regNome').value, cpf: document.getElementById('regCpf').value, telefone: document.getElementById('regTelefone').value, crea: document.getElementById('regCrea').value, email: email }; const { error } = await auth.signUpUser(email, password, details); if (!error) { alert('Cadastro realizado com sucesso! Aguarde a aprovação de um administrador.'); ui.closeModal('registerModalOverlay'); event.target.reset(); } }
+async function handleForgotPassword(event) { event.preventDefault(); const email = document.getElementById('forgotEmail').value; const { error } = await auth.sendPasswordResetEmail(email); if (error) { alert("Erro ao enviar e-mail: " + error.message); } else { alert("Se o e-mail estiver cadastrado, um link de redefinição foi enviado!"); ui.closeModal('forgotPasswordModalOverlay'); event.target.reset(); } }
+async function handleResetPassword(event) { event.preventDefault(); const newPassword = document.getElementById('newPassword').value; if (!newPassword || newPassword.length < 6) { alert("A senha precisa ter no mínimo 6 caracteres."); return; } const { error } = await auth.updatePassword(newPassword); if (error) { alert("Erro ao atualizar senha: " + error.message); } else { alert("Senha atualizada com sucesso! A página será recarregada. Por favor, faça o login com sua nova senha."); window.location.hash = ''; window.location.reload(); } }
 async function handleOpenClientManagement() { allClients = await api.fetchClients(); ui.populateClientManagementModal(allClients); ui.openModal('clientManagementModalOverlay'); }
-async function handleClientFormSubmit(event) { event.preventDefault(); const clientId = document.getElementById('clientId').value; const clientData = { nome: document.getElementById('clientNome').value, documento_tipo: document.getElementById('clientDocumentoTipo').value, documento_valor: document.getElementById('clientDocumentoValor').value, email: document.getElementById('clientEmail').value, celular: document.getElementById('clientCelular').value, telefone: document.getElementById('clientTelefone').value, endereco: document.getElementById('clientEndereco').value, owner_id: currentUserProfile.id }; try { let result; if (clientId) { result = await api.updateClient(clientId, clientData); } else { result = await api.addClient(clientData); } if (result.error) { throw result.error; } alert(clientId ? 'Cliente atualizado!' : 'Cliente cadastrado!'); ui.resetClientForm(); await handleOpenClientManagement(); } catch (error) { alert('Erro: ' + error.message); } }
-async function handleClientListClick(event) { const target = event.target; const clientId = target.dataset.clientId; if (target.classList.contains('edit-client-btn')) { const clientToEdit = allClients.find(c => c.id == clientId); if (clientToEdit) ui.openEditClientForm(clientToEdit); } if (target.classList.contains('delete-client-btn')) { if (confirm('Excluir este cliente?')) { const { error } = await api.deleteClient(clientId); if (error) { alert('Erro: ' + error.message); } else { await handleOpenClientManagement(); } } } }
-async function handleNewProject(showModal = true) { if (showModal) { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients); } else { ui.resetForm(); } } // Chama resetForm sem argumentos
-function handleConfirmClientSelection(isChange = false) { const select = document.getElementById('clientSelectForNewProject'); const selectedOption = select.options[select.selectedIndex]; const currentProjectId = document.getElementById('currentProjectId').value; if (select.value) { const client = JSON.parse(selectedOption.dataset.client); if (isChange && currentProjectId) { document.getElementById('currentClientId').value = client.id; document.getElementById('clientLinkDisplay').textContent = `Cliente: ${client.nome} (${client.client_code})`; } else { ui.resetForm(true, client); } } ui.closeModal('selectClientModalOverlay'); }
-function handleContinueWithoutClient() { ui.resetForm(); ui.closeModal('selectClientModalOverlay'); } // Chama resetForm sem argumentos
+async function handleClientFormSubmit(event) { event.preventDefault(); const clientId = document.getElementById('clientId').value; const clientData = { nome: document.getElementById('clientNome').value, documento_tipo: document.getElementById('clientDocumentoTipo').value, documento_valor: document.getElementById('clientDocumentoValor').value, email: document.getElementById('clientEmail').value, celular: document.getElementById('clientCelular').value, telefone: document.getElementById('clientTelefone').value, endereco: document.getElementById('clientEndereco').value, owner_id: currentUserProfile.id }; try { let result; if (clientId) { result = await api.updateClient(clientId, clientData); } else { result = await api.addClient(clientData); } if (result.error) { throw result.error; } alert(clientId ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!'); ui.resetClientForm(); await handleOpenClientManagement(); } catch (error) { alert('Erro ao salvar cliente: ' + error.message); } }
+async function handleClientListClick(event) { const target = event.target; const clientId = target.dataset.clientId; if (target.classList.contains('edit-client-btn')) { const clientToEdit = allClients.find(c => c.id == clientId); if (clientToEdit) ui.openEditClientForm(clientToEdit); } if (target.classList.contains('delete-client-btn')) { if (confirm('Tem certeza que deseja excluir este cliente?')) { const { error } = await api.deleteClient(clientId); if (error) { alert('Erro ao excluir cliente: ' + error.message); } else { await handleOpenClientManagement(); } } } }
+async function handleNewProject(showModal = true) { if (showModal) { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients); } else { ui.resetForm(); } }
+function handleConfirmClientSelection(isChange = false) { const select = document.getElementById('clientSelectForNewProject'); const selectedOption = select.options[select.selectedIndex]; const currentProjectId = document.getElementById('currentProjectId').value; if (select.value) { const client = JSON.parse(selectedOption.dataset.client); if (isChange && currentProjectId) { document.getElementById('currentClientId').value = client.id; document.getElementById('clientLinkDisplay').textContent = `Cliente Vinculado: ${client.nome} (${client.client_code})`; } else { ui.resetForm(true, client); } } ui.closeModal('selectClientModalOverlay'); }
+function handleContinueWithoutClient() { ui.resetForm(); ui.closeModal('selectClientModalOverlay'); }
 
-// >>>>>>>>>>>> FUNÇÃO ATUALIZADA PARA COLETAR DADOS DE QDCs <<<<<<<<<<<<<<
+// --- Funções de Projeto (Salvar, Carregar, Excluir) ---
+
 function getFullFormData(forSave = false) {
     const mainData = { obra: document.getElementById('obra').value, cidadeObra: document.getElementById('cidadeObra').value, enderecoObra: document.getElementById('enderecoObra').value, areaObra: document.getElementById('areaObra').value, unidadesResidenciais: document.getElementById('unidadesResidenciais').value, unidadesComerciais: document.getElementById('unidadesComerciais').value, observacoes: document.getElementById('observacoes').value, projectCode: document.getElementById('project_code').value };
     
-    const feederData = {}; // Coleta dados do alimentador
-    const feederDataForCalc = { id: 'feeder', nomeCircuito: "Alimentador Geral" }; // Para cálculo
+    const feederData = {};
+    const feederDataForCalc = { id: 'feeder', nomeCircuito: "Alimentador Geral" };
     document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(el => { 
         const value = el.type === 'checkbox' ? el.checked : el.value; 
         feederData[el.id] = value; 
@@ -51,22 +57,22 @@ function getFullFormData(forSave = false) {
         feederDataForCalc[key] = isNaN(parseFloat(value)) || !isFinite(value) ? value : parseFloat(value);
     });
 
-    const qdcsData = []; // Coleta dados dos QDCs e seus circuitos
+    const qdcsData = [];
     document.querySelectorAll('#qdc-container .qdc-block').forEach(qdcBlock => {
         const qdcId = qdcBlock.dataset.id;
         const qdc = {
-            id: qdcId, // Usaremos o ID interno (1, 2, 3...) para salvar
+            id: qdcId,
             name: document.getElementById(`qdcName-${qdcId}`).value,
-            parentId: document.getElementById(`qdcParent-${qdcId}`).value, // Salva 'feeder' ou o ID do QDC pai
+            parentId: document.getElementById(`qdcParent-${qdcId}`).value,
             circuits: []
         };
 
         qdcBlock.querySelectorAll('.circuit-block').forEach(circuitBlock => {
             const circuitId = circuitBlock.dataset.id;
-            const circuitData = { id: circuitId }; // Salva o ID interno do circuito
+            const circuitData = { id: circuitId };
             circuitBlock.querySelectorAll('input, select').forEach(el => {
                 const value = el.type === 'checkbox' ? el.checked : el.value;
-                circuitData[el.id] = value; // Salva com o ID completo (ex: nomeCircuito-1)
+                circuitData[el.id] = value;
             });
             qdc.circuits.push(circuitData);
         });
@@ -77,7 +83,6 @@ function getFullFormData(forSave = false) {
     const client = allClients.find(c => c.id == currentClientId);
     const clientProfile = client ? { cliente: client.nome, tipoDocumento: client.documento_tipo, documento: client.documento_valor, celular: client.celular, telefone: client.telefone, email: client.email, enderecoCliente: client.endereco } : {};
     
-    // Para salvar no banco
     if (forSave) { 
         return { 
             project_name: mainData.obra, 
@@ -85,22 +90,20 @@ function getFullFormData(forSave = false) {
             client_id: currentClientId || null, 
             main_data: mainData, 
             tech_data: { respTecnico: document.getElementById('respTecnico').value, titulo: document.getElementById('titulo').value, crea: document.getElementById('crea').value }, 
-            feeder_data: feederData, // Salva os dados do alimentador
-            qdcs_data: qdcsData,      // Salva a nova estrutura de QDCs
+            feeder_data: feederData,
+            qdcs_data: qdcsData,
             owner_id: currentUserProfile.id 
         }; 
     }
     
-    // Para enviar para o cálculo no back-end
     return { 
         mainData, 
-        feederData: feederDataForCalc, // Envia dados formatados para cálculo
-        qdcsData,                       // Envia a estrutura de QDCs
+        feederData: feederDataForCalc,
+        qdcsData,
         clientProfile 
     };
 }
 
-// >>>>>>>>>>>> FUNÇÃO ATUALIZADA PARA USAR getFullFormData CORRETO <<<<<<<<<<<<<<
 async function handleSaveProject() {
     if (!currentUserProfile) { alert("Você precisa estar logado."); return; }
     const nomeObra = document.getElementById('obra').value.trim();
@@ -113,7 +116,7 @@ async function handleSaveProject() {
     
     try {
         await new Promise(resolve => setTimeout(resolve, 50));
-        const projectDataToSave = getFullFormData(true); // Chama a função atualizada
+        const projectDataToSave = getFullFormData(true);
         const currentProjectId = document.getElementById('currentProjectId').value;
         
         const { data, error } = await api.saveProject(projectDataToSave, currentProjectId);
@@ -122,7 +125,7 @@ async function handleSaveProject() {
         alert(`Obra "${data.project_name}" salva!`);
         document.getElementById('currentProjectId').value = data.id;
         document.getElementById('project_code').value = data.project_code;
-        await handleSearch(); // Atualiza a lista de projetos salvos
+        await handleSearch();
     } catch (error) {
         alert('Erro ao salvar obra: ' + error.message);
     } finally {
@@ -131,10 +134,24 @@ async function handleSaveProject() {
     }
 }
 
-// >>>>>>>>>>>> FUNÇÃO AINDA NÃO IMPLEMENTADA <<<<<<<<<<<<<<
 async function handleLoadProject() {
-    alert("Função 'Carregar Projeto' precisa ser atualizada para a nova estrutura de QDCs.");
-    // Aqui virá a lógica para chamar api.fetchProjectById e depois ui.populateFormWithProjectData
+    const projectId = document.getElementById('savedProjectsSelect').value;
+    if (!projectId) return;
+
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    loadingOverlay.classList.add('visible');
+    try {
+        await new Promise(resolve => setTimeout(resolve, 50));
+        const project = await api.fetchProjectById(projectId);
+        if (project) {
+            ui.populateFormWithProjectData(project); // Chama a função de UI para preencher
+            alert(`Obra "${project.project_name}" carregada.`);
+        }
+    } catch (error) {
+        alert("Erro ao carregar a obra: " + error.message);
+    } finally {
+        loadingOverlay.classList.remove('visible');
+    }
 }
 
 async function handleDeleteProject() { const projectId = document.getElementById('savedProjectsSelect').value; const projectName = document.getElementById('savedProjectsSelect').options[document.getElementById('savedProjectsSelect').selectedIndex].text; if (!projectId || !confirm(`Excluir a obra "${projectName}"?`)) return; const { error } = await api.deleteProject(projectId); if (error) { alert('Erro: ' + error.message); } else { alert("Obra excluída."); ui.resetForm(); await handleSearch(); } }
@@ -153,8 +170,38 @@ async function handleAdminUserActions(event) {
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro: " + error.message); } else { alert("Usuário atualizado!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
 async function handleCalculateAndPdf() {
-    alert("A lógica de cálculo e PDF precisa ser atualizada para a nova estrutura de QDCs.");
-    // Aqui chamaremos a nova Edge Function 'calculate-hierarchical'
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingText = loadingOverlay.querySelector('p');
+    loadingText.textContent = 'Calculando, por favor aguarde...';
+    loadingOverlay.classList.add('visible');
+    
+    const formData = getFullFormData(false);
+
+    try {
+        // NOTA: A sua Edge Function 'calculate' precisa ser atualizada para 'calculate-hierarchical'
+        // e deve ser capaz de processar o objeto 'qdcsData'.
+        const { data: results, error } = await supabase.functions.invoke('calculate', {
+            body: { formData },
+        });
+
+        if (error) throw new Error(`Erro na comunicação: ${error.message}`);
+        if (results.error) throw new Error(`Erro no cálculo: ${results.error}`);
+
+        loadingText.textContent = 'Gerando PDFs...';
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        await ui.generateMemorialPdf(results, currentUserProfile);
+        await ui.generateUnifilarPdf(results);
+
+        alert("PDFs baixados com sucesso!");
+
+    } catch (error) {
+        console.error("Erro ao gerar PDFs:", error);
+        alert("Ocorreu um erro: " + error.message);
+    } finally {
+        loadingOverlay.classList.remove('visible');
+        loadingText.textContent = 'Calculando...';
+    }
 }
 
 function setupEventListeners() {
@@ -174,36 +221,61 @@ function setupEventListeners() {
     const debouncedSearch = utils.debounce((e) => handleSearch(e.target.value), 300);
     document.getElementById('searchInput').addEventListener('input', debouncedSearch);
         
+    // --- Novos Listeners ---
     document.getElementById('addQdcBtn').addEventListener('click', ui.addQdcBlock);
     document.getElementById('manageQdcsBtn').addEventListener('click', () => ui.openModal('qdcManagerModalOverlay'));
     
-    // Listener principal para interações dentro do container de QDCs e Circuitos
-    document.getElementById('appContainer').addEventListener('input', ui.handleMainContainerInteraction);
-    document.getElementById('appContainer').addEventListener('click', ui.handleMainContainerInteraction);
+    // Listener delegado principal para QDCs e Circuitos
+    const appContainer = document.getElementById('appContainer');
+    if(appContainer) {
+        appContainer.addEventListener('input', ui.handleMainContainerInteraction);
+        appContainer.addEventListener('click', ui.handleMainContainerInteraction);
+    }
     
     document.getElementById('calculateAndPdfBtn').addEventListener('click', handleCalculateAndPdf);
     
+    // --- Listeners de Admin e Cliente ---
     document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
-    document.getElementById('adminProjectsTableBody').addEventListener('click', handleProjectPanelClick);
+    const projectsTableBody = document.getElementById('adminProjectsTableBody');
+    if(projectsTableBody) projectsTableBody.addEventListener('click', handleProjectPanelClick);
+    
     document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
-    document.getElementById('adminUserList').addEventListener('click', handleAdminUserActions);
-    document.getElementById('editUserForm').addEventListener('submit', handleUpdateUser);
+    const adminUserList = document.getElementById('adminUserList');
+    if(adminUserList) adminUserList.addEventListener('click', handleAdminUserActions);
+    
+    const editUserForm = document.getElementById('editUserForm');
+    if(editUserForm) editUserForm.addEventListener('submit', handleUpdateUser);
+    
     document.getElementById('manageClientsBtn').addEventListener('click', handleOpenClientManagement);
-    document.getElementById('clientForm').addEventListener('submit', handleClientFormSubmit);
-    document.getElementById('clientList').addEventListener('click', handleClientListClick);
-    document.getElementById('clientFormCancelBtn').addEventListener('click', ui.resetClientForm);
+    const clientForm = document.getElementById('clientForm');
+    if(clientForm) clientForm.addEventListener('submit', handleClientFormSubmit);
+    
+    const clientList = document.getElementById('clientList');
+    if(clientList) clientList.addEventListener('click', handleClientListClick);
+    
+    const clientFormCancelBtn = document.getElementById('clientFormCancelBtn');
+    if(clientFormCancelBtn) clientFormCancelBtn.addEventListener('click', ui.resetClientForm);
+    
     document.getElementById('confirmClientSelectionBtn').addEventListener('click', () => handleConfirmClientSelection(true));
     document.getElementById('continueWithoutClientBtn').addEventListener('click', handleContinueWithoutClient);
     document.getElementById('addNewClientFromSelectModalBtn').addEventListener('click', () => { ui.closeModal('selectClientModalOverlay'); handleOpenClientManagement(); });
     document.getElementById('changeClientBtn').addEventListener('click', async () => { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients, true); });
+    
+    // --- Máscaras ---
     document.getElementById('regCpf').addEventListener('input', utils.mascaraCPF);
     document.getElementById('regTelefone').addEventListener('input', utils.mascaraCelular);
-    document.getElementById('editCpf').addEventListener('input', utils.mascaraCPF);
-    document.getElementById('editTelefone').addEventListener('input', utils.mascaraCelular);
-    document.getElementById('clientCelular').addEventListener('input', utils.mascaraCelular);
-    document.getElementById('clientTelefone').addEventListener('input', utils.mascaraTelefone);
-    document.getElementById('clientDocumentoValor').addEventListener('input', (e) => { const tipo = document.getElementById('clientDocumentoTipo').value; utils.aplicarMascara(e, tipo); });
-    document.getElementById('clientDocumentoTipo').addEventListener('change', () => document.getElementById('clientDocumentoValor').value = '');
+    const editCpf = document.getElementById('editCpf');
+    if(editCpf) editCpf.addEventListener('input', utils.mascaraCPF);
+    const editTel = document.getElementById('editTelefone');
+    if(editTel) editTel.addEventListener('input', utils.mascaraCelular);
+    const clientCel = document.getElementById('clientCelular');
+    if(clientCel) clientCel.addEventListener('input', utils.mascaraCelular);
+    const clientTel = document.getElementById('clientTelefone');
+    if(clientTel) clientTel.addEventListener('input', utils.mascaraTelefone);
+    const clientDoc = document.getElementById('clientDocumentoValor');
+    if(clientDoc) clientDoc.addEventListener('input', (e) => { const tipo = document.getElementById('clientDocumentoTipo').value; utils.aplicarMascara(e, tipo); });
+    const clientDocTipo = document.getElementById('clientDocumentoTipo');
+    if(clientDocTipo) clientDocTipo.addEventListener('change', () => { const docVal = document.getElementById('clientDocumentoValor'); if(docVal) docVal.value = ''; });
 }
 
 function main() {
@@ -217,14 +289,28 @@ function main() {
                     currentUserProfile = userProfile;
                     ui.showAppView(currentUserProfile);
                     allClients = await api.fetchClients();
+                    
                     uiData = await api.fetchUiData();
-                    if (uiData) { ui.setupDynamicData(uiData); }
+                    if (uiData) {
+                        ui.setupDynamicData(uiData);
+                    }
+
                     ui.resetForm();
                     await handleSearch();
-                } else if (userProfile) { await auth.signOutUser(); }
-            } else { ui.showLoginView(); }
-        } else if (event === 'SIGNED_OUT') { currentUserProfile = null; allClients = []; uiData = null; ui.showLoginView(); } 
-        else if (event === 'PASSWORD_RECOVERY') { ui.showResetPasswordView(); }
+                } else if (userProfile) {
+                    await auth.signOutUser(); // Garante logout se bloqueado ou não aprovado
+                }
+            } else {
+                ui.showLoginView();
+            }
+        } else if (event === 'SIGNED_OUT') {
+            currentUserProfile = null;
+            allClients = [];
+            uiData = null;
+            ui.showLoginView();
+        } else if (event === 'PASSWORD_RECOVERY') {
+            ui.showResetPasswordView();
+        }
     });
 }
 
