@@ -10,14 +10,18 @@ let tempOptions = { pvc: [], epr: [] };
 
 export function setupDynamicData(data) {
     uiData = data;
-    // Corrigido: Acessando a propriedade correta
+    
+    // CORREÇÃO 3: Adicionado fallback para menus suspensos de temperatura
     if (uiData?.fatores_k1_temperatura) {
         tempOptions.pvc = uiData.fatores_k1_temperatura.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
+    } else {
+        tempOptions.pvc = [30]; // Fallback padrão se dados falharem
     }
+
     if (uiData?.fatores_k1_temperatura_epr) {
         tempOptions.epr = uiData.fatores_k1_temperatura_epr.filter(f => f.fator > 0).map(f => f.temperatura_c).sort((a, b) => a - b);
     } else {
-        tempOptions.epr = tempOptions.pvc; // Fallback para PVC se EPR não existir
+        tempOptions.epr = tempOptions.pvc; // Fallback para EPR usa o de PVC (que já tem fallback)
     }
 }
 
@@ -67,21 +71,32 @@ function populateSoilResistivityDropdown(selectElement, soilData) {
     }
 }
 
+// CORREÇÃO 1: Corrigido cálculo da Potência Demandada
 function updateFeederPowerDisplay() {
     let totalInstalada = 0;
+    let totalDemandada = 0; // Adicionada variável para demanda
+    
     document.querySelectorAll('.circuit-block').forEach(block => {
         const id = block.dataset.id;
         const potenciaWInput = document.getElementById(`potenciaW-${id}`);
-        if (potenciaWInput) { // Verifica se o elemento existe
+        const fatorDemandaInput = document.getElementById(`fatorDemanda-${id}`); // Buscar input de Fator Demanda
+        
+        if (potenciaWInput && fatorDemandaInput) { // Checar se ambos existem
             const potenciaW = parseFloat(potenciaWInput.value) || 0;
+            const fatorDemanda = (parseFloat(fatorDemandaInput.value) || 100) / 100.0; // Converter % para decimal
+            
             totalInstalada += potenciaW;
+            totalDemandada += (potenciaW * fatorDemanda); // Calcular demanda do circuito e somar
         }
     });
+    
     const feederPotInstalada = document.getElementById('feederPotenciaInstalada');
     const feederPotDemandada = document.getElementById('feederPotenciaDemandada');
+    
     if (feederPotInstalada) feederPotInstalada.value = totalInstalada.toFixed(2);
-    if (feederPotDemandada) feederPotDemandada.value = totalDemandada.toFixed(2);
+    if (feederPotDemandada) feederPotDemandada.value = totalDemandada.toFixed(2); // Corrigido para usar a variável certa
 }
+
 
 // --- FUNÇÕES DE VISIBILIDADE E MODAIS ---
 export function showLoginView() { const l = document.getElementById('loginContainer'); if(l) l.style.display = 'block'; const a = document.getElementById('appContainer'); if(a) a.style.display = 'none'; const r = document.getElementById('resetPasswordContainer'); if(r) r.style.display = 'none'; }
@@ -411,7 +426,7 @@ function drawDR(x, y, text, fases = 'Monofasico') { const dC='#27ae60'; let iS='
 function drawDPS(x, y, feederData) { const dC='#27ae60'; let n=feederData.fases==='Monofasico'?2:(feederData.fases==='Bifasico'?3:4); const dI=feederData.dpsInfo; const t=dI?`${n}x DPS Cl.${dI.classe} ${dI.corrente_ka}kA`:`${n}x DPS`; return `<g> <rect x="${x-45}" y="${y-12.5}" width="90" height="25" stroke="${dC}" stroke-width="1.5" fill="white"/> <text x="${x}" y="${y+4}" text-anchor="middle" style="font-family: Arial; font-size: 10px; fill:${dC};">${t}</text> <line x1="${x}" y1="${y+12.5}" x2="${x}" y2="${y+30}" stroke="black" stroke-width="1"/> ${drawGroundSymbol(x,y+30)} </g>`; }
 function drawGroundSymbol(x, y) { return `<line x1="${x}" y1="${y}" x2="${x}" y2="${y+5}" stroke="black" stroke-width="1"/> <line x1="${x-8}" y1="${y+5}" x2="${x+8}" y2="${y+5}" stroke="black" stroke-width="1.5"/> <line x1="${x-5}" y1="${y+8}" x2="${x+5}" y2="${y+8}" stroke="black" stroke-width="1.5"/> <line x1="${x-2}" y1="${y+11}" x2="${x+2}" y2="${y+11}" stroke="black" stroke-width="1.5"/>`; }
 function drawConductorSymbol(x, y, numConductors) { let p=''; for(let i=0;i<numConductors;i++){p+=` M ${x-5} ${y+5+(i*4)} l 10 -5`;} return `<path d="${p}" stroke="black" stroke-width="1" fill="none"/>`; }
-function drawCircuitLine(result, x, y, index) { const {dados,calculos}=result; const yE=y+250; const fS=`font-family: Arial;`; return `<g text-anchor="middle"> ${drawDisjuntor(x,y,`${calculos.disjuntorRecomendado.nome}`,dados.fases)} <line x1="${x}" y1="${y+12.5}" x2="${x}" y2="${yE}" stroke="black" stroke-width="1"/> ${drawConductorSymbol(x,y+60,calculos.numCondutores)} <text x="${x}" y="${y+90}" style="${fS} font-size: 11px;">${calculos.bitolaRecomendadaMm2}</text> <text x="${x}" y="${yE+20}" style="${fS} font-size: 11px; font-weight: bold;">(${calculos.potenciaDemandada.toFixed(0)} W)</text> <text x="${x}" y="${yE+35}" style="${fS} font-size: 12px;">${index} - ${dados.nomeCircuito}</text> </g>`; }
+function drawCircuitLine(result, x, y, index) { const {dados,calculos}=result; const yE=y+250; const fS=`font-family: Arial;`; return `<g text-anchor="middle"> ${drawDisjuntor(x,y,`${calculos.disjuntorRecomendado.nome}`,dados.fases)} <line x1="${x}" y1="${y+12.5}" x2="${x}" y2="${yE}" stroke="black" stroke-width="1"/> ${drawConductorSymbol(x,y+60,calculos.numConductors)} <text x="${x}" y="${y+90}" style="${fS} font-size: 11px;">${calculos.bitolaRecomendadaMm2}</text> <text x="${x}" y="${yE+20}" style="${fS} font-size: 11px; font-weight: bold;">(${calculos.potenciaDemandada.toFixed(0)} W)</text> <text x="${x}" y="${yE+35}" style="${fS} font-size: 12px;">${index} - ${dados.nomeCircuito}</text> </g>`; }
 function buildUnifilarSvgString(calculationResults) {
     if (!calculationResults || (!calculationResults.circuitResults && !calculationResults.qdcResults)) { return null; }
     const { feederResult, circuitResults, qdcResults } = calculationResults;
@@ -433,13 +448,13 @@ function buildUnifilarSvgString(calculationResults) {
     sP.push('</svg>'); return sP.join('');
 }
 export async function generateUnifilarPdf(calculationResults) {
-    alert("Geração de PDF Unifilar para múltiplos QDCs ainda não implementada.");
+    // CORREÇÃO 2: Removido o alert de "não implementado"
     const svgString = buildUnifilarSvgString(calculationResults);
     if (!svgString) { alert("Dados insuficientes."); return; }
     try { const { jsPDF } = window.jspdf; const doc = new jsPDF('l', 'mm', 'a3'); const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); const svgEl = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svgEl.innerHTML = svgString; document.body.appendChild(svgEl); const { width, height } = svgEl.getBBox(); document.body.removeChild(svgEl); canvas.width = width || 800; canvas.height = height || 600; const v = await Canvg.fromString(ctx, svgString); await v.render(); const imgData = canvas.toDataURL('image/png'); const pdfW = doc.internal.pageSize.getWidth(); const pdfH = doc.internal.pageSize.getHeight(); const m = 10; let imgW = pdfW - (m * 2); let imgH = (canvas.height / canvas.width) * imgW; if (imgH > pdfH - (m*2)) { imgH = pdfH - (m*2); imgW = (canvas.width / canvas.height) * imgH; } let fY = m; if (imgH < (pdfH - (m * 2))) { fY = (pdfH - imgH) / 2; } let fX = (pdfW - imgW) / 2; doc.addImage(imgData, 'PNG', fX, fY, imgW, imgH); doc.save(`Unifilar_${document.getElementById('obra').value || 'Projeto'}.pdf`); } catch (e) { console.error("Erro PDF Unifilar:", e); alert("Erro ao gerar PDF."); }
 }
 export function generateMemorialPdf(calculationResults, currentUserProfile) {
-    alert("Geração de PDF do Memorial para múltiplos QDCs ainda não implementada.");
+    // CORREÇÃO 2: Removido o alert de "não implementado"
     if (!calculationResults) { alert("Gere o cálculo."); return; }
     const { feederResult, circuitResults, qdcResults } = calculationResults;
     const allCircuits = circuitResults || qdcResults?.flatMap(q => q.circuitResults.map(c => c.result)) || [];
