@@ -1,4 +1,4 @@
-// Arquivo: main.js (Baseado na versão funcional + Edge Function + Log em handleSearch)
+// Arquivo: main.js (CORRIGIDO - Funções 'handleConfirmClientSelection' e 'handleContinueWithoutClient' adicionadas)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -26,6 +26,7 @@ async function handleResetPassword(event) { event.preventDefault(); const newPas
 async function handleOpenClientManagement() { try { allClients = await api.fetchClients(); ui.populateClientManagementModal(allClients); ui.openModal('clientManagementModalOverlay'); } catch(e) {console.error("Erro ao carregar clientes:", e); alert('Erro ao carregar clientes.')}}
 async function handleClientFormSubmit(event) { event.preventDefault(); const clientId = document.getElementById('clientId').value; const clientData = { nome: document.getElementById('clientNome').value, documento_tipo: document.getElementById('clientDocumentoTipo').value, documento_valor: document.getElementById('clientDocumentoValor').value, email: document.getElementById('clientEmail').value, celular: document.getElementById('clientCelular').value, telefone: document.getElementById('clientTelefone').value, endereco: document.getElementById('clientEndereco').value, owner_id: currentUserProfile.id }; try { let result; if (clientId) { result = await api.updateClient(clientId, clientData); } else { result = await api.addClient(clientData); } if (result.error) { throw result.error; } alert(clientId ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!'); ui.resetClientForm(); await handleOpenClientManagement(); } catch (error) { alert('Erro ao salvar cliente: ' + error.message); } }
 async function handleClientListClick(event) { const target = event.target; const clientId = target.dataset.clientId; if (target.classList.contains('edit-client-btn')) { const clientToEdit = allClients.find(c => c.id == clientId); if (clientToEdit) ui.openEditClientForm(clientToEdit); } if (target.classList.contains('delete-client-btn')) { if (confirm('Tem certeza que deseja excluir este cliente?')) { const { error } = await api.deleteClient(clientId); if (error) { alert('Erro ao excluir cliente: ' + error.message); } else { await handleOpenClientManagement(); } } } }
+
 async function handleNewProject(showModal = true) {
     try {
         if (showModal) {
@@ -36,6 +37,42 @@ async function handleNewProject(showModal = true) {
             ui.resetForm();
         }
     } catch(e){ alert('Erro ao buscar clientes para nova obra.')}
+}
+
+// ========================================================================
+// >>>>> FUNÇÕES ADICIONADAS PARA CORRIGIR O ERRO DE REFERÊNCIA <<<<<
+// ========================================================================
+
+/**
+ * Chamada quando o usuário seleciona um cliente no modal e confirma.
+ * Vincula o cliente ao projeto atual ou a um novo projeto.
+ */
+function handleConfirmClientSelection(isChange = false) {
+    const selectedClientId = document.getElementById('clientSelectForNewProject').value;
+    const client = allClients.find(c => c.id == selectedClientId);
+
+    // Se não for uma "mudança", é uma "nova obra", então resetamos o formulário
+    if (!isChange) {
+        ui.resetForm(true); // Reseta o formulário mantendo um QDC
+    }
+
+    if (client) {
+        document.getElementById('clientLinkDisplay').textContent = `Cliente: ${client.nome} (${client.client_code || 'S/C'})`;
+        document.getElementById('currentClientId').value = client.id;
+    } else {
+        document.getElementById('clientLinkDisplay').textContent = 'Cliente: Nenhum';
+        document.getElementById('currentClientId').value = '';
+    }
+    
+    ui.closeModal('selectClientModalOverlay');
+}
+
+/**
+ * Chamada quando o usuário clica em "Continuar Sem Cliente" no modal de nova obra.
+ */
+function handleContinueWithoutClient() {
+    handleNewProject(false); // Chama a lógica de nova obra sem mostrar o modal (apenas reseta)
+    ui.closeModal('selectClientModalOverlay');
 }
 
 // --- Funções de Projeto (Salvar, Carregar, Excluir) ---
@@ -130,7 +167,7 @@ async function handleSearch(term = '') {
 
 async function showManageProjectsPanel() { try { const projects = await api.fetchProjects(''); allClients = await api.fetchClients(); const allUsers = await api.fetchAllUsers(); ui.populateProjectsPanel(projects, allClients, allUsers, currentUserProfile); ui.openModal('manageProjectsModalOverlay'); } catch(error){ console.error("Erro ao abrir gerenciador de obras:", error); alert("Erro ao carregar dados para o gerenciador de obras."); } }
 async function handleProjectPanelClick(event) { const target = event.target; const projectId = target.dataset.projectId; if(!projectId) return; if (target.classList.contains('transfer-client-btn')) { const select = target.closest('.action-group')?.querySelector('.transfer-client-select'); if(!select) return; const newClientId = select.value || null; const { error } = await api.transferProjectClient(projectId, newClientId); if (error) { alert('Erro ao transferir cliente: ' + error.message); } else { alert('Cliente da obra atualizado!'); await showManageProjectsPanel(); } } if (target.classList.contains('transfer-owner-btn')) { const select = target.closest('.action-group')?.querySelector('.transfer-owner-select'); if(!select) return; const newOwnerId = select.value; if (newOwnerId && confirm('Tem certeza que deseja transferir a propriedade desta obra para outro usuário?')) { const { error } = await api.transferProjectOwner(projectId, newOwnerId); if (error) { alert('Erro ao transferir propriedade: ' + error.message); } else { alert('Propriedade da obra transferida com sucesso!'); await showManageProjectsPanel(); } } } }
-async function showAdminPanel() { try { const users = await api.fetchAllUsers(); ui.populateUsersPanel(users); ui.openModal('adminPanelModalOverlay'); } catch(error){ console.error("Erro ao buscar usuários:", error); alert("Não foi possível carregar a lista de usuários."); } }
+async function showAdminPanel() { try { const users = await api.fetchAllUsers(); ui.populateUsersPanel(users); ui.openModal('adminPanelBtn'); } catch(error){ console.error("Erro ao buscar usuários:", error); alert("Não foi possível carregar a lista de usuários."); } }
 async function handleAdminUserActions(event) {
     const target = event.target; const userId = target.dataset.userId; if (!userId) return;
     try {
@@ -241,7 +278,7 @@ function main() {
 
                 } else if (userProfile && !userProfile.is_approved) {
                     alert("Seu cadastro ainda não foi aprovado."); await auth.signOutUser();
-                } else if (userProfile && userProfile.is_blocked) {
+                } else if (userProfile && user.is_blocked) { // Correção: userProfile.is_blocked
                     alert("Seu usuário está bloqueado."); await auth.signOutUser();
                 } else {
                     console.warn("Sessão encontrada, mas perfil inválido/não encontrado."); await auth.signOutUser();
