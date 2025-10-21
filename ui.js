@@ -1,4 +1,4 @@
-// Arquivo: ui.js (COMPLETO E CORRIGIDO - PDF Resumo com Tabela + Fator Potência)
+// Arquivo: ui.js (COMPLETO E CORRIGIDO - Lógica de ID em addQdcBlock)
 
 console.log("--- ui.js: Iniciando carregamento ---");
 
@@ -6,7 +6,7 @@ import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
 
 let circuitCount = 0;
-let qdcCount = 0;
+let qdcCount = 0; // Tracks the highest QDC number used
 let uiData = null;
 let tempOptions = { pvc: [], epr: [] };
 
@@ -167,17 +167,17 @@ export function resetForm(addDefaultQdc = true, linkedClient = null) {
 
     const clientLinkDisplay = document.getElementById('clientLinkDisplay');
     const currentClientIdInput = document.getElementById('currentClientId');
-    if (linkedClient && clientLinkDisplay && currentClientIdInput) { 
+    if (linkedClient && clientLinkDisplay && currentClientIdInput) {
         clientLinkDisplay.textContent = `Cliente: ${linkedClient.nome} (${linkedClient.client_code || 'S/C'})`;
         currentClientIdInput.value = linkedClient.id;
     }
-    else if (clientLinkDisplay && currentClientIdInput){ 
-        clientLinkDisplay.textContent = 'Cliente: Nenhum'; 
-        currentClientIdInput.value = ''; 
+    else if (clientLinkDisplay && currentClientIdInput){
+        clientLinkDisplay.textContent = 'Cliente: Nenhum';
+        currentClientIdInput.value = '';
     }
 
     initializeFeederListeners(); // Precisa ser chamado *antes* de addQdcBlock
-    qdcCount = 0; circuitCount = 0;
+    qdcCount = 0; circuitCount = 0; // <<<<< CONTADORES RESETADOS AQUI
 
     if (addDefaultQdc) { addQdcBlock(); }
     else { updateFeederPowerDisplay(); } // Atualiza display se não adicionar QDC default
@@ -221,15 +221,34 @@ function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
     </div>`;
 }
 
+// ========================================================================
+// >>>>> FUNÇÃO ATUALIZADA (Lógica de ID Corrigida) <<<<<
+// ========================================================================
 export function addQdcBlock(id = null, name = null, parentId = 'feeder') {
     const isNewQdc = !id;
-    const internalId = id || ++qdcCount;
-    if (!id) qdcCount = Math.max(qdcCount, internalId);
+    
+    // <<<<< FIX: Determine next ID based on current max, or use provided ID >>>>>
+    let internalId;
+    if (id) {
+        internalId = id; // Usa o ID fornecido (string ou number)
+        // Garante que qdcCount (usado para NOVOS QDCs) seja maior que o maior ID carregado
+        const numericId = parseInt(String(id), 10); // Converte para string primeiro
+        if (!isNaN(numericId)) {
+            qdcCount = Math.max(qdcCount, numericId);
+        }
+    } else {
+        qdcCount++; // Incrementa o contador APENAS para QDCs realmente novos
+        internalId = qdcCount; // O novo ID é o contador incrementado
+    }
+    // <<<<< END FIX >>>>>
+
     const qdcName = name || `QDC ${internalId}`;
-    console.log(`Adicionando QDC ${internalId} (Novo: ${isNewQdc})`);
+    // Ajusta o log para mostrar o internalId que será usado
+    console.log(`Adicionando QDC com internalId: ${internalId} (Novo: ${isNewQdc}, qdcCount agora: ${qdcCount})`);
 
     const newQdcDiv = document.createElement('div');
-    newQdcDiv.innerHTML = getQdcHTML(internalId, qdcName, parentId); // Usa a função com HTML completo
+    // Usa internalId para gerar o HTML
+    newQdcDiv.innerHTML = getQdcHTML(internalId, qdcName, parentId);
     const qdcElement = newQdcDiv.firstElementChild;
     if(!qdcElement) { console.error("Falha ao criar elemento QDC."); return; }
 
@@ -237,32 +256,31 @@ export function addQdcBlock(id = null, name = null, parentId = 'feeder') {
     if(qdcContainer) qdcContainer.appendChild(qdcElement);
     else { console.error("Container principal de QDCs não encontrado."); return;}
 
-    // A LÓGICA DE CLIQUE FOI MOVIDA PARA handleMainContainerInteraction
+    updateQdcParentDropdowns();
+    // Passa internalId para inicializar listeners
+    initializeQdcListeners(internalId);
 
-    updateQdcParentDropdowns(); // Atualiza dropdowns
-    initializeQdcListeners(internalId); // Adiciona outros listeners
-
-    // Colapsa se necessário
-    if ((isNewQdc && qdcCount > 1) || (!isNewQdc && qdcElement.previousElementSibling)) {
+    // Colapsa se for novo QDC (exceto o primeiro) ou se for carregado e não for o primeiro
+     if ((isNewQdc && qdcCount > 1) || (!isNewQdc && qdcElement.previousElementSibling)) {
          if (!qdcElement.classList.contains('collapsed')) {
             qdcElement.classList.add('collapsed');
          }
     }
 
-    // Adiciona circuito inicial se for novo
+    // Adiciona circuito inicial se for QDC novo (criado pelo usuário)
     if (isNewQdc) {
-       addCircuit(internalId);
+       addCircuit(internalId); // Usa internalId
     }
 
-    // Listener para recalcular cargas quando o parent mudar
     const parentSelect = qdcElement.querySelector('.qdc-parent-select');
     if(parentSelect) {
         parentSelect.addEventListener('change', updateFeederPowerDisplay);
     }
 
-    updateFeederPowerDisplay(); // Atualiza display geral
-    return internalId;
+    updateFeederPowerDisplay();
+    return internalId; // Retorna o ID que foi usado (seja do BD ou novo)
 }
+
 
 export function removeQdc(qdcId) {
     if (!qdcId) return;
@@ -276,7 +294,7 @@ export function removeQdc(qdcId) {
                     select.value = 'feeder'; // Move para o alimentador geral
                 }
             });
-            
+
             qdcElement.remove();
             updateQdcParentDropdowns(); // Atualiza lista de pais
             updateFeederPowerDisplay(); // Recalcula cargas
@@ -298,7 +316,7 @@ export function updateQdcParentDropdowns() {
         const currentQdcId = select.closest('.qdc-block')?.dataset.id;
         const initialValue = select.dataset.initialParent || select.value;
         select.innerHTML = '';
-        
+
         options.forEach(opt => {
             // Um QDC não pode ser pai dele mesmo
             if (`qdc-${currentQdcId}` !== opt.value) {
@@ -308,7 +326,7 @@ export function updateQdcParentDropdowns() {
                 select.appendChild(optionEl);
             }
         });
-        
+
         // Tenta restaurar o valor inicial/atual
         if (options.some(o => o.value === initialValue) && `qdc-${currentQdcId}` !== initialValue) {
             select.value = initialValue;
@@ -321,18 +339,40 @@ export function updateQdcParentDropdowns() {
 
 // --- LÓGICA DE CIRCUITO ---
 export function addCircuit(qdcId, savedCircuitData = null) {
+    console.log(`addCircuit called for QDC ID: ${qdcId}`); // DEBUG
     const isNewCircuit = !savedCircuitData;
-    const internalId = savedCircuitData ? parseInt(savedCircuitData.id) : ++circuitCount;
-    if (!savedCircuitData) circuitCount = Math.max(circuitCount, internalId);
+
+    // <<<<< ALTERAÇÃO: Lógica de ID do Circuito >>>>>
+    let internalId;
+    if (savedCircuitData && savedCircuitData.id) {
+        internalId = parseInt(savedCircuitData.id, 10);
+        // Garante que circuitCount seja maior que o maior ID carregado
+        circuitCount = Math.max(circuitCount, internalId);
+    } else {
+        circuitCount++; // Incrementa SÓ para circuitos novos
+        internalId = circuitCount;
+    }
+    // <<<<< FIM DA ALTERAÇÃO >>>>>
+    
+    console.log(`Circuit internalId: ${internalId} (New: ${isNewCircuit}, circuitCount now: ${circuitCount})`); // DEBUG
 
     const newCircuitDiv = document.createElement('div');
-    newCircuitDiv.innerHTML = getCircuitHTML(internalId); // Usa HTML completo
+    newCircuitDiv.innerHTML = getCircuitHTML(internalId); // Usa HTML com o ID correto
     const circuitElement = newCircuitDiv.firstElementChild;
     if(!circuitElement) { console.error("Falha ao criar elemento Circuito."); return; }
 
-    if (isNewCircuit) { circuitElement.classList.add('collapsed'); }
+    // Colapsa apenas se for NOVO circuito (não ao carregar)
+    if (isNewCircuit) {
+       // Só colapsa se já existir outro circuito NESTE QDC
+       const existingCircuits = document.querySelectorAll(`#circuits-for-qdc-${qdcId} .circuit-block`);
+        if (existingCircuits.length > 0) {
+            circuitElement.classList.add('collapsed');
+        }
+    }
+
 
     const circuitContainer = document.getElementById(`circuits-for-qdc-${qdcId}`);
+    console.log(`Target container for circuit ${internalId}:`, circuitContainer); // DEBUG
     if (circuitContainer) {
         circuitContainer.appendChild(circuitElement);
         // Listeners para recalcular cargas
@@ -344,21 +384,40 @@ export function addCircuit(qdcId, savedCircuitData = null) {
         if(demandInput) demandInput.addEventListener('input', updateFeederPowerDisplay);
         if(btuSelect) btuSelect.addEventListener('change', () => handlePowerUnitChange(internalId, 'btu'));
         if(cvSelect) cvSelect.addEventListener('change', () => handlePowerUnitChange(internalId, 'cv'));
-    } else { console.error(`Circuit container for QDC ${qdcId} not found!`); return; }
+    } else {
+        console.error(`Circuit container for QDC ${qdcId} not found! Cannot add circuit ${internalId}.`);
+        return; // Impede a continuação se o container não for encontrado
+    }
 
     // Preenche dados se existirem
     if (savedCircuitData) {
         // Preenche todos os inputs e selects
         Object.keys(savedCircuitData).forEach(key => {
-            const el = document.getElementById(key); // O ID no HTML (ex: 'nomeCircuito-1')
+            // Key no savedCircuitData pode ser 'nomeCircuito-1', etc.
+            const el = document.getElementById(key);
             if (el) {
                 if (el.type === 'checkbox') {
                     el.checked = savedCircuitData[key];
                 } else {
                     el.value = savedCircuitData[key];
                 }
+            } else {
+                // Se o ID não for encontrado diretamente, tenta construir (menos comum)
+                const constructedId = `${key}-${internalId}`;
+                const elConstructed = document.getElementById(constructedId);
+                if (elConstructed) {
+                     if (elConstructed.type === 'checkbox') {
+                        elConstructed.checked = savedCircuitData[key];
+                    } else {
+                        elConstructed.value = savedCircuitData[key];
+                    }
+                }
             }
         });
+        // Garante que o nome no header seja atualizado
+         const nameInput = document.getElementById(`nomeCircuito-${internalId}`);
+         const nameLabel = document.getElementById(`nomeCircuitoLabel-${internalId}`);
+         if(nameInput && nameLabel) nameLabel.textContent = nameInput.value || `Circuito ${internalId}`;
     }
 
     // Inicializa dropdowns dependentes e específicos
@@ -370,16 +429,17 @@ export function addCircuit(qdcId, savedCircuitData = null) {
     const potenciaBTUSelect = document.getElementById(`potenciaBTU-${internalId}`);
     const potenciaCVSelect = document.getElementById(`potenciaCV-${internalId}`);
     const resistividadeSolo = document.getElementById(`resistividadeSolo-${internalId}`);
-    if(uiData) { 
-        populateBtuDropdown(potenciaBTUSelect, uiData.ar_condicionado_btu); 
-        populateCvDropdown(potenciaCVSelect, uiData.motores_cv); 
-        populateSoilResistivityDropdown(resistividadeSolo, uiData.fatores_k2); 
+    if(uiData) {
+        populateBtuDropdown(potenciaBTUSelect, uiData.ar_condicionado_btu);
+        populateCvDropdown(potenciaCVSelect, uiData.motores_cv);
+        populateSoilResistivityDropdown(resistividadeSolo, uiData.fatores_k2);
     }
 
     // Restaura valores de dropdowns APÓS população e inicialização
-     if (savedCircuitData) { 
+     if (savedCircuitData) {
          setTimeout(() => {
-            // Garante que os valores de BTU/CV sejam setados após a população
+            // Garante que os valores de BTU/CV/Solo sejam setados após a população
+            // Usa a chave original do savedCircuitData
             if (savedCircuitData[`potenciaBTU-${internalId}`]) {
                 potenciaBTUSelect.value = savedCircuitData[`potenciaBTU-${internalId}`];
             }
@@ -389,13 +449,18 @@ export function addCircuit(qdcId, savedCircuitData = null) {
             if (savedCircuitData[`resistividadeSolo-${internalId}`]) {
                 resistividadeSolo.value = savedCircuitData[`resistividadeSolo-${internalId}`];
             }
+            // Dispara change para garantir que W seja recalculado se BTU/CV foi setado
+            if (potenciaBTUSelect.value) potenciaBTUSelect.dispatchEvent(new Event('change'));
+            if (potenciaCVSelect.value) potenciaCVSelect.dispatchEvent(new Event('change'));
+
             updateFeederPowerDisplay(); // Atualiza display após carregar
-         }, 10); // Pequeno delay para garantir que DOM atualizou
+         }, 50); // Aumenta um pouco o delay para garantir renderização completa
      }
-     else { 
+     else {
         updateFeederPowerDisplay(); // Atualiza display se for circuito novo
      }
 }
+
 
 export function removeCircuit(circuitId) {
     if (!circuitId) return;
@@ -416,7 +481,7 @@ function initializeFeederListeners() {
     const feederTipoIsolacao = document.getElementById('feederTipoIsolacao');
     const feederTemp = document.getElementById('feederTemperaturaAmbienteC');
     const feederSolo = document.getElementById('feederResistividadeSolo');
-    
+
     if(feederFases) feederFases.addEventListener('change', () => {
         const tipoLigacaoSelect = document.getElementById('feederTipoLigacao');
         const selectedFases = feederFases.value;
@@ -430,12 +495,12 @@ function initializeFeederListeners() {
             });
         }
     });
-    
+
     if(feederTipoIsolacao) feederTipoIsolacao.addEventListener('change', () => {
         const isPVC = feederTipoIsolacao.value === 'PVC';
         populateTemperatureDropdown(feederTemp, isPVC ? tempOptions.pvc : tempOptions.epr);
     });
-    
+
     // Inicialização
     if(feederFases) feederFases.dispatchEvent(new Event('change'));
     if(feederTipoIsolacao) feederTipoIsolacao.dispatchEvent(new Event('change'));
@@ -445,14 +510,14 @@ function initializeFeederListeners() {
 function initializeQdcListeners(id) {
     const qdcFases = document.getElementById(`qdcFases-${id}`);
     const qdcTipoIsolacao = document.getElementById(`qdcTipoIsolacao-${id}`);
-    
+
     if(qdcFases) qdcFases.addEventListener('change', () => atualizarQdcLigacoes(id));
     if(qdcTipoIsolacao) qdcTipoIsolacao.addEventListener('change', () => handleQdcInsulationChange(id));
-    
+
     // Inicialização
     atualizarQdcLigacoes(id);
     handleQdcInsulationChange(id);
-    
+
     const resistividadeSolo = document.getElementById(`qdcResistividadeSolo-${id}`);
     if(uiData) populateSoilResistivityDropdown(resistividadeSolo, uiData.fatores_k2);
 }
@@ -461,10 +526,10 @@ function atualizarQdcLigacoes(id) {
     const fasesSelect = document.getElementById(`qdcFases-${id}`);
     const tipoLigacaoSelect = document.getElementById(`qdcTipoLigacao-${id}`);
     if (!fasesSelect || !tipoLigacaoSelect) return;
-    
+
     const selectedFases = fasesSelect.value;
     const currentLigacao = tipoLigacaoSelect.value;
-    
+
     if (ligacoes[selectedFases]) {
         tipoLigacaoSelect.innerHTML = '';
         ligacoes[selectedFases].forEach(opt => {
@@ -473,7 +538,7 @@ function atualizarQdcLigacoes(id) {
             option.textContent = opt.text;
             tipoLigacaoSelect.appendChild(option);
         });
-        
+
         if (ligacoes[selectedFases].some(o => o.value === currentLigacao)) {
             tipoLigacaoSelect.value = currentLigacao;
         }
@@ -484,7 +549,7 @@ function handleQdcInsulationChange(id) {
     const tipoIsolacao = document.getElementById(`qdcTipoIsolacao-${id}`);
     const tempAmbiente = document.getElementById(`qdcTemperaturaAmbienteC-${id}`);
     if (!tipoIsolacao || !tempAmbiente) return;
-    
+
     const isPVC = tipoIsolacao.value === 'PVC';
     populateTemperatureDropdown(tempAmbiente, isPVC ? tempOptions.pvc : tempOptions.epr);
 }
@@ -513,15 +578,19 @@ function handlePowerUnitChange(id, type) {
 
 export function handleMainContainerInteraction(event) {
     const target = event.target;
+    // console.log("Interaction target:", target); // DEBUG
 
     // --- Lógica de QDC ---
     const qdcBlock = target.closest('.qdc-block');
     if (qdcBlock) {
-        const qdcId = qdcBlock.dataset.id; if (!qdcId) return;
-        
+        const qdcId = qdcBlock.dataset.id;
+        // console.log("Found QDC Block:", qdcBlock, "with ID:", qdcId); // DEBUG
+        if (!qdcId) return;
+
         // LÓGICA DE ADICIONAR CIRCUITO (DELEGADA)
         const addCircuitButton = target.closest('.add-circuit-to-qdc-btn');
         if (addCircuitButton) {
+            console.log("Add circuit button clicked for QDC ID:", qdcId); // DEBUG
             event.stopPropagation(); // Impede o colapso do QDC
             addCircuit(qdcId); // Usa o qdcId do data-id do qdcBlock
             return; // Encerra a interação
@@ -531,7 +600,8 @@ export function handleMainContainerInteraction(event) {
         if (target.classList.contains('qdc-name-input') && event.type === 'input') { updateQdcParentDropdowns(); return; }
         if (target.classList.contains('qdc-parent-select') && event.type === 'change') { updateFeederPowerDisplay(); return; }
         if (target.id === `qdcFases-${qdcId}`) { atualizarQdcLigacoes(qdcId); }
-        else if (target.id === `qdcTipoIsolacao-${qdcId}`) { handleQdcInsulationChange(id); }
+        else if (target.id === `qdcTipoIsolacao-${qdcId}`) { handleQdcInsulationChange(id); } // Deveria ser qdcId? Sim. Corrigido abaixo.
+        else if (target.id === `qdcTipoIsolacao-${qdcId}`) { handleQdcInsulationChange(qdcId); } // Correção
         const qdcHeader = target.closest('.qdc-header'); if (qdcHeader && !target.closest('.qdc-header-right button, .qdc-header-left input, .qdc-header-center select')) { qdcBlock.classList.toggle('collapsed'); return; }
     }
 
@@ -541,9 +611,9 @@ export function handleMainContainerInteraction(event) {
         const circuitId = circuitBlock.dataset.id; if (!circuitId) return;
         const circuitHeader = target.closest('.circuit-header'); if (circuitHeader && !target.closest('.remove-circuit-btn')) { circuitBlock.classList.toggle('collapsed'); }
         if (target.id === `nomeCircuito-${circuitId}` && event.type === 'input') { const lbl = document.getElementById(`nomeCircuitoLabel-${circuitId}`); if(lbl) lbl.textContent = target.value || `Circuito ${circuitId}`; }
-        
-        const removeCircuitButton = target.closest('.remove-circuit-btn'); 
-        if (removeCircuitButton) { 
+
+        const removeCircuitButton = target.closest('.remove-circuit-btn');
+        if (removeCircuitButton) {
             removeCircuit(circuitId); // Chama a função restaurada
         }
         else if (target.id === `tipoCircuito-${circuitId}`) { handleCircuitTypeChange(circuitId); }
@@ -552,6 +622,7 @@ export function handleMainContainerInteraction(event) {
     }
 }
 
+
 function atualizarLigacoes(id) {
     const fasesSelect = document.getElementById(`fases-${id}`);
     const tipoLigacaoSelect = document.getElementById(`tipoLigacao-${id}`);
@@ -559,7 +630,7 @@ function atualizarLigacoes(id) {
 
     const selectedFases = fasesSelect.value;
     const currentLigacao = tipoLigacaoSelect.value;
-    
+
     if (ligacoes[selectedFases]) {
         tipoLigacaoSelect.innerHTML = '';
         ligacoes[selectedFases].forEach(opt => {
@@ -579,7 +650,7 @@ function handleInsulationChange(id) {
     const tipoIsolacao = document.getElementById(`tipoIsolacao-${id}`);
     const tempAmbiente = document.getElementById(`temperaturaAmbienteC-${id}`);
     if (!tipoIsolacao || !tempAmbiente) return;
-    
+
     const isPVC = tipoIsolacao.value === 'PVC';
     populateTemperatureDropdown(tempAmbiente, isPVC ? tempOptions.pvc : tempOptions.epr);
 }
@@ -597,7 +668,7 @@ function handleCircuitTypeChange(id) {
     // Ajusta FP e DR padrão
     if (fpInput) {
         if (tipo === 'motores' || tipo === 'ar_condicionado') {
-            fpInput.value = '0.85'; 
+            fpInput.value = '0.85';
         } else if (tipo === 'iluminacao' || tipo === 'tug' || tipo === 'tue') {
             fpInput.value = '0.92';
         }
@@ -630,9 +701,9 @@ export function populateProjectList(projects) {
 
 export function populateFormWithProjectData(project) {
     if (!project) return;
-    
+
     // 1. Reseta o formulário SEM adicionar QDC padrão
-    resetForm(false, project.client); 
+    resetForm(false, project.client);
 
     // 2. Popula dados principais
     document.getElementById('currentProjectId').value = project.id;
@@ -668,50 +739,63 @@ export function populateFormWithProjectData(project) {
 
     // 5. Recria QDCs e Circuitos
     if (project.qdcs_data && Array.isArray(project.qdcs_data)) {
-        
+
         // Ordena QDCs para garantir que os pais sejam criados antes dos filhos
-        const qdcMap = new Map(project.qdcs_data.map(qdc => [qdc.id, qdc]));
+        const qdcMap = new Map();
+        project.qdcs_data.forEach(qdc => qdcMap.set(String(qdc.id), qdc)); // Garante ID como string
+
         const sortedQdcs = [];
         const visited = new Set();
-        
-        function visit(qdc) {
-            if (!qdc || visited.has(qdc.id)) return;
-            visited.add(qdc.id);
-            const parentId = qdc.parentId?.replace('qdc-', '');
-            if (parentId && parentId !== 'feeder' && qdcMap.has(parentId)) {
-                visit(qdcMap.get(parentId));
+
+        function visit(qdcId) { // Visita por ID
+            if (!qdcId || visited.has(qdcId)) return;
+            const qdc = qdcMap.get(qdcId);
+            if (!qdc) return; // QDC não encontrado no mapa
+
+            visited.add(qdcId);
+            const parentValue = qdc.parentId; // e.g., 'feeder' or 'qdc-1'
+            if (parentValue && parentValue !== 'feeder') {
+                const parentId = parentValue.replace('qdc-', '');
+                visit(parentId); // Visita o pai primeiro
             }
-            sortedQdcs.push(qdc);
+            if(!sortedQdcs.some(sq => sq.id == qdc.id)) { // Evita adicionar duplicados
+                 sortedQdcs.push(qdc);
+            }
         }
-        
-        project.qdcs_data.forEach(qdc => visit(qdc));
+
+        project.qdcs_data.forEach(qdc => visit(String(qdc.id))); // Inicia visita por ID (string)
+
+        console.log("QDCs ordenados para renderização:", sortedQdcs.map(q => q.id));
 
         sortedQdcs.forEach(qdc => {
-            const qdcId = addQdcBlock(qdc.id, qdc.name, qdc.parentId);
-            
+            // Passa o ID original (pode ser string) para addQdcBlock
+            const renderedQdcId = addQdcBlock(String(qdc.id), qdc.name, qdc.parentId);
+
             // Popula config do QDC
             if (qdc.config) {
                 Object.keys(qdc.config).forEach(key => {
-                    const el = document.getElementById(key); // ex: 'qdcFases-1'
+                    // key aqui é como 'qdcFases-1'
+                    const el = document.getElementById(key);
                     if (el) {
                         if (el.type === 'checkbox') el.checked = qdc.config[key];
                         else el.value = qdc.config[key];
                     }
                 });
-                // Re-dispara eventos
-                document.getElementById(`qdcFases-${qdcId}`)?.dispatchEvent(new Event('change'));
-                document.getElementById(`qdcTipoIsolacao-${qdcId}`)?.dispatchEvent(new Event('change'));
+                // Re-dispara eventos usando o ID renderizado
+                document.getElementById(`qdcFases-${renderedQdcId}`)?.dispatchEvent(new Event('change'));
+                document.getElementById(`qdcTipoIsolacao-${renderedQdcId}`)?.dispatchEvent(new Event('change'));
             }
 
             // Adiciona circuitos
             if (qdc.circuits && Array.isArray(qdc.circuits)) {
                 qdc.circuits.forEach(circuit => {
-                    addCircuit(qdcId, circuit); // addCircuit agora lida com o preenchimento
+                    // Passa o ID do QDC renderizado e os dados do circuito
+                    addCircuit(renderedQdcId, circuit);
                 });
             }
         });
     }
-    
+
     // Garante que o dropdown de pais (que foi populado em addQdcBlock)
     // tenha os valores corretos selecionados (pois agora todos os QDCs existem)
     setTimeout(() => {
@@ -720,18 +804,22 @@ export function populateFormWithProjectData(project) {
                 const parentSelect = document.getElementById(`qdcParent-${qdc.id}`);
                 if (parentSelect) {
                     parentSelect.value = qdc.parentId;
+                     // Atualiza o data attribute para refletir o estado carregado
+                    parentSelect.dataset.initialParent = qdc.parentId;
+                } else {
+                    console.warn(`Select de Parent não encontrado para QDC ${qdc.id} após load.`);
                 }
              });
         }
         updateFeederPowerDisplay(); // Calcula display final
-    }, 100); // Delay para garantir que tudo foi renderizado
+    }, 150); // Aumenta delay ligeiramente
 }
 
 export function populateUsersPanel(users) {
     const list = document.getElementById('adminUserList');
     if (!list) return;
     list.innerHTML = ''; // Limpa lista
-    
+
     if (!users || users.length === 0) {
         list.innerHTML = '<li>Nenhum usuário encontrado.</li>';
         return;
@@ -773,7 +861,7 @@ export function populateProjectsPanel(projects, clients, users, currentUserProfi
     const tableBody = document.getElementById('adminProjectsTableBody');
     if (!tableBody) return;
     tableBody.innerHTML = '';
-    
+
     const clientOptions = clients.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
     const userOptions = users.map(u => `<option value="${u.id}">${u.nome || u.email}</option>`).join('');
 
@@ -786,7 +874,7 @@ export function populateProjectsPanel(projects, clients, users, currentUserProfi
         const tr = document.createElement('tr');
         const owner = p.owner;
         const client = p.client;
-        
+
         // Só permite transferir se for admin ou o dono atual
         const canTransfer = currentUserProfile.is_admin || currentUserProfile.id === p.owner_id;
 
@@ -815,7 +903,7 @@ export function populateProjectsPanel(projects, clients, users, currentUserProfi
                 ` : ''}
             </td>
         `;
-        
+
         const clientSelect = tr.querySelector('.transfer-client-select');
         if (clientSelect && p.client_id) {
             clientSelect.value = p.client_id;
@@ -833,7 +921,7 @@ export function populateClientManagementModal(clients) {
     const list = document.getElementById('clientList');
     if (!list) return;
     list.innerHTML = '';
-    
+
     if (!clients || clients.length === 0) {
         list.innerHTML = '<li>Nenhum cliente cadastrado.</li>';
         return;
@@ -885,13 +973,13 @@ export function populateSelectClientModal(clients, isChange = false) {
     const select = document.getElementById('clientSelectForNewProject');
     const title = document.querySelector('#selectClientModalOverlay h3');
     const continueBtn = document.getElementById('continueWithoutClientBtn');
-    
+
     if (title) title.textContent = isChange ? 'Vincular / Alterar Cliente' : 'Vincular Cliente à Nova Obra';
     if (continueBtn) continueBtn.style.display = isChange ? 'none' : 'inline-block';
-    
+
     if (!select) return;
     select.innerHTML = '';
-    
+
     if (!clients || clients.length === 0) {
         select.innerHTML = '<option value="">Nenhum cliente cadastrado</option>';
         return;
@@ -911,7 +999,7 @@ export function populateSelectClientModal(clients, isChange = false) {
             select.value = currentClientId;
         }
     }
-    
+
     openModal('selectClientModalOverlay');
 }
 
@@ -929,28 +1017,30 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
     const circuitsByQdc = {};
     if (circuitResults && Array.isArray(circuitResults)) {
         circuitResults.forEach(result => {
-            if (result?.dados && (result.dados.qdcId !== undefined && result.dados.qdcId !== null)) {
+            // Garante que qdcId seja tratado como string para chave do objeto
+             // E verifica se o cálculo para este circuito foi bem-sucedido
+            if (result?.dados && result?.calculos && (result.dados.qdcId !== undefined && result.dados.qdcId !== null)) {
                 const qdcId = String(result.dados.qdcId);
                 if (!circuitsByQdc[qdcId]) circuitsByQdc[qdcId] = [];
                 circuitsByQdc[qdcId].push(result);
             } else {
-                console.warn("Resultado de circuito inválido ou sem qdcId:", result);
-                if (!circuitsByQdc['unknown']) circuitsByQdc['unknown'] = [];
-                if(result) circuitsByQdc['unknown'].push(result);
+                console.warn("Resultado de circuito inválido, sem qdcId ou com cálculo falho:", result);
+                if (!circuitsByQdc['failed']) circuitsByQdc['failed'] = [];
+                if(result) circuitsByQdc['failed'].push(result); // Agrupa falhas separadamente
             }
         });
     } else { console.warn("circuitResults não é um array ou está vazio:", circuitResults); }
 
-    const { jsPDF } = window.jspdf; 
-    const doc = new jsPDF('p', 'mm', 'a4'); 
-    let yPos = 20; 
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
+    let yPos = 20;
     const lM = 15; // Left Margin
     const vM = 75; // Value Margin
-    
+
     const addT = (t) => { doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.text(t, 105, yPos, { align: 'center' }); yPos += 12; };
     const addS = (t) => { if (yPos > 260) { doc.addPage(); yPos = 20; } doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.text(t, lM, yPos); yPos += 8; };
     const addL = (l, v) => { if (yPos > 270) { doc.addPage(); yPos = 20; } doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.text(l, lM, yPos); doc.setFont('helvetica', 'normal'); doc.text(String(v ?? '-'), vM, yPos, { maxWidth: doc.internal.pageSize.width - vM - lM }); yPos += 6; };
-    
+
     // Pega os dados do formData (passado por parâmetro)
     const mainData = formData?.mainData || {};
     const clientProfile = formData?.clientProfile || {};
@@ -958,9 +1048,9 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
 
 
     // --- Página 1: Dados Gerais e Resumos ---
-    addT("RELATÓRIO DE PROJETO ELÉTRICO"); 
-    
-    addS("DADOS DO CLIENTE"); 
+    addT("RELATÓRIO DE PROJETO ELÉTRICO");
+
+    addS("DADOS DO CLIENTE");
     addL("Cliente:", clientProfile.cliente);
     addL("Documento:", `${clientProfile.tipoDocumento || 'N/A'}: ${clientProfile.documento || 'N/A'}`);
     addL("Endereço:", clientProfile.enderecoCliente);
@@ -968,7 +1058,7 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
     addL("Email:", clientProfile.email);
     yPos += 5;
 
-    addS("DADOS DA OBRA"); 
+    addS("DADOS DA OBRA");
     addL("Obra:", mainData.obra);
     addL("Código:", mainData.projectCode);
     addL("Endereço:", `${mainData.enderecoObra || 'N/A'}, ${mainData.cidadeObra || 'N/A'}`);
@@ -976,19 +1066,19 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
     addL("Unidades:", `${mainData.unidadesResidenciais || 0} Res. | ${mainData.unidadesComerciais || 0} Com.`);
     yPos += 5;
 
-    addS("INFORMAÇÕES DO RESPONSÁVEL TÉCNICO"); 
+    addS("INFORMAÇÕES DO RESPONSÁVEL TÉCNICO");
     addL("Nome:", techData.respTecnico);
     addL("Título:", techData.titulo);
     addL("CREA:", techData.crea);
     yPos += 5;
-    
+
     addS("INFORMAÇÕES DO RELATÓRIO");
     addL("Engenheiro:", currentUserProfile?.nome || 'N/A');
     addL("Email Eng.:", currentUserProfile?.email || 'N/A');
     addL("Data:", new Date().toLocaleDateString('pt-BR', { dateStyle: 'full' }));
     yPos += 5;
 
-    addS("RESUMO DA ALIMENTAÇÃO GERAL"); 
+    addS("RESUMO DA ALIMENTAÇÃO GERAL");
     const fc = feederResult.calculos; // Feeder Calculos
     addL("Potência Instalada Total:", `${fc?.potenciaInstalada?.toFixed(2) || 'N/A'} W`);
     addL("Potência Demandada Total:", `${fc?.potenciaDemandada?.toFixed(2) || 'N/A'} W`);
@@ -999,31 +1089,27 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
     yPos += 5;
 
     // <<<<< ALTERAÇÃO: Loop Resumo Circuitos por QDC com Tabela >>>>>
-    const qdcOrder = Object.keys(circuitsByQdc).filter(id => id !== 'unknown').sort((a,b) => parseInt(a) - parseInt(b));
-    
+    const qdcOrder = Object.keys(circuitsByQdc).filter(id => id !== 'failed').sort((a, b) => parseInt(a) - parseInt(b));
+
     qdcOrder.forEach(qdcId => {
         const qdcName = document.getElementById(`qdcName-${qdcId}`)?.value || `QDC ${qdcId}`;
         const circuits = circuitsByQdc[qdcId];
         if (circuits && circuits.length > 0) {
-            
-            // Verifica se a tabela caberá na página atual
-            const tableHeaderHeight = 10; // Estimativa
-            const tableRowHeight = 7; // Estimativa
-            const estimatedTableHeight = tableHeaderHeight + (circuits.length * tableRowHeight);
-            if (yPos + estimatedTableHeight + 10 > 280) { // +10 de margem
+
+             // Verifica espaço antes de adicionar o título da seção
+            if (yPos > 260) {
                 doc.addPage();
                 yPos = 20;
             }
-            
             addS(`RESUMO - ${qdcName.toUpperCase()}`);
-            
+
             const tableHead = [
-                "Ckt nº", 
-                "Nome", 
-                "Disjuntor", 
-                "DR", 
-                "DPS", 
-                "Cabo", 
+                "Ckt nº",
+                "Nome",
+                "Disjuntor",
+                "DR",
+                "DPS",
+                "Cabo",
                 "Eletroduto"
             ];
             const tableBody = [];
@@ -1040,16 +1126,17 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
                 // Formata DR
                 const polosDR = (cD.fases === 'Monofasico' || cD.tipoLigacao === 'FF' ? '2P' : '4P');
                 const drStr = cD.requerDR ? `${polosDR} 30mA` : 'Não'; // Assumindo 30mA padrão
-                
+
                 // Formata DPS
-                const dpsStr = cD.dpsClasse ? `Classe ${cD.dpsClasse}` : 'Não'; // Simplificado, pode precisar de corrente
+                const dpsStr = cD.dpsClasse ? `Classe ${cD.dpsClasse}` : 'Não'; // Simplificado
 
                 // Formata Cabo
                 const numCondutores = cC.numCondutores || (cD.fases === 'Monofasico' ? 2 : (cD.fases === 'Bifasico' ? 3 : 4)); // Fallback
                 const fasesCabo = (numCondutores - (cD.tipoLigacao.includes('N') ? 1 : 0));
+                const terraCabo = cC.bitolaRecomendadaMm2; // Assumindo terra=fase
                 const neutroStr = cD.tipoLigacao.includes('N') ? `+ N ${cC?.bitolaRecomendadaMm2 || 'N/A'}mm²` : '';
-                const caboStr = `${fasesCabo}x${cC?.bitolaRecomendadaMm2 || 'N/A'}mm²${neutroStr} (${cD.tipoIsolacao})`;
-                
+                const caboStr = `${fasesCabo}x${cC?.bitolaRecomendadaMm2 || 'N/A'}mm²${neutroStr}+ T ${terraCabo || 'N/A'}mm² (${cD.tipoIsolacao})`;
+
                 tableBody.push([
                     cktNum,
                     cD.nomeCircuito || `Circuito ${cD.id}`,
@@ -1066,7 +1153,7 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
                 body: tableBody,
                 startY: yPos,
                 theme: 'grid',
-                headStyles: { fillColor: [63, 81, 181], textColor: 255, fontSize: 8 },
+                headStyles: { fillColor: [63, 81, 181], textColor: 255, fontSize: 8, cellPadding: 1.5 },
                 bodyStyles: { fontSize: 7, cellPadding: 1 },
                 columnStyles: {
                     0: { cellWidth: 10 }, // Ckt nº
@@ -1078,22 +1165,29 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
                     6: { cellWidth: 20 }, // Eletroduto
                 },
                 didDrawPage: (data) => {
-                    // Atualiza yPos para depois da tabela
-                    yPos = data.cursor.y + 5; 
-                }
+                    // Atualiza yPos para depois da tabela na página atual (ou nova página)
+                    yPos = data.cursor.y + 5;
+                    // Se uma nova página foi adicionada pela autoTable, reseta yPos
+                    if (data.pageNumber > doc.internal.getNumberOfPages()) {
+                        yPos = data.cursor.y + 5;
+                    }
+                },
+                 // Garante que a tabela não quebre linhas de forma estranha
+                // e adiciona página se necessário
+                margin: { left: lM, right: lM, bottom: 15 }
             });
-            // autoTable atualiza yPos internamente no didDrawPage
+            // yPos é atualizado pelo didDrawPage
         }
     });
 
-    if (circuitsByQdc['unknown']?.length > 0) {
-        addS("RESUMO - CIRCUITOS SEM QDC (ERRO)");
-        // Poderia adicionar uma tabela similar aqui se necessário
-        circuitsByQdc['unknown'].forEach((c, idx) => {
-             const cc = c.calculos;
-             const cabo = `${cc?.bitolaRecomendadaMm2 || 'N/A'} mm²`;
-             const disjuntor = cc?.disjuntorRecomendado?.nome || 'N/A';
-             addL(`Ckt ${idx + 1} (ID: ${c.dados?.id}):`, `${cabo} | ${disjuntor}`);
+    // Mostra circuitos que falharam no cálculo, se houver
+    if (circuitsByQdc['failed']?.length > 0) {
+         if (yPos > 260) { doc.addPage(); yPos = 20; }
+        addS("CIRCUITOS COM FALHA NO CÁLCULO");
+        circuitsByQdc['failed'].forEach((c) => {
+             const cD = c?.dados;
+             const qdcName = cD?.qdcId ? (document.getElementById(`qdcName-${cD.qdcId}`)?.value || `QDC ${cD.qdcId}`) : 'QDC Desconhecido';
+             addL(`Circuito ID ${cD?.id || '?'} (${qdcName})`, cD?.nomeCircuito || 'Nome não disponível');
         });
         yPos += 5;
     }
@@ -1101,10 +1195,10 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
 
 
     // Páginas Detalhadas
-    if (feederResult) { 
-        doc.addPage(); 
-        yPos = 20; 
-        generateMemorialPage(doc, feederResult, "ALIMENTADOR GERAL", 0, addT, addS, addL, () => yPos, (newY) => yPos = newY); 
+    if (feederResult) {
+        doc.addPage();
+        yPos = 20;
+        generateMemorialPage(doc, feederResult, "ALIMENTADOR GERAL", 0, addT, addS, addL, () => yPos, (newY) => yPos = newY);
     }
 
     qdcOrder.forEach(qdcId => {
@@ -1120,19 +1214,18 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
         }
     });
 
-    try { 
-        doc.save(`Memorial_${document.getElementById('obra')?.value || 'Projeto'}.pdf`); 
-    } catch (e) { 
-        console.error("Erro ao salvar PDF Memorial:", e); 
-        alert("Erro ao salvar PDF Memorial: " + e.message); 
+    try {
+        doc.save(`Memorial_${document.getElementById('obra')?.value || 'Projeto'}.pdf`);
+    } catch (e) {
+        console.error("Erro ao salvar PDF Memorial:", e);
+        alert("Erro ao salvar PDF Memorial: " + e.message);
     }
 }
 
-// ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA (Fator Potência) <<<<<
-// ========================================================================
+
 function generateMemorialPage(doc, result, titlePrefix, circuitIndex, addT, addS, addL, getY, setY) {
     const { dados, calculos, logs } = result || {};
+    // Verifica se calculos e o disjuntor existem para indicar sucesso
     if (!dados || !calculos || !calculos.disjuntorRecomendado) {
         addT(titlePrefix);
         addS("ERRO");
@@ -1149,7 +1242,7 @@ function generateMemorialPage(doc, result, titlePrefix, circuitIndex, addT, addS
     addL("Potência Demandada (W):", calculos.potenciaDemandada?.toFixed(2));
     addL("Tensão (V):", dados.tensaoV);
     addL("Sistema:", `${dados.fases} (${dados.tipoLigacao})`);
-    addL("Fator de Potência:", dados.fatorPotencia); // <<<<< ALTERAÇÃO: Removido (cos φ)
+    addL("Fator de Potência:", dados.fatorPotencia); // <<<<< CORREÇÃO: Removido (cos φ)
     addL("Comprimento (m):", dados.comprimentoM);
     addL("Queda de Tensão Limite (%):", dados.limiteQuedaTensao);
     setY(getY() + 5);
@@ -1175,17 +1268,17 @@ function generateMemorialPage(doc, result, titlePrefix, circuitIndex, addT, addS
 
     addS("CRITÉRIOS DE DIMENSIONAMENTO");
     addL("Cabo (Capacidade):", `${calculos.bitolaRecomendadaMm2 || 'N/A'} mm²`);
-    addL("Capacidade Corrente (A):", calculos.correnteMaximaCabo);
+    addL("Capacidade Corrente Cabo (A):", calculos.correnteMaximaCabo);
     addL("Disjuntor (Capacidade):", calculos.disjuntorRecomendado?.nome || 'N/A');
-    addL("Queda de Tensão (%):", calculos.quedaTensaoCalculada?.toFixed(3));
+    addL("Queda de Tensão Calculada (%):", calculos.quedaTensaoCalculada?.toFixed(3));
     setY(getY() + 5);
-    
+
     addS("RESULTADO FINAL");
     // <<<<< ALTERAÇÃO: Formatação do Cabo Recomendado >>>>>
     const numCondutores = calculos.numCondutores || (dados.fases === 'Monofasico' ? 2 : (dados.fases === 'Bifasico' ? 3 : 4)); // Fallback
     const fasesCabo = (numCondutores - (dados.tipoLigacao.includes('N') ? 1 : 0));
-    const terraCabo = calculos.bitolaRecomendadaMm2; // Assumindo terra igual fase por simplicidade
-    const caboStr = `${fasesCabo}x${calculos.bitolaRecomendadaMm2 || 'N/A'}mm²` + 
+    const terraCabo = calculos.bitolaRecomendadaMm2; // Assumindo terra=fase
+    const caboStr = `${fasesCabo}x${calculos.bitolaRecomendadaMm2 || 'N/A'}mm²` +
                    (dados.tipoLigacao.includes('N') ? `+ N ${calculos.bitolaRecomendadaMm2 || 'N/A'}mm²` : '') +
                    `+ T ${terraCabo || 'N/A'}mm² (${dados.tipoIsolacao})`;
     addL("Cabo Recomendado:", caboStr);
@@ -1194,22 +1287,23 @@ function generateMemorialPage(doc, result, titlePrefix, circuitIndex, addT, addS
     addL("DPS Recomendado:", dados.dpsClasse ? `Classe ${dados.dpsClasse}` : "Nenhum");
     addL("Eletroduto:", calculos.dutoRecomendado || 'N/A');
     setY(getY() + 5);
-    
+
     if (logs && logs.length > 0) {
         addS("LOGS DE CÁLCULO");
         logs.forEach(log => {
-            addL(log.startsWith("INFO:") ? "Info:" : log.startsWith("WARN:") ? "Aviso:" : "Log:", 
+            addL(log.startsWith("INFO:") ? "Info:" : log.startsWith("WARN:") ? "Aviso:" : "Log:",
                  log.replace("INFO: ", "").replace("WARN: ", "").replace("ERROR: ", ""));
         });
     }
 }
+
 
 export async function generateUnifilarPdf(calculationResults) {
     if (!calculationResults || !calculationResults.feederResult || !calculationResults.circuitResults) {
         alert("Dados de cálculo insuficientes para gerar Diagrama Unifilar.");
         return;
     }
-    
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('l', 'mm', 'a4'); // Paisagem (Landscape)
     const { feederResult, circuitResults } = calculationResults;
@@ -1221,7 +1315,7 @@ export async function generateUnifilarPdf(calculationResults) {
     const qdcs = {};
     circuitResults.forEach(c => {
         if (!c.dados || !c.calculos) return; // Pula circuitos com falha
-        
+
         const qdcId = c.dados?.qdcId || 'unknown';
         if (!qdcs[qdcId]) {
              qdcs[qdcId] = {
@@ -1234,11 +1328,11 @@ export async function generateUnifilarPdf(calculationResults) {
 
     try {
         const svgString = buildUnifilarSvgString(feederResult, qdcs);
-        
+
         // Define o tamanho do canvas (A4 paisagem em pixels a 96 DPI)
-        const svgWidth = 1122; 
+        const svgWidth = 1122;
         const svgHeight = 794;
-        
+
         canvas.width = svgWidth;
         canvas.height = svgHeight;
 
@@ -1249,7 +1343,7 @@ export async function generateUnifilarPdf(calculationResults) {
             scaleHeight: svgHeight
         });
         await v.render();
-        
+
         // Adiciona o canvas como imagem ao PDF
         const imgData = canvas.toDataURL('image/png');
         doc.addImage(imgData, 'PNG', 0, 0, 297, 210); // Adiciona imagem (largura, altura A4)
@@ -1264,7 +1358,7 @@ export async function generateUnifilarPdf(calculationResults) {
 function buildUnifilarSvgString(feeder, qdcs) {
     const fC = feeder.calculos; // Feeder Calculos
     const fD = feeder.dados; // Feeder Data
-    
+
     // Pega dados do formulário (que estão em fD)
     const obra = fD.mainData?.obra || 'Projeto';
     const projectCode = fD.mainData?.projectCode || 'S/C';
@@ -1281,18 +1375,18 @@ function buildUnifilarSvgString(feeder, qdcs) {
     for (const qdcId in qdcs) {
         const qdc = qdcs[qdcId];
         const qdcX = xStart + (qdcWidth + qdcMargin) * qdcIndex;
-        
+
         let cktYPos = yPos + 100;
         let cktLines = '';
-        
+
         qdc.circuits.sort((a,b) => (a.dados?.id || 0) - (b.dados?.id || 0)); // Ordena
-        
+
         qdc.circuits.forEach((c, idx) => {
             const cC = c.calculos;
             const cD = c.dados;
             const cktNum = idx + 1;
             const cabo = `${cC.bitolaRecomendadaMm2 || 'N/A'} mm²`;
-            
+
             cktLines += `
                 <line x1="${qdcX + 100}" y1="${cktYPos}" x2="${qdcX + 100}" y2="${cktYPos + 60}" stroke="black" stroke-width="1"/>
                 ${drawDisjuntor(qdcX + 100, cktYPos + 15, (cC.disjuntorRecomendado?.curva || 'C'), (cC.disjuntorRecomendado?.nome || 'N/A').replace('A',''), cD.fases)}
@@ -1332,20 +1426,20 @@ function buildUnifilarSvgString(feeder, qdcs) {
         <g id="alimentador-geral">
             <line x1="${xStart + 150}" y1="${yPos}" x2="${xStart + 150}" y2="${yPos - 30}" stroke="black" stroke-width="2" />
             <text x="${xStart}" y="${yPos - 15}" font-size="12">REDE</text>
-            
+
             ${drawDisjuntor(xStart + 150, yPos - 15, (fC.disjuntorRecomendado?.curva || 'C'), (fC.disjuntorRecomendado?.nome || 'N/A').replace('A',''), fD.fases)}
             ${drawText(feederDR, xStart + 100, yPos + 10, 10)}
             ${drawText(feederDPS, xStart + 100, yPos + 25, 10)}
             ${drawText(feederCabo, xStart + 165, yPos + 15, 10)}
-            
+
             <rect x="${xStart + 50}" y="${yPos + 40}" width="200" height="40" stroke="blue" stroke-width="1" fill="none" />
             <text x="${xStart + 150}" y="${yPos + 65}" font-size="12" text-anchor="middle">QG (Alimentador Geral)</text>
             <line x1="${xStart + 150}" y1="${yPos + 80}" x2="${xStart + 150}" y2="${yPos + 100}" stroke="black" stroke-width="2" />
-            
+
             <line x1="${xStart + 150}" y1="${yPos}" x2="${xStart + 150 + (qdcIndex > 0 ? ((qdcWidth + qdcMargin) * (qdcIndex -1)) : 0)}" y2="${yPos}" stroke="black" stroke-width="2" />
 
         </g>
-        
+
         <g id="qdcs-e-circuitos">
             ${qdcElements}
         </g>
@@ -1367,7 +1461,9 @@ function drawDisjuntor(x, y, curva, corrente, fases) {
 
 function drawText(text, x, y, size = 12, anchor = 'start') {
     if (!text || text === 'N/A' || text === 'Nenhum' || text.includes('undefined')) return '';
-    return `<text x="${x}" y="${y}" font-size="${size}" text-anchor="${anchor}">${text}</text>`;
+    // Remove a unidade 'A' que pode vir do nome do disjuntor
+    const cleanedText = String(text).replace(/ A$/,'A');
+    return `<text x="${x}" y="${y}" font-size="${size}" text-anchor="${anchor}">${cleanedText}</text>`;
 }
 
 
