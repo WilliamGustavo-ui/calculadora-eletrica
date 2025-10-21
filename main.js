@@ -1,4 +1,4 @@
-// Arquivo: main.js (VERSÃO ATUALIZADA)
+// Arquivo: main.js (VERSÃO ATUALIZADA E CORRIGIDA)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -11,25 +11,25 @@ let allClients = [];
 let uiData = null; // Agora vai conter TODOS os dados técnicos
 
 async function handleLogin() {
-    const email = document.getElementById('emailLogin').value;
-    const password = document.getElementById('password').value;
-    const userProfile = await auth.signInUser(email, password);
-    if (userProfile) {
-        if (userProfile.is_approved) {
-            currentUserProfile = userProfile;
-            ui.showAppView(currentUserProfile);
-            
-            // Carrega TODOS os dados técnicos (cabos, disjuntores, etc.)
-            uiData = await api.fetchUiData();
-            if (uiData) {
-                ui.setupDynamicData(uiData);
-            }
-            
-            ui.resetForm(); // Inicia o formulário com o primeiro QDC
-            await handleSearch();
-        } 
-        // A verificação de bloqueio já está no auth.js
-    }
+    const email = document.getElementById('emailLogin').value;
+    const password = document.getElementById('password').value;
+    const userProfile = await auth.signInUser(email, password);
+    if (userProfile) {
+        if (userProfile.is_approved) {
+            currentUserProfile = userProfile;
+            ui.showAppView(currentUserProfile);
+            
+            // Carrega TODOS os dados técnicos (cabos, disjuntores, etc.)
+            uiData = await api.fetchUiData();
+            if (uiData) {
+                ui.setupDynamicData(uiData);
+            }
+            
+            ui.resetForm(); // Inicia o formulário com o primeiro QDC
+            await handleSearch();
+        } 
+        // A verificação de bloqueio já está no auth.js
+    }
 }
 
 // --- Funções de Autenticação e Gerenciamento ---
@@ -46,138 +46,129 @@ function handleContinueWithoutClient() { ui.resetForm(); ui.closeModal('selectCl
 
 // --- Funções de Projeto (Salvar, Carregar, Excluir) ---
 
-// ========================================================================
-// >>>>> FUNÇÃO MODIFICADA: getFullFormData <<<<<
-// Agora lê os dados de 'qdc-config-grid' e salva em 'qdc.config'
-// ========================================================================
 function getFullFormData(forSave = false) {
-    const mainData = { obra: document.getElementById('obra').value, cidadeObra: document.getElementById('cidadeObra').value, enderecoObra: document.getElementById('enderecoObra').value, areaObra: document.getElementById('areaObra').value, unidadesResidenciais: document.getElementById('unidadesResidenciais').value, unidadesComerciais: document.getElementById('unidadesComerciais').value, observacoes: document.getElementById('observacoes').value, projectCode: document.getElementById('project_code').value };
-    
-    const feederData = {};
-    const feederDataForCalc = { id: 'feeder', nomeCircuito: "Alimentador Geral" };
-    document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(el => { 
-        const value = el.type === 'checkbox' ? el.checked : el.value; 
-        feederData[el.id] = value; 
-        const key = el.id.replace('feeder', '').charAt(0).toLowerCase() + el.id.replace('feeder', '').slice(1);
-        feederDataForCalc[key] = isNaN(parseFloat(value)) || !isFinite(value) ? value : parseFloat(value);
-    });
+    const mainData = { obra: document.getElementById('obra').value, cidadeObra: document.getElementById('cidadeObra').value, enderecoObra: document.getElementById('enderecoObra').value, areaObra: document.getElementById('areaObra').value, unidadesResidenciais: document.getElementById('unidadesResidenciais').value, unidadesComerciais: document.getElementById('unidadesComerciais').value, observacoes: document.getElementById('observacoes').value, projectCode: document.getElementById('project_code').value };
+    
+    const feederData = {};
+    const feederDataForCalc = { id: 'feeder', nomeCircuito: "Alimentador Geral" };
+    document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(el => { 
+        const value = el.type === 'checkbox' ? el.checked : el.value; 
+        feederData[el.id] = value; 
+        const key = el.id.replace('feeder', '').charAt(0).toLowerCase() + el.id.replace('feeder', '').slice(1);
+        feederDataForCalc[key] = isNaN(parseFloat(value)) || !isFinite(value) ? value : parseFloat(value);
+    });
 
-    const qdcsData = [];
-    const allCircuitsForCalc = []; // Array plano para o worker
-    
-    document.querySelectorAll('#qdc-container .qdc-block').forEach(qdcBlock => {
-        const qdcId = qdcBlock.dataset.id;
-        
-        // >>>>> NOVO: Lê os dados de configuração do QDC <<<<<
-        const qdcConfigData = {};
-        qdcBlock.querySelectorAll('.qdc-config-grid input, .qdc-config-grid select').forEach(el => {
-            const value = el.type === 'checkbox' ? el.checked : el.value;
-            qdcConfigData[el.id] = value;
-        });
-        
-        const qdc = {
-            id: qdcId,
-            name: document.getElementById(`qdcName-${qdcId}`).value,
-            parentId: document.getElementById(`qdcParent-${qdcId}`).value,
-            config: qdcConfigData, // Salva o objeto de configuração
-            circuits: []
-            // NOTA: Os campos de config do QDC (solicitação 3) não são salvos
-            // pois o worker.js não faz cálculo hierárquico.
-            // (Comentário antigo atualizado: agora SÃO salvos, mas NÃO são usados no cálculo)
-        };
+    const qdcsData = [];
+    const allCircuitsForCalc = []; // Array plano para o worker
+    
+    document.querySelectorAll('#qdc-container .qdc-block').forEach(qdcBlock => {
+        const qdcId = qdcBlock.dataset.id;
+        
+        const qdcConfigData = {};
+        qdcBlock.querySelectorAll('.qdc-config-grid input, .qdc-config-grid select').forEach(el => {
+            const value = el.type === 'checkbox' ? el.checked : el.value;
+            qdcConfigData[el.id] = value;
+        });
+        
+        const qdc = {
+            id: qdcId,
+            name: document.getElementById(`qdcName-${qdcId}`).value,
+            parentId: document.getElementById(`qdcParent-${qdcId}`).value,
+            config: qdcConfigData, 
+            circuits: []
+        };
 
-        qdcBlock.querySelectorAll('.circuit-block').forEach(circuitBlock => {
-            const circuitId = circuitBlock.dataset.id;
-            const circuitData = { id: circuitId }; // Para salvar no JSON
-            const circuitDataForCalc = {}; // Para o worker
-            
-            circuitBlock.querySelectorAll('input, select').forEach(el => {
-                const value = el.type === 'checkbox' ? el.checked : el.value;
-                circuitData[el.id] = value;
-                // Renomeia 'fases-${id}' para 'fases'
-                const key = el.id.replace(`-${circuitId}`, '');
-                circuitDataForCalc[key] = isNaN(parseFloat(value)) || !isFinite(value) ? value : parseFloat(value);
-            });
-            qdc.circuits.push(circuitData);
-            allCircuitsForCalc.push(circuitDataForCalc); // Adiciona ao array plano
-        });
-        qdcsData.push(qdc);
-    });
+        qdcBlock.querySelectorAll('.circuit-block').forEach(circuitBlock => {
+            const circuitId = circuitBlock.dataset.id;
+            const circuitData = { id: circuitId }; // Para salvar no JSON
+            const circuitDataForCalc = {}; // Para o worker
+            
+            circuitBlock.querySelectorAll('input, select').forEach(el => {
+                const value = el.type === 'checkbox' ? el.checked : el.value;
+                circuitData[el.id] = value;
+                const key = el.id.replace(`-${circuitId}`, '');
+                circuitDataForCalc[key] = isNaN(parseFloat(value)) || !isFinite(value) ? value : parseFloat(value);
+            });
+            qdc.circuits.push(circuitData);
+            allCircuitsForCalc.push(circuitDataForCalc); // Adiciona ao array plano
+        });
+        qdcsData.push(qdc);
+    });
 
-    const currentClientId = document.getElementById('currentClientId').value;
-    const client = allClients.find(c => c.id == currentClientId);
-    const clientProfile = client ? { cliente: client.nome, tipoDocumento: client.documento_tipo, documento: client.documento_valor, celular: client.celular, telefone: client.telefone, email: client.email, enderecoCliente: client.endereco } : {};
-    
-    if (forSave) { 
-        return { 
-            project_name: mainData.obra, 
-            project_code: mainData.projectCode || null, 
-            client_id: currentClientId || null, 
-            main_data: mainData, 
-            tech_data: { respTecnico: document.getElementById('respTecnico').value, titulo: document.getElementById('titulo').value, crea: document.getElementById('crea').value }, 
-            feeder_data: feederData,
-            qdcs_data: qdcsData, // Agora contém os dados de 'config' de cada QDC
-            owner_id: currentUserProfile.id 
-        }; 
-    }
-    
-    // Para cálculo via worker (que é plano)
-    return { 
-        mainData, 
-        feederData: feederDataForCalc,
-        circuitsData: allCircuitsForCalc, // Envia o array plano de circuitos
-        clientProfile 
-    };
+    const currentClientId = document.getElementById('currentClientId').value;
+    const client = allClients.find(c => c.id == currentClientId);
+    const clientProfile = client ? { cliente: client.nome, tipoDocumento: client.documento_tipo, documento: client.documento_valor, celular: client.celular, telefone: client.telefone, email: client.email, enderecoCliente: client.endereco } : {};
+    
+    if (forSave) { 
+        return { 
+            project_name: mainData.obra, 
+            project_code: mainData.projectCode || null, 
+            client_id: currentClientId || null, 
+            main_data: mainData, 
+            tech_data: { respTecnico: document.getElementById('respTecnico').value, titulo: document.getElementById('titulo').value, crea: document.getElementById('crea').value }, 
+            feeder_data: feederData,
+            qdcs_data: qdcsData, 
+            owner_id: currentUserProfile.id 
+        }; 
+    }
+    
+    // Para cálculo via worker (que é plano)
+    return { 
+        mainData, 
+        feederData: feederDataForCalc,
+        circuitsData: allCircuitsForCalc, // Envia o array plano de circuitos
+        clientProfile 
+    };
 }
 
 async function handleSaveProject() {
-    if (!currentUserProfile) { alert("Você precisa estar logado."); return; }
-    const nomeObra = document.getElementById('obra').value.trim();
-    if (!nomeObra) { alert("Insira um 'Nome da Obra'."); return; }
+    if (!currentUserProfile) { alert("Você precisa estar logado."); return; }
+    const nomeObra = document.getElementById('obra').value.trim();
+    if (!nomeObra) { alert("Insira um 'Nome da Obra'."); return; }
 
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    const loadingText = loadingOverlay.querySelector('p');
-    loadingText.textContent = 'Salvando dados da obra...';
-    loadingOverlay.classList.add('visible');
-    
-    try {
-        await new Promise(resolve => setTimeout(resolve, 50));
-        const projectDataToSave = getFullFormData(true);
-        const currentProjectId = document.getElementById('currentProjectId').value;
-        
-        const { data, error } = await api.saveProject(projectDataToSave, currentProjectId);
-        if (error) throw error;
-        
-        alert(`Obra "${data.project_name}" salva!`);
-        document.getElementById('currentProjectId').value = data.id;
-        document.getElementById('project_code').value = data.project_code;
-        await handleSearch();
-    } catch (error) {
-        alert('Erro ao salvar obra: ' + error.message);
-    } finally {
-        loadingOverlay.classList.remove('visible');
-        loadingText.textContent = 'Calculando...';
-    }
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingText = loadingOverlay.querySelector('p');
+    loadingText.textContent = 'Salvando dados da obra...';
+    loadingOverlay.classList.add('visible');
+    
+    try {
+        await new Promise(resolve => setTimeout(resolve, 50));
+        const projectDataToSave = getFullFormData(true);
+        const currentProjectId = document.getElementById('currentProjectId').value;
+        
+        const { data, error } = await api.saveProject(projectDataToSave, currentProjectId);
+        if (error) throw error;
+        
+        alert(`Obra "${data.project_name}" salva!`);
+        document.getElementById('currentProjectId').value = data.id;
+        document.getElementById('project_code').value = data.project_code;
+        await handleSearch();
+    } catch (error) {
+        alert('Erro ao salvar obra: ' + error.message);
+    } finally {
+        loadingOverlay.classList.remove('visible');
+        loadingText.textContent = 'Calculando...';
+    }
 }
 
 async function handleLoadProject() {
-    const projectId = document.getElementById('savedProjectsSelect').value;
-    if (!projectId) return;
+    const projectId = document.getElementById('savedProjectsSelect').value;
+    if (!projectId) return;
 
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    loadingOverlay.classList.add('visible');
-    try {
-        await new Promise(resolve => setTimeout(resolve, 50));
-        const project = await api.fetchProjectById(projectId);
-        if (project) {
-            ui.populateFormWithProjectData(project); // Chama a função de UI para preencher
-            alert(`Obra "${project.project_name}" carregada.`);
-        }
-    } catch (error) {
-        alert("Erro ao carregar a obra: " + error.message);
-    } finally {
-        loadingOverlay.classList.remove('visible');
-    }
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    loadingOverlay.classList.add('visible');
+    try {
+        await new Promise(resolve => setTimeout(resolve, 50));
+        const project = await api.fetchProjectById(projectId);
+        if (project) {
+            ui.populateFormWithProjectData(project); // Chama a função de UI para preencher
+            alert(`Obra "${project.project_name}" carregada.`);
+        }
+    } catch (error) {
+        alert("Erro ao carregar a obra: " + error.message);
+    } finally {
+        loadingOverlay.classList.remove('visible');
+    }
 }
 
 async function handleDeleteProject() { const projectId = document.getElementById('savedProjectsSelect').value; const projectName = document.getElementById('savedProjectsSelect').options[document.getElementById('savedProjectsSelect').selectedIndex].text; if (!projectId || !confirm(`Excluir a obra "${projectName}"?`)) return; const { error } = await api.deleteProject(projectId); if (error) { alert('Erro: ' + error.message); } else { alert("Obra excluída."); ui.resetForm(); await handleSearch(); } }
@@ -186,185 +177,179 @@ async function showManageProjectsPanel() { const projects = await api.fetchProje
 async function handleProjectPanelClick(event) { const target = event.target; const projectId = target.dataset.projectId; if (target.classList.contains('transfer-client-btn')) { const select = target.parentElement.querySelector('.transfer-client-select'); const newClientId = select.value || null; const { error } = await api.transferProjectClient(projectId, newClientId); if (error) { alert('Erro: ' + error.message); } else { alert('Cliente atualizado!'); await showManageProjectsPanel(); } } if (target.classList.contains('transfer-owner-btn')) { const select = target.parentElement.querySelector('.transfer-owner-select'); const newOwnerId = select.value; if (newOwnerId && confirm('Transferir propriedade?')) { const { error } = await api.transferProjectOwner(projectId, newOwnerId); if (error) { alert('Erro: ' + error.message); } else { alert('Propriedade transferida!'); await showManageProjectsPanel(); } } } }
 async function showAdminPanel() { const users = await api.fetchAllUsers(); ui.populateUsersPanel(users); ui.openModal('adminPanelModalOverlay'); }
 async function handleAdminUserActions(event) {
-    const target = event.target;
-    const userId = target.dataset.userId;
-    if (target.classList.contains('approve-user-btn')) { await api.approveUser(userId); await showAdminPanel(); }
-    if (target.classList.contains('edit-user-btn')) { const user = await api.fetchUserById(userId); if (user) ui.populateEditUserModal(user); }
-    if (target.classList.contains('block-user-btn')) { const shouldBlock = target.dataset.isBlocked === 'true'; const actionText = shouldBlock ? 'bloquear' : 'desbloquear'; if (confirm(`Tem certeza?`)) { await api.toggleUserBlock(userId, shouldBlock); await showAdminPanel(); } }
-    if (target.classList.contains('remove-user-btn')) { if (confirm('ATENÇÃO: Ação irreversível!')) { const { error } = await api.deleteUserFromAdmin(userId); if (error) { alert('Erro: ' + error.message); } else { alert('Usuário excluído.'); await showAdminPanel(); } } }
+    const target = event.target;
+    const userId = target.dataset.userId;
+    if (target.classList.contains('approve-user-btn')) { await api.approveUser(userId); await showAdminPanel(); }
+    if (target.classList.contains('edit-user-btn')) { const user = await api.fetchUserById(userId); if (user) ui.populateEditUserModal(user); }
+    if (target.classList.contains('block-user-btn')) { const shouldBlock = target.dataset.isBlocked === 'true'; const actionText = shouldBlock ? 'bloquear' : 'desbloquear'; if (confirm(`Tem certeza?`)) { await api.toggleUserBlock(userId, shouldBlock); await showAdminPanel(); } }
+    if (target.classList.contains('remove-user-btn')) { if (confirm('ATENÇÃO: Ação irreversível!')) { const { error } = await api.deleteUserFromAdmin(userId); if (error) { alert('Erro: ' + error.message); } else { alert('Usuário excluído.'); await showAdminPanel(); } } }
 }
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro: " + error.message); } else { alert("Usuário atualizado!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
-// CORREÇÃO 1: Função modificada para usar o Worker local
 async function handleCalculateAndPdf() {
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    const loadingText = loadingOverlay.querySelector('p');
-    loadingText.textContent = 'Calculando, por favor aguarde...';
-    loadingOverlay.classList.add('visible');
-    
-    // Pega os dados do formulário (agora retorna 'circuitsData' plano)
-    const formData = getFullFormData(false);
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingText = loadingOverlay.querySelector('p');
+    loadingText.textContent = 'Calculando, por favor aguarde...';
+    loadingOverlay.classList.add('visible');
+    
+    const formData = getFullFormData(false);
 
-    try {
-        // ** NOVO: Usando o Web Worker (calculator.worker.js) **
-        const results = await new Promise((resolve, reject) => {
-            // Verifica se os dados técnicos (cabos, disjuntores...) foram carregados
-            if (!uiData || !uiData.cabos || !uiData.disjuntores) {
-                reject(new Error("Os dados técnicos (cabos, disjuntores, etc.) não foram carregados. Tente recarregar a página."));
-                return;
-            }
+    try {
+        const results = await new Promise((resolve, reject) => {
+            if (!uiData || !uiData.cabos || !uiData.disjuntores) {
+                reject(new Error("Os dados técnicos (cabos, disjuntores, etc.) não foram carregados. Tente recarregar a página."));
+                return;
+            }
 
-            // Criar o worker
-            const worker = new Worker('calculator.worker.js', { type: 'module' });
+            const worker = new Worker('calculator.worker.js', { type: 'module' });
 
-            // Lidar com mensagens de sucesso do worker
-            worker.onmessage = (e) => {
-                if (e.data.error) {
-                    reject(new Error(e.data.error));
-                } else {
-                    resolve(e.data); // Deve retornar { feederResult, circuitResults }
-                }
-                worker.terminate();
-            };
+            worker.onmessage = (e) => {
+                if (e.data.error) {
+                    reject(new Error(e.data.error));
+                } else {
+                    resolve(e.data); // Deve retornar { feederResult, circuitResults }
+                }
+                worker.terminate();
+            };
 
-            // Lidar com erros do worker
-            worker.onerror = (e) => {
-                reject(new Error(`Erro no Worker: ${e.message}`));
-                worker.terminate();
-            };
+            worker.onerror = (e) => {
+                reject(new Error(`Erro no Worker: ${e.message}`));
+                worker.terminate();
+            };
 
-            // Envia os dados para o worker
-            // O worker espera um objeto { formData, technicalData }
-            // uiData contém todos os dados técnicos (cabos, disjuntores, etc.)
-            worker.postMessage({ formData: formData, technicalData: uiData });
-        });
-        
-        // Se chegou aqui, 'results' contém { feederResult, circuitResults }
-        loadingText.textContent = 'Gerando PDFs...';
-        await new Promise(resolve => setTimeout(resolve, 50));
+            worker.postMessage({ formData: formData, technicalData: uiData });
+        });
+        
+        loadingText.textContent = 'Gerando PDFs...';
+        await new Promise(resolve => setTimeout(resolve, 50));
 
-        // Passa os resultados para as funções de PDF
-        await ui.generateMemorialPdf(results, currentUserProfile);
-        await ui.generateUnifilarPdf(results);
+        await ui.generateMemorialPdf(results, currentUserProfile);
+        await ui.generateUnifilarPdf(results);
 
-        alert("PDFs baixados com sucesso!");
+        alert("PDFs baixados com sucesso!");
 
-    } catch (error) {
-        console.error("Erro ao gerar PDFs:", error);
-        alert("Ocorreu um erro: " + error.message);
-    } finally {
-        loadingOverlay.classList.remove('visible');
-        loadingText.textContent = 'Calculando...';
-    }
+    } catch (error) {
+        console.error("Erro ao gerar PDFs:", error);
+        alert("Ocorreu um erro: " + error.message);
+    } finally {
+        loadingOverlay.classList.remove('visible');
+        loadingText.textContent = 'Calculando...';
+    }
 }
 
 
 function setupEventListeners() {
-    document.getElementById('loginBtn').addEventListener('click', handleLogin);
-    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-    document.getElementById('registerBtn').addEventListener('click', () => ui.openModal('registerModalOverlay'));
-    document.getElementById('registerForm').addEventListener('submit', handleRegister);
-    document.getElementById('forgotPasswordLink').addEventListener('click', (e) => { e.preventDefault(); ui.openModal('forgotPasswordModalOverlay'); });
-    document.getElementById('forgotPasswordForm').addEventListener('submit', handleForgotPassword);
-    document.getElementById('resetPasswordForm').addEventListener('submit', handleResetPassword);
-    document.querySelectorAll('.close-modal-btn').forEach(btn => { btn.addEventListener('click', (e) => ui.closeModal(e.target.closest('.modal-overlay').id)); });
-    
-    document.getElementById('saveBtn').addEventListener('click', handleSaveProject);
-    document.getElementById('loadBtn').addEventListener('click', handleLoadProject);
-    document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
-    document.getElementById('newBtn').addEventListener('click', () => handleNewProject(true));
-    const debouncedSearch = utils.debounce((e) => handleSearch(e.target.value), 300);
-    document.getElementById('searchInput').addEventListener('input', debouncedSearch);
-        
-    document.getElementById('addQdcBtn').addEventListener('click', ui.addQdcBlock);
-    document.getElementById('manageQdcsBtn').addEventListener('click', () => ui.openModal('qdcManagerModalOverlay'));
-    
-    const appContainer = document.getElementById('appContainer');
-    if(appContainer) {
-        appContainer.addEventListener('input', ui.handleMainContainerInteraction);
-        appContainer.addEventListener('click', ui.handleMainContainerInteraction);
-    }
-    
-    document.getElementById('calculateAndPdfBtn').addEventListener('click', handleCalculateAndPdf);
-    
-    document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
-    const projectsTableBody = document.getElementById('adminProjectsTableBody');
-    if(projectsTableBody) projectsTableBody.addEventListener('click', handleProjectPanelClick);
-    
-    document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
-    const adminUserList = document.getElementById('adminUserList');
-    if(adminUserList) adminUserList.addEventListener('click', handleAdminUserActions);
-    
-    const editUserForm = document.getElementById('editUserForm');
-    if(editUserForm) editUserForm.addEventListener('submit', handleUpdateUser);
-    
-    document.getElementById('manageClientsBtn').addEventListener('click', handleOpenClientManagement);
-  m const clientForm = document.getElementById('clientForm');
-    if(clientForm) clientForm.addEventListener('submit', handleClientFormSubmit);
-    
-    const clientList = document.getElementById('clientList');
-    if(clientList) clientList.addEventListener('click', handleClientListClick);
-    
-    const clientFormCancelBtn = document.getElementById('clientFormCancelBtn');
-    if(clientFormCancelBtn) clientFormCancelBtn.addEventListener('click', ui.resetClientForm);
-    
-    document.getElementById('confirmClientSelectionBtn').addEventListener('click', () => handleConfirmClientSelection(true));
-    document.getElementById('continueWithoutClientBtn').addEventListener('click', handleContinueWithoutClient);
-    document.getElementById('addNewClientFromSelectModalBtn').addEventListener('click', () => { ui.closeModal('selectClientModalOverlay'); handleOpenClientManagement(); });
-s   document.getElementById('changeClientBtn').addEventListener('click', async () => { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients, true); });
-    
-    // --- Máscaras ---
-    document.getElementById('regCpf').addEventListener('input', utils.mascaraCPF);
-    document.getElementById('regTelefone').addEventListener('input', utils.mascaraCelular);
-    const editCpf = document.getElementById('editCpf');
-    if(editCpf) editCpf.addEventListener('input', utils.mascaraCPF);
-    const editTel = document.getElementById('editTelefone');
-    if(editTel) editTel.addEventListener('input', utils.mascaraCelular);
-    const clientCel = document.getElementById('clientCelular');
-    if(clientCel) clientCel.addEventListener('input', utils.mascaraCelular);
-    const clientTel = document.getElementById('clientTelefone');
-    if(clientTel) clientTel.addEventListener('input', utils.mascaraTelefone);
-    const clientDoc = document.getElementById('clientDocumentoValor');
-    if(clientDoc) clientDoc.addEventListener('input', (e) => { const tipo = document.getElementById('clientDocumentoTipo').value; utils.aplicarMascara(e, tipo); });
-    const clientDocTipo = document.getElementById('clientDocumentoTipo');
-    if(clientDocTipo) clientDocTipo.addEventListener('change', () => { const docVal = document.getElementById('clientDocumentoValor'); if(docVal) docVal.value = ''; });
+    document.getElementById('loginBtn').addEventListener('click', handleLogin);
+    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+    document.getElementById('registerBtn').addEventListener('click', () => ui.openModal('registerModalOverlay'));
+    document.getElementById('registerForm').addEventListener('submit', handleRegister);
+    document.getElementById('forgotPasswordLink').addEventListener('click', (e) => { e.preventDefault(); ui.openModal('forgotPasswordModalOverlay'); });
+    document.getElementById('forgotPasswordForm').addEventListener('submit', handleForgotPassword);
+    document.getElementById('resetPasswordForm').addEventListener('submit', handleResetPassword);
+    document.querySelectorAll('.close-modal-btn').forEach(btn => { btn.addEventListener('click', (e) => ui.closeModal(e.target.closest('.modal-overlay').id)); });
+    
+    document.getElementById('saveBtn').addEventListener('click', handleSaveProject);
+    document.getElementById('loadBtn').addEventListener('click', handleLoadProject);
+    document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
+    document.getElementById('newBtn').addEventListener('click', () => handleNewProject(true));
+    const debouncedSearch = utils.debounce((e) => handleSearch(e.target.value), 300);
+    document.getElementById('searchInput').addEventListener('input', debouncedSearch);
+        
+    document.getElementById('addQdcBtn').addEventListener('click', ui.addQdcBlock);
+    document.getElementById('manageQdcsBtn').addEventListener('click', () => ui.openModal('qdcManagerModalOverlay'));
+    
+    const appContainer = document.getElementById('appContainer');
+    if(appContainer) {
+        appContainer.addEventListener('input', ui.handleMainContainerInteraction);
+        appContainer.addEventListener('click', ui.handleMainContainerInteraction);
+    }
+    
+    document.getElementById('calculateAndPdfBtn').addEventListener('click', handleCalculateAndPdf);
+    
+    document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
+    const projectsTableBody = document.getElementById('adminProjectsTableBody');
+    if(projectsTableBody) projectsTableBody.addEventListener('click', handleProjectPanelClick);
+    
+    document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
+    const adminUserList = document.getElementById('adminUserList');
+    if(adminUserList) adminUserList.addEventListener('click', handleAdminUserActions);
+    
+    const editUserForm = document.getElementById('editUserForm');
+    if(editUserForm) editUserForm.addEventListener('submit', handleUpdateUser);
+    
+    document.getElementById('manageClientsBtn').addEventListener('click', handleOpenClientManagement);
+    
+    // LINHA 301 CORRIGIDA (removido o 'm')
+    const clientForm = document.getElementById('clientForm');
+    if(clientForm) clientForm.addEventListener('submit', handleClientFormSubmit);
+    
+    const clientList = document.getElementById('clientList');
+    if(clientList) clientList.addEventListener('click', handleClientListClick);
+    
+    const clientFormCancelBtn = document.getElementById('clientFormCancelBtn');
+    if(clientFormCancelBtn) clientFormCancelBtn.addEventListener('click', ui.resetClientForm);
+    
+    document.getElementById('confirmClientSelectionBtn').addEventListener('click', () => handleConfirmClientSelection(true));
+    document.getElementById('continueWithoutClientBtn').addEventListener('click', handleContinueWithoutClient);
+    document.getElementById('addNewClientFromSelectModalBtn').addEventListener('click', () => { ui.closeModal('selectClientModalOverlay'); handleOpenClientManagement(); });
+    
+    // LINHA 312 CORRIGIDA (removido o 's')
+    document.getElementById('changeClientBtn').addEventListener('click', async () => { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients, true); });
+    
+    // --- Máscaras ---
+    document.getElementById('regCpf').addEventListener('input', utils.mascaraCPF);
+    document.getElementById('regTelefone').addEventListener('input', utils.mascaraCelular);
+    const editCpf = document.getElementById('editCpf');
+    if(editCpf) editCpf.addEventListener('input', utils.mascaraCPF);
+    const editTel = document.getElementById('editTelefone');
+    if(editTel) editTel.addEventListener('input', utils.mascaraCelular);
+    const clientCel = document.getElementById('clientCelular');
+    if(clientCel) clientCel.addEventListener('input', utils.mascaraCelular);
+    const clientTel = document.getElementById('clientTelefone');
+    if(clientTel) clientTel.addEventListener('input', utils.mascaraTelefone);
+    const clientDoc = document.getElementById('clientDocumentoValor');
+    if(clientDoc) clientDoc.addEventListener('input', (e) => { const tipo = document.getElementById('clientDocumentoTipo').value; utils.aplicarMascara(e, tipo); });
+    const clientDocTipo = document.getElementById('clientDocumentoTipo');
+    if(clientDocTipo) clientDocTipo.addEventListener('change', () => { const docVal = document.getElementById('clientDocumentoValor'); if(docVal) docVal.value = ''; });
 }
 
 function main() {
-    setupEventListeners();
-    
-    supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-            if (session) {
-                const userProfile = await auth.getSession();
-                if (userProfile && !userProfile.is_blocked && userProfile.is_approved) {
-                    currentUserProfile = userProfile;
-                    ui.showAppView(currentUserProfile);
-                    allClients = await api.fetchClients();
-                   s                 
-                    // Carrega todos os dados (UI e Cálculo)
-                    uiData = await api.fetchUiData();
-                    if (uiData) {
-                        ui.setupDynamicData(uiData);
-                    }
+    setupEventListeners();
+    
+    supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+            if (session) {
+                const userProfile = await auth.getSession();
+                if (userProfile && !userProfile.is_blocked && userProfile.is_approved) {
+                    currentUserProfile = userProfile;
+                    ui.showAppView(currentUserProfile);
+                    allClients = await api.fetchClients();
+                    
+                    // Carrega todos os dados (UI e Cálculo)
+                    uiData = await api.fetchUiData();
+                    if (uiData) {
+                        ui.setupDynamicData(uiData);
+                    }
 
-                    ui.resetForm();
-                    await handleSearch();
-                } else if (userProfile) {
-                    await auth.signOutUser(); 
-                }
-            } else {
-                ui.showLoginView();
-s           }
-        } else if (event === 'SIGNED_OUT') {
-            currentUserProfile = null;
-            allClients = [];
-            uiData = null;
-            ui.showLoginView();
-        } else if (event === 'PASSWORD_RECOVERY') {
-            ui.showResetPasswordView();
-        }
-    });
+                    ui.resetForm();
+                    await handleSearch();
+                } else if (userProfile) {
+                    await auth.signOutUser(); 
+                }
+            } else {
+                // LINHA 341 CORRIGIDA (removido o 's')
+                ui.showLoginView();
+            }
+        } else if (event === 'SIGNED_OUT') {
+            currentUserProfile = null;
+            allClients = [];
+            uiData = null;
+            ui.showLoginView();
+        } else if (event === 'PASSWORD_RECOVERY') {
+            // LINHA 354 CORRIGIDA (removido o 's')
+            ui.showResetPasswordView();
+        }
+    });
 }
 
 main();
