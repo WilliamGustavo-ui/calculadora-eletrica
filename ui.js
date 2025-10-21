@@ -1,4 +1,4 @@
-// Arquivo: ui.js (Com correção do bug de 'value_')
+// Arquivo: ui.js (Com console.log para depurar adição de circuito)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
@@ -93,8 +93,8 @@ function updateFeederPowerDisplay() {
             }
         });
 
-        const qdcPotInst = document.getElementById(`qdcPotenciaInstalada-${id}`);
-        const qdcPotDem = document.getElementById(`qdcPotenciaDemandada-${id}`);
+        const qdcPotInst = document.getElementById(`qdcPotenciaInstalada-${qdcId}`); // Correção: usar qdcId aqui
+        const qdcPotDem = document.getElementById(`qdcPotenciaDemandada-${qdcId}`); // Correção: usar qdcId aqui
         if (qdcPotInst) qdcPotInst.value = totalInstaladaQDC.toFixed(2);
         if (qdcPotDem) qdcPotDem.value = totalDemandadaQDC.toFixed(2);
 
@@ -156,10 +156,6 @@ export function resetForm(addDefaultQdc = true, linkedClient = null) {
     }
 }
 
-// ========================================================================
-// >>>>> FUNÇÃO MODIFICADA: getQdcHTML <<<<<
-// Corrigido o typo 'value_=""' para 'value="4"'
-// ========================================================================
 function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
     return `
     <div class="qdc-block" id="qdc-${id}" data-id="${id}">
@@ -283,6 +279,10 @@ export function updateQdcParentDropdowns() {
 }
 
 // --- LÓGICA DE CIRCUITO ---
+// ========================================================================
+// >>>>> FUNÇÃO MODIFICADA: addCircuit <<<<<
+// Adicionado console.log para verificar o container
+// ========================================================================
 export function addCircuit(qdcId, savedCircuitData = null) {
     const internalId = savedCircuitData ? parseInt(savedCircuitData.id) : ++circuitCount;
     if (!savedCircuitData) circuitCount = Math.max(circuitCount, internalId); 
@@ -291,11 +291,16 @@ export function addCircuit(qdcId, savedCircuitData = null) {
     newCircuitDiv.innerHTML = getCircuitHTML(internalId);
 
     const circuitContainer = document.getElementById(`circuits-for-qdc-${qdcId}`);
+    // DEBUGGING LOG: Verifica se o container foi encontrado
+    console.log(`Attempting to add circuit to container: circuits-for-qdc-${qdcId}. Found element:`, circuitContainer);
     if (circuitContainer) { 
         circuitContainer.appendChild(newCircuitDiv.firstElementChild);
     } else {
-        console.error(`Container de circuitos para QDC ${qdcId} não encontrado.`);
-        return; 
+        console.error(`Circuit container for QDC ${qdcId} not found! Cannot add circuit.`);
+        // DEBUGGING LOG: Tenta encontrar o container do QDC 2 para comparação
+        const fallbackContainer = document.getElementById('circuits-for-qdc-2');
+        console.log('Fallback check: Found container for QDC 2?', fallbackContainer);
+        return; // Impede a adição se o container não for encontrado
     }
 
     if (savedCircuitData) {
@@ -348,10 +353,6 @@ export function removeCircuit(circuitId) {
     if (circuitBlock) { circuitBlock.remove(); updateFeederPowerDisplay(); }
 }
 
-// ========================================================================
-// >>>>> FUNÇÃO MODIFICADA: getCircuitHTML <<<<<
-// Corrigido o typo 'value_=""' para 'value="4"'
-// ========================================================================
 function getCircuitHTML(id) {
     return `<div class="circuit-block" id="circuit-${id}" data-id="${id}"> <div class="circuit-header"> <h3 class="circuit-header-left">Circuito <span class="circuit-number"></span></h3> <h3 class="circuit-header-center" id="nomeCircuitoLabel-${id}">Circuito ${id}</h3> <div class="circuit-header-right"> <button type="button" class="remove-circuit-btn btn-red" data-circuit-id="${id}">Remover</button> <span class="toggle-arrow">▼</span> </div> </div> <div class="circuit-content"> <div class="form-grid"> <div class="form-group"> <label for="nomeCircuito-${id}">Nome do Circuito</label> <input type="text" id="nomeCircuito-${id}" value="Circuito ${id}"> </div> <div class="full-width potencia-group"> <div class="form-group"> <label for="tipoCircuito-${id}">Tipo de Circuito</label> <select id="tipoCircuito-${id}"> <option value="iluminacao">Iluminação</option> <option value="tug" selected>TUG</option> <option value="tue">TUE</option> <option value="aquecimento">Aquecimento</option> <option value="motores">Motores</option> <option value="ar_condicionado">Ar Condicionado</option> </select> </div> <div class="form-group hidden" id="potenciaBTU_group-${id}"> <label for="potenciaBTU-${id}">Potência (BTU/h)</label> <select id="potenciaBTU-${id}"></select> </div> <div class="form-group hidden" id="potenciaCV_group-${id}"> <label for="potenciaCV-${id}">Potência (CV)</label> <select id="potenciaCV-${id}"></select> </div> <div class="form-group"> <label for="potenciaW-${id}">Potência (W)</label> <input type="number" id="potenciaW-${id}" value="2500"> </div> </div> <div class="form-group"> <label for="fatorDemanda-${id}">Fator Demanda (%)</label> <input type="number" id="fatorDemanda-${id}" value="100" step="1"> </div> <div class="form-group"> <label for="fases-${id}">Fases</label> <select id="fases-${id}"> <option value="Monofasico" selected>Monofásico</option> <option value="Bifasico">Bifásico</option> <option value="Trifasico">Trifásico</option> </select> </div> <div class="form-group"> <label for="tipoLigacao-${id}">Ligação</label> <select id="tipoLigacao-${id}"></select> </div> <div class="form-group"> <label for="tensaoV-${id}">Tensão (V)</label> <select id="tensaoV-${id}"><option value="12">12</option><option value="24">24</option><option value="36">36</option><option value="127">127</option><option value="220" selected>220</option><option value="380">380</option><option value="440">440</option><option value="760">760</option></select> </div> <div class="form-group"> <label for="fatorPotencia-${id}">Fator Potência</label> <input type="number" id="fatorPotencia-${id}" step="0.01" value="0.92"> </div> <div class="form-group"> <label for="comprimentoM-${id}">Comprimento (m)</label> <input type="number" id="comprimentoM-${id}" value="20"> </div> <div class="form-group"> <label for="tipoIsolacao-${id}">Isolação</label> <select id="tipoIsolacao-${id}"><option value="PVC" selected>PVC 70°C</option><option value="EPR">EPR 90°C</option><option value="XLPE">XLPE 90°C</option></select> </div> <div class="form-group"> <label for="materialCabo-${id}">Condutor</label> <select id="materialCabo-${id}"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Alumínio</option></select> </div> <div class="form-group"> <label for="metodoInstalacao-${id}">Instalação</label> <select id="metodoInstalacao-${id}"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select> </div> <div class="form-group"> <label for="temperaturaAmbienteC-${id}">Temp. Ambiente</label> <select id="temperaturaAmbienteC-${id}"></select> </div> <div class="form-group"> <label for="resistividadeSolo-${id}">Resist. Solo</label> <select id="resistividadeSolo-${id}"></select> </div> <div class="form-group"> <label for="numCircuitosAgrupados-${id}">Ckt Agrupados</label> <select id="numCircuitosAgrupados-${id}"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select> </div> <div class="form-group"> <label for="limiteQuedaTensao-${id}">Limite DV (%)</label> <input type="number" id="limiteQuedaTensao-${id}" step="0.1" value="4.0"> </div> <div class="form-group"> <label for="tipoDisjuntor-${id}">Disjuntor</label> <select id="tipoDisjuntor-${id}"><option value="Minidisjuntor (DIN)">DIN</option><option value="Caixa Moldada (MCCB)">MCCB</option></select> </div> <div class="form-group"> <label for="dpsClasse-${id}">Classe DPS</label> <select id="dpsClasse-${id}"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select> </div> <div class="checkbox-group"> <input type="checkbox" id="requerDR-${id}"><label for="requerDR-${id}">Requer DR</label> </div> </div> </div> </div>`;
 }
@@ -419,6 +420,10 @@ function handlePowerUnitChange(id, type) {
     updateFeederPowerDisplay();
 }
 
+// ========================================================================
+// >>>>> FUNÇÃO MODIFICADA: handleMainContainerInteraction <<<<<
+// Adicionado console.log para verificar o botão clicado
+// ========================================================================
 export function handleMainContainerInteraction(event) {
     const target = event.target;
 
@@ -426,7 +431,12 @@ export function handleMainContainerInteraction(event) {
     if (target.classList.contains('add-circuit-to-qdc-btn')) {
         const qdcId = target.dataset.qdcId; 
         if (qdcId) {
-            addCircuit(qdcId);
+            // DEBUGGING LOG: Verifica qual botão foi clicado
+            console.log(`Add circuit button clicked for QDC ID: ${qdcId}`); 
+            addCircuit(qdcId); 
+        } else {
+             // DEBUGGING LOG: Se o ID não foi encontrado no botão
+            console.error('Add circuit button clicked, but qdcId is missing from dataset!');
         }
         return; 
     }
