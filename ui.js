@@ -1,4 +1,4 @@
-// Arquivo: ui.js (Correção final para adição de circuito e dropdowns)
+// Arquivo: ui.js (Com Listener Direto no Botão "+ Circuito" e Colapso Padrão)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
@@ -25,6 +25,7 @@ export function setupDynamicData(data) {
 }
 
 function populateTemperatureDropdown(selectElement, temperatures) {
+    // ... (função inalterada) ...
     if (!selectElement || !temperatures) return; 
     const currentValue = selectElement.value;
     selectElement.innerHTML = '';
@@ -45,6 +46,7 @@ function populateTemperatureDropdown(selectElement, temperatures) {
 }
 
 function populateBtuDropdown(selectElement, btuData) {
+    // ... (função inalterada) ...
     if (!selectElement) return;
     selectElement.innerHTML = '<option value="">-- Selecione --</option>'; 
     if (!btuData) return;
@@ -52,6 +54,7 @@ function populateBtuDropdown(selectElement, btuData) {
 }
 
 function populateCvDropdown(selectElement, cvData) {
+    // ... (função inalterada) ...
      if (!selectElement) return;
     selectElement.innerHTML = '<option value="">-- Selecione --</option>'; 
     if (!cvData) return;
@@ -59,6 +62,7 @@ function populateCvDropdown(selectElement, cvData) {
 }
 
 function populateSoilResistivityDropdown(selectElement, soilData) {
+    // ... (função inalterada) ...
     if (!selectElement) return;
     selectElement.innerHTML = '<option value="0">Não Aplicável</option>';
     if (!soilData) return;
@@ -71,6 +75,7 @@ function populateSoilResistivityDropdown(selectElement, soilData) {
 }
 
 function updateFeederPowerDisplay() {
+    // ... (função inalterada) ...
     let totalInstaladaGeral = 0;
     let totalDemandadaGeral = 0;
 
@@ -118,6 +123,7 @@ function updateFeederPowerDisplay() {
 
 
 // --- FUNÇÕES DE VISIBILIDADE E MODAIS ---
+// ... (funções inalteradas) ...
 export function showLoginView() { const l = document.getElementById('loginContainer'); if(l) l.style.display = 'block'; const a = document.getElementById('appContainer'); if(a) a.style.display = 'none'; const r = document.getElementById('resetPasswordContainer'); if(r) r.style.display = 'none'; }
 export function showAppView(userProfile) { const l = document.getElementById('loginContainer'); if(l) l.style.display = 'none'; const a = document.getElementById('appContainer'); if(a) a.style.display = 'block'; const r = document.getElementById('resetPasswordContainer'); if(r) r.style.display = 'none'; const isAdmin = userProfile?.is_admin || false; const adminBtn = document.getElementById('adminPanelBtn'); if(adminBtn) adminBtn.style.display = isAdmin ? 'block' : 'none'; const clientBtn = document.getElementById('manageClientsBtn'); if(clientBtn) clientBtn.style.display = 'block'; const projBtn = document.getElementById('manageProjectsBtn'); if(projBtn) projBtn.style.display = 'block'; }
 export function showResetPasswordView() { const l = document.getElementById('loginContainer'); if(l) l.style.display = 'none'; const a = document.getElementById('appContainer'); if(a) a.style.display = 'none'; const r = document.getElementById('resetPasswordContainer'); if(r) r.style.display = 'block'; }
@@ -127,6 +133,7 @@ export function closeModal(modalId) { const modal = document.getElementById(moda
 
 // --- LÓGICA DE QDC E FORMULÁRIO ---
 export function resetForm(addDefaultQdc = true, linkedClient = null) {
+    // ... (função inalterada) ...
     const mainForm = document.getElementById('main-form'); if(mainForm) mainForm.reset();
     const techForm = document.getElementById('tech-form'); if(techForm) techForm.reset();
     const feederForm = document.getElementById('feeder-form'); if(feederForm) feederForm.reset();
@@ -157,6 +164,7 @@ export function resetForm(addDefaultQdc = true, linkedClient = null) {
 }
 
 function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
+    // HTML permanece o mesmo da versão anterior (com value="4" corrigido)
     return `
     <div class="qdc-block" id="qdc-${id}" data-id="${id}">
         <div class="qdc-header">
@@ -188,7 +196,7 @@ function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
             
             <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--label-color);">Configuração do Alimentador deste QDC</h4>
             <div class="form-grid qdc-config-grid">
-                <div class="form-group"> <label for="qdcFatorDemanda-${id}">Fator Demanda (%)</label> <input type="number" id="qdcFatorDemanda-${id}" value="100" step="1"> </div>
+                 <div class="form-group"> <label for="qdcFatorDemanda-${id}">Fator Demanda (%)</label> <input type="number" id="qdcFatorDemanda-${id}" value="100" step="1"> </div>
                 <div class="form-group"> <label for="qdcFases-${id}">Fases</label> <select id="qdcFases-${id}"> <option value="Monofasico">Monofásico</option> <option value="Bifasico">Bifásico</option> <option value="Trifasico" selected>Trifásico</option> </select> </div>
                 <div class="form-group"> <label for="qdcTipoLigacao-${id}">Ligação</label> <select id="qdcTipoLigacao-${id}"></select> </div>
                 <div class="form-group"> <label for="qdcTensaoV-${id}">Tensão (V)</label> <select id="qdcTensaoV-${id}"><option value="12">12</option><option value="24">24</option><option value="36">36</option><option value="127">127</option><option value="220" selected>220</option><option value="380">380</option><option value="440">440</option><option value="760">760</option></select> </div>
@@ -213,29 +221,53 @@ function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
     </div>`;
 }
 
-
+// ========================================================================
+// >>>>> FUNÇÃO MODIFICADA: addQdcBlock <<<<<
+// Adiciona listener direto ao botão "+ Circuito" e colapsa por padrão
+// ========================================================================
 export function addQdcBlock(id = null, name = null, parentId = 'feeder') {
+    const isNewQdc = !id; // Verifica se é um QDC novo ou carregado
     const internalId = id || ++qdcCount;
     if (!id) qdcCount = Math.max(qdcCount, internalId); 
     const qdcName = name || `QDC ${internalId}`;
 
     const newQdcDiv = document.createElement('div');
     newQdcDiv.innerHTML = getQdcHTML(internalId, qdcName, parentId);
-    
+    const qdcElement = newQdcDiv.firstElementChild; // Pega o elemento QDC criado
+
     const qdcContainer = document.getElementById('qdc-container');
-    if(qdcContainer) qdcContainer.appendChild(newQdcDiv.firstElementChild);
+    if(qdcContainer) qdcContainer.appendChild(qdcElement);
+
+    // --- NOVO: Listener direto no botão ---
+    const addCircuitBtn = qdcElement.querySelector('.add-circuit-to-qdc-btn');
+    if (addCircuitBtn) {
+        addCircuitBtn.addEventListener('click', () => {
+            // Chama addCircuit com o ID correto deste QDC
+            addCircuit(internalId); 
+        });
+    } else {
+        console.error(`Botão '+ Circuito' não encontrado para QDC ${internalId}`);
+    }
+    // --- FIM NOVO ---
 
     updateQdcParentDropdowns();
-    
     initializeQdcListeners(internalId);
     
-    if (!id) {
+    // Colapsa QDCs adicionados (exceto o primeiro)
+    if (isNewQdc && qdcCount > 1) {
+        qdcElement.classList.add('collapsed');
+    }
+
+    // Adiciona um circuito inicial apenas se for um QDC *novo*
+    if (isNewQdc) {
        addCircuit(internalId); 
     }
+    
     return internalId;
 }
 
 export function removeQdc(qdcId) {
+    // ... (função inalterada) ...
     const qdcBlock = document.getElementById(`qdc-${qdcId}`);
     if (qdcBlock) {
         const qdcNameInput = qdcBlock.querySelector('.qdc-name-input');
@@ -249,6 +281,7 @@ export function removeQdc(qdcId) {
 }
 
 export function updateQdcParentDropdowns() {
+    // ... (função inalterada) ...
     const allQdcs = document.querySelectorAll('.qdc-block');
     const options = ['<option value="feeder">Alimentador Geral</option>'];
     allQdcs.forEach(qdc => {
@@ -279,22 +312,33 @@ export function updateQdcParentDropdowns() {
 }
 
 // --- LÓGICA DE CIRCUITO ---
+// ========================================================================
+// >>>>> FUNÇÃO MODIFICADA: addCircuit <<<<<
+// Adiciona a classe 'collapsed' por padrão
+// ========================================================================
 export function addCircuit(qdcId, savedCircuitData = null) {
+    const isNewCircuit = !savedCircuitData; // Verifica se é circuito novo
     const internalId = savedCircuitData ? parseInt(savedCircuitData.id) : ++circuitCount;
     if (!savedCircuitData) circuitCount = Math.max(circuitCount, internalId); 
 
     const newCircuitDiv = document.createElement('div');
     newCircuitDiv.innerHTML = getCircuitHTML(internalId);
+    const circuitElement = newCircuitDiv.firstElementChild; // Pega o elemento circuito
+
+    // Adiciona 'collapsed' se for um circuito novo
+    if (isNewCircuit) {
+        circuitElement.classList.add('collapsed');
+    }
 
     const circuitContainer = document.getElementById(`circuits-for-qdc-${qdcId}`);
     if (circuitContainer) { 
-        circuitContainer.appendChild(newCircuitDiv.firstElementChild);
+        circuitContainer.appendChild(circuitElement); // Adiciona o elemento ao container
     } else {
-        // Log de erro se o container não for encontrado
         console.error(`Circuit container for QDC ${qdcId} not found! Cannot add circuit.`);
         return; 
     }
 
+    // ... (Restante da função para preencher dados permanece igual) ...
     if (savedCircuitData) {
         Object.keys(savedCircuitData).forEach(key => {
             const element = document.getElementById(key);
@@ -341,15 +385,18 @@ export function addCircuit(qdcId, savedCircuitData = null) {
 
 
 export function removeCircuit(circuitId) {
+    // ... (função inalterada) ...
     const circuitBlock = document.getElementById(`circuit-${circuitId}`);
     if (circuitBlock) { circuitBlock.remove(); updateFeederPowerDisplay(); }
 }
 
 function getCircuitHTML(id) {
+    // HTML permanece o mesmo da versão anterior (com value="4" corrigido)
     return `<div class="circuit-block" id="circuit-${id}" data-id="${id}"> <div class="circuit-header"> <h3 class="circuit-header-left">Circuito <span class="circuit-number"></span></h3> <h3 class="circuit-header-center" id="nomeCircuitoLabel-${id}">Circuito ${id}</h3> <div class="circuit-header-right"> <button type="button" class="remove-circuit-btn btn-red" data-circuit-id="${id}">Remover</button> <span class="toggle-arrow">▼</span> </div> </div> <div class="circuit-content"> <div class="form-grid"> <div class="form-group"> <label for="nomeCircuito-${id}">Nome do Circuito</label> <input type="text" id="nomeCircuito-${id}" value="Circuito ${id}"> </div> <div class="full-width potencia-group"> <div class="form-group"> <label for="tipoCircuito-${id}">Tipo de Circuito</label> <select id="tipoCircuito-${id}"> <option value="iluminacao">Iluminação</option> <option value="tug" selected>TUG</option> <option value="tue">TUE</option> <option value="aquecimento">Aquecimento</option> <option value="motores">Motores</option> <option value="ar_condicionado">Ar Condicionado</option> </select> </div> <div class="form-group hidden" id="potenciaBTU_group-${id}"> <label for="potenciaBTU-${id}">Potência (BTU/h)</label> <select id="potenciaBTU-${id}"></select> </div> <div class="form-group hidden" id="potenciaCV_group-${id}"> <label for="potenciaCV-${id}">Potência (CV)</label> <select id="potenciaCV-${id}"></select> </div> <div class="form-group"> <label for="potenciaW-${id}">Potência (W)</label> <input type="number" id="potenciaW-${id}" value="2500"> </div> </div> <div class="form-group"> <label for="fatorDemanda-${id}">Fator Demanda (%)</label> <input type="number" id="fatorDemanda-${id}" value="100" step="1"> </div> <div class="form-group"> <label for="fases-${id}">Fases</label> <select id="fases-${id}"> <option value="Monofasico" selected>Monofásico</option> <option value="Bifasico">Bifásico</option> <option value="Trifasico">Trifásico</option> </select> </div> <div class="form-group"> <label for="tipoLigacao-${id}">Ligação</label> <select id="tipoLigacao-${id}"></select> </div> <div class="form-group"> <label for="tensaoV-${id}">Tensão (V)</label> <select id="tensaoV-${id}"><option value="12">12</option><option value="24">24</option><option value="36">36</option><option value="127">127</option><option value="220" selected>220</option><option value="380">380</option><option value="440">440</option><option value="760">760</option></select> </div> <div class="form-group"> <label for="fatorPotencia-${id}">Fator Potência</label> <input type="number" id="fatorPotencia-${id}" step="0.01" value="0.92"> </div> <div class="form-group"> <label for="comprimentoM-${id}">Comprimento (m)</label> <input type="number" id="comprimentoM-${id}" value="20"> </div> <div class="form-group"> <label for="tipoIsolacao-${id}">Isolação</label> <select id="tipoIsolacao-${id}"><option value="PVC" selected>PVC 70°C</option><option value="EPR">EPR 90°C</option><option value="XLPE">XLPE 90°C</option></select> </div> <div class="form-group"> <label for="materialCabo-${id}">Condutor</label> <select id="materialCabo-${id}"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Alumínio</option></select> </div> <div class="form-group"> <label for="metodoInstalacao-${id}">Instalação</label> <select id="metodoInstalacao-${id}"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select> </div> <div class="form-group"> <label for="temperaturaAmbienteC-${id}">Temp. Ambiente</label> <select id="temperaturaAmbienteC-${id}"></select> </div> <div class="form-group"> <label for="resistividadeSolo-${id}">Resist. Solo</label> <select id="resistividadeSolo-${id}"></select> </div> <div class="form-group"> <label for="numCircuitosAgrupados-${id}">Ckt Agrupados</label> <select id="numCircuitosAgrupados-${id}"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select> </div> <div class="form-group"> <label for="limiteQuedaTensao-${id}">Limite DV (%)</label> <input type="number" id="limiteQuedaTensao-${id}" step="0.1" value="4.0"> </div> <div class="form-group"> <label for="tipoDisjuntor-${id}">Disjuntor</label> <select id="tipoDisjuntor-${id}"><option value="Minidisjuntor (DIN)">DIN</option><option value="Caixa Moldada (MCCB)">MCCB</option></select> </div> <div class="form-group"> <label for="dpsClasse-${id}">Classe DPS</label> <select id="dpsClasse-${id}"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select> </div> <div class="checkbox-group"> <input type="checkbox" id="requerDR-${id}"><label for="requerDR-${id}">Requer DR</label> </div> </div> </div> </div>`;
 }
 
 function initializeFeederListeners() {
+    // ... (função inalterada) ...
     const fases = document.getElementById('feederFases');
     const tipoLigacao = document.getElementById('feederTipoLigacao');
     const tipoIsolacao = document.getElementById('feederTipoIsolacao');
@@ -372,6 +419,7 @@ function initializeFeederListeners() {
 
 // Funções para os Listeners dos campos do QDC
 function initializeQdcListeners(id) {
+    // ... (função inalterada) ...
     const fases = document.getElementById(`qdcFases-${id}`);
     const tipoIsolacao = document.getElementById(`qdcTipoIsolacao-${id}`);
     const temperaturaAmbiente = document.getElementById(`qdcTemperaturaAmbienteC-${id}`);
@@ -389,6 +437,7 @@ function initializeQdcListeners(id) {
 }
 
 function atualizarQdcLigacoes(id) {
+    // ... (função inalterada) ...
     const fasesSelect = document.getElementById(`qdcFases-${id}`);
     const tipoLigacaoSelect = document.getElementById(`qdcTipoLigacao-${id}`);
     if (!fasesSelect || !tipoLigacaoSelect) return;
@@ -396,6 +445,7 @@ function atualizarQdcLigacoes(id) {
 }
 
 function handleQdcInsulationChange(id) {
+    // ... (função inalterada) ...
     const tipoIsolacaoSelect = document.getElementById(`qdcTipoIsolacao-${id}`);
     const tempAmbSelect = document.getElementById(`qdcTemperaturaAmbienteC-${id}`);
     if (!tipoIsolacaoSelect || !tempAmbSelect) return;
@@ -405,6 +455,7 @@ function handleQdcInsulationChange(id) {
 
 
 function handlePowerUnitChange(id, type) {
+    // ... (função inalterada) ...
     const pW = document.getElementById(`potenciaW-${id}`);
     if (!pW) return;
     if (type === 'btu') { const btuInput = document.getElementById(`potenciaBTU-${id}`); const btu = btuInput ? parseFloat(btuInput.value) || 0 : 0; pW.value = (btu * BTU_TO_WATTS_FACTOR).toFixed(2); }
@@ -414,38 +465,27 @@ function handlePowerUnitChange(id, type) {
 
 // ========================================================================
 // >>>>> FUNÇÃO MODIFICADA: handleMainContainerInteraction <<<<<
-// Corrigido para usar closest() para pegar o botão correto. Logs removidos.
+// Removida a lógica do botão "+ Circuito"
 // ========================================================================
 export function handleMainContainerInteraction(event) {
     const target = event.target;
 
-    // --- Lógica de Adicionar Circuito ---
-    const addCircuitButton = target.closest('.add-circuit-to-qdc-btn'); // Procura o botão pai
-    if (addCircuitButton) {
-        const qdcId = addCircuitButton.dataset.qdcId; // Pega o ID do botão encontrado
-        if (qdcId) {
-            addCircuit(qdcId); 
-        } else {
-            console.error('Add circuit button clicked, but qdcId is missing from dataset!');
-        }
-        return; // Impede que o evento continue propagando
-    }
+    // --- Lógica de Adicionar Circuito REMOVIDA DAQUI ---
 
     // --- Lógica de QDC (Remover, Colapsar, Renomear, E NOVOS CAMPOS) ---
     const qdcBlock = target.closest('.qdc-block'); 
     if (qdcBlock) {
         const qdcId = qdcBlock.dataset.id; 
         
-        const removeQdcButton = target.closest('.remove-qdc-btn'); // Procura o botão de remover
+        const removeQdcButton = target.closest('.remove-qdc-btn'); 
         if (removeQdcButton) { 
-            const idParaRemover = removeQdcButton.dataset.qdcId || qdcId; // Usa o ID do botão se existir
+            const idParaRemover = removeQdcButton.dataset.qdcId || qdcId; 
             removeQdc(idParaRemover); 
             return; 
         }
         
         if (target.classList.contains('qdc-name-input') && event.type === 'input') { 
             updateQdcParentDropdowns(); 
-            // Não precisa de return, pois é evento 'input'
         }
         
         // Gatilhos para os campos de config do QDC
@@ -458,7 +498,7 @@ export function handleMainContainerInteraction(event) {
 
         // Lógica de Colapsar/Expandir QDC
         const qdcHeader = target.closest('.qdc-header');
-        // Verifica se o clique NÃO foi nos elementos interativos do header
+        // A condição foi ajustada para ser mais precisa e evitar conflitos com os botões
         if (qdcHeader && !target.closest('.qdc-header-right button, .qdc-header-left input, .qdc-header-center select')) { 
             qdcBlock.classList.toggle('collapsed'); 
             return; 
@@ -472,10 +512,10 @@ export function handleMainContainerInteraction(event) {
         
         // Lógica de Colapsar/Expandir Circuito
         const circuitHeader = target.closest('.circuit-header');
-        // Verifica se o clique NÃO foi no botão de remover
+        // Garante que o clique não foi no botão de remover
         if (circuitHeader && !target.closest('.remove-circuit-btn')) { 
             circuitBlock.classList.toggle('collapsed'); 
-            // Não retorna aqui, pois pode haver ações dentro do header
+            // Não retorna aqui para permitir outras ações no header se necessário
         }
         
         // Lógica de Ações *dentro* do Circuito
@@ -484,9 +524,9 @@ export function handleMainContainerInteraction(event) {
             if(lbl) lbl.textContent = target.value; 
         }
         
-        const removeCircuitButton = target.closest('.remove-circuit-btn'); // Procura o botão remover circuito
+        const removeCircuitButton = target.closest('.remove-circuit-btn');
         if (removeCircuitButton) { 
-            removeCircuit(removeCircuitButton.dataset.circuitId || circuitId); // Usa o ID do botão
+            removeCircuit(removeCircuitButton.dataset.circuitId || circuitId); 
         }
         else if (target.id === `tipoCircuito-${circuitId}`) { handleCircuitTypeChange(circuitId); }
         else if (target.id === `fases-${circuitId}`) { atualizarLigacoes(circuitId); }
@@ -498,6 +538,7 @@ export function handleMainContainerInteraction(event) {
 
 
 function atualizarLigacoes(id) {
+    // ... (função inalterada) ...
     const fasesSelect = document.getElementById(`fases-${id}`);
     const tipoLigacaoSelect = document.getElementById(`tipoLigacao-${id}`);
     if (!fasesSelect || !tipoLigacaoSelect) return;
@@ -505,6 +546,7 @@ function atualizarLigacoes(id) {
 }
 
 function handleInsulationChange(id) {
+    // ... (função inalterada) ...
     const tipoIsolacaoSelect = document.getElementById(`tipoIsolacao-${id}`);
     const tempAmbSelect = document.getElementById(`temperaturaAmbienteC-${id}`);
     if (!tipoIsolacaoSelect || !tempAmbSelect) return;
@@ -513,6 +555,7 @@ function handleInsulationChange(id) {
 }
 
 function handleCircuitTypeChange(id) {
+    // ... (função inalterada) ...
     const tipo = document.getElementById(`tipoCircuito-${id}`); const fd = document.getElementById(`fatorDemanda-${id}`); const pw = document.getElementById(`potenciaW-${id}`); const btuG = document.getElementById(`potenciaBTU_group-${id}`); const cvG = document.getElementById(`potenciaCV_group-${id}`);
     if (!tipo || !fd || !pw || !btuG || !cvG) return; 
     const selType = tipo.value; btuG.classList.add('hidden'); cvG.classList.add('hidden'); pw.readOnly = false; fd.readOnly = false;
@@ -523,6 +566,7 @@ function handleCircuitTypeChange(id) {
 }
 
 // --- Funções de preenchimento de formulário ---
+// ... (populateProjectList, populateFormWithProjectData, etc. inalteradas) ...
 export function populateProjectList(projects) {
     const select = document.getElementById('savedProjectsSelect'); if(!select) return; select.innerHTML = '<option value="">-- Selecione uma obra --</option>'; projects.forEach(p => { const o = document.createElement('option'); o.value = p.id; o.textContent = `${p.project_code || 'S/C'} - ${p.project_name}`; select.appendChild(o); });
 }
@@ -558,15 +602,16 @@ export function populateFormWithProjectData(project) {
     
     if (project.qdcs_data && Array.isArray(project.qdcs_data)) {
         project.qdcs_data.forEach((qdcData, index) => {
-            const newQdcId = addQdcBlock(parseInt(qdcData.id), qdcData.name, qdcData.parentId);
+            // Passa 'false' para isNewQdc implícito dentro de addQdcBlock
+            const newQdcId = addQdcBlock(parseInt(qdcData.id), qdcData.name, qdcData.parentId); 
             
             if (qdcData.circuits && Array.isArray(qdcData.circuits)) {
                 qdcData.circuits.forEach(circuitData => {
+                    // Passa os dados salvos para addCircuit
                     addCircuit(newQdcId, circuitData); 
                 });
             }
             
-            // Preenche os campos de configuração do QDC
             if (qdcData.config) {
                 Object.keys(qdcData.config).forEach(key => {
                     const element = document.getElementById(key);
@@ -589,13 +634,21 @@ export function populateFormWithProjectData(project) {
                 }
             }
 
-            if (index > 0) { const qdcElem = document.getElementById(`qdc-${newQdcId}`); if(qdcElem) qdcElem.classList.add('collapsed'); }
+            // Colapsa QDCs carregados (exceto o primeiro)
+            if (index > 0) { 
+                const qdcElem = document.getElementById(`qdc-${newQdcId}`); 
+                if(qdcElem) qdcElem.classList.add('collapsed'); 
+            }
         });
-    } else { addQdcBlock(); } 
+    } else { 
+        // Adiciona o primeiro QDC se não houver dados salvos
+        addQdcBlock(); 
+    } 
     
     updateQdcParentDropdowns();
     updateFeederPowerDisplay();
 }
+// ... (Restante das funções de populate, modais, PDF, etc. inalteradas) ...
 export function populateUsersPanel(users) {
     const list = document.getElementById('adminUserList'); if(!list) return; list.innerHTML = ''; if (!users || users.length === 0) { list.innerHTML = '<li>Nenhum usuário.</li>'; return; }
     users.forEach(u => { const li = document.createElement('li'); let act = '<div class="admin-user-actions">'; if (!u.is_approved) { act += `<button class="approve-user-btn btn-green" data-user-id="${u.id}">Aprovar</button>`; } else { act += u.is_blocked ? `<button class="block-user-btn btn-green" data-user-id="${u.id}" data-is-blocked="false">Desbloquear</button>` : `<button class="block-user-btn btn-block" data-user-id="${u.id}" data-is-blocked="true">Bloquear</button>`; } act += `<button class="edit-user-btn btn-edit" data-user-id="${u.id}">Editar</button><button class="remove-user-btn btn-red" data-user-id="${u.id}">Excluir</button></div>`; const st = u.is_blocked ? '<small style="color:var(--btn-red);">(Bloqueado)</small>' : ''; li.innerHTML = `<span><strong>${u.nome || u.email}</strong> ${st}<br><small>${u.email}</small></span>${act}`; list.appendChild(li); });
@@ -612,7 +665,6 @@ export function populateClientManagementModal(clients) {
 export function resetClientForm() { const f = document.getElementById('clientForm'); if(f) f.reset(); const cId = document.getElementById('clientId'); if(cId) cId.value = ''; const title = document.getElementById('clientFormTitle'); if(title) title.textContent = 'Novo Cliente'; const btn = document.getElementById('clientFormSubmitBtn'); if(btn) btn.textContent = 'Salvar'; const cancel = document.getElementById('clientFormCancelBtn'); if(cancel) cancel.style.display = 'none'; }
 export function openEditClientForm(c) { const cId = document.getElementById('clientId'); if(cId) cId.value = c.id; const nm = document.getElementById('clientNome'); if(nm) nm.value = c.nome; const dt = document.getElementById('clientDocumentoTipo'); if(dt) dt.value = c.documento_tipo; const dv = document.getElementById('clientDocumentoValor'); if(dv) dv.value = c.documento_valor; const em = document.getElementById('clientEmail'); if(em) em.value = c.email; const cel = document.getElementById('clientCelular'); if(cel) cel.value = c.celular; const tel = document.getElementById('clientTelefone'); if(tel) tel.value = c.telefone; const end = document.getElementById('clientEndereco'); if(end) end.value = c.endereco; const title = document.getElementById('clientFormTitle'); if(title) title.textContent = 'Editar Cliente'; const btn = document.getElementById('clientFormSubmitBtn'); if(btn) btn.textContent = 'Atualizar'; const cancel = document.getElementById('clientFormCancelBtn'); if(cancel) cancel.style.display = 'inline-block'; }
 export function populateSelectClientModal(clients, isChange = false) { const s = document.getElementById('clientSelectForNewProject'); if(!s) return; s.innerHTML = '<option value="">-- Selecione --</option>'; clients.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = `${c.nome} (${c.client_code})`; o.dataset.client = JSON.stringify(c); s.appendChild(o); }); const t = document.querySelector('#selectClientModalOverlay h3'); const b = document.getElementById('confirmClientSelectionBtn'); if(t && b) { if (isChange) { t.textContent = 'Vincular / Alterar Cliente'; b.textContent = 'Confirmar'; } else { t.textContent = 'Vincular Cliente'; b.textContent = 'Vincular'; } } openModal('selectClientModalOverlay'); }
-
 // --- FUNÇÕES DE GERAÇÃO DE PDF ---
 function getDpsText(dpsInfo) { if (!dpsInfo) return 'Não'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
 function drawHeader(x, y, projectData, totalPower) { const t = projectData.obra || "Diagrama"; const p = `(${totalPower.toFixed(2)} W)`; return `<g text-anchor="end"> <text x="${x}" y="${y}" style="font-family: Arial; font-size: 16px; font-weight: bold;">Q.D. ${t.toUpperCase()}</text> <text x="${x}" y="${y + 15}" style="font-family: Arial; font-size: 12px;">${p}</text> </g>`; }
