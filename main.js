@@ -1,4 +1,4 @@
-// Arquivo: main.js (Com correção no listener do addQdcBtn)
+// Arquivo: main.js (Completo e Corrigido para usar Edge Function)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -18,16 +18,16 @@ async function handleLogin() {
         if (userProfile.is_approved) {
             currentUserProfile = userProfile;
             ui.showAppView(currentUserProfile);
-            
+
             // Carrega TODOS os dados técnicos (cabos, disjuntores, etc.)
             uiData = await api.fetchUiData();
             if (uiData) {
                 ui.setupDynamicData(uiData);
             }
-            
+
             ui.resetForm(); // Inicia o formulário com o primeiro QDC
             await handleSearch();
-        } 
+        }
         // A verificação de bloqueio já está no auth.js
     }
 }
@@ -48,81 +48,98 @@ function handleContinueWithoutClient() { ui.resetForm(); ui.closeModal('selectCl
 
 function getFullFormData(forSave = false) {
     const mainData = { obra: document.getElementById('obra').value, cidadeObra: document.getElementById('cidadeObra').value, enderecoObra: document.getElementById('enderecoObra').value, areaObra: document.getElementById('areaObra').value, unidadesResidenciais: document.getElementById('unidadesResidenciais').value, unidadesComerciais: document.getElementById('unidadesComerciais').value, observacoes: document.getElementById('observacoes').value, projectCode: document.getElementById('project_code').value };
-    
+
     const feederData = {};
-    const feederDataForCalc = { id: 'feeder', nomeCircuito: "Alimentador Geral" };
-    document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(el => { 
-        const value = el.type === 'checkbox' ? el.checked : el.value; 
-        feederData[el.id] = value; 
+    // >>> MODIFICAÇÃO: Garante que feederDataForCalc tenha ID 'feeder' <<<
+    const feederDataForCalc = { id: 'feeder', nomeCircuito: "Alimentador Geral" }; // Garantir ID
+    document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(el => {
+        const value = el.type === 'checkbox' ? el.checked : el.value;
+        feederData[el.id] = value;
         const key = el.id.replace('feeder', '').charAt(0).toLowerCase() + el.id.replace('feeder', '').slice(1);
-        feederDataForCalc[key] = isNaN(parseFloat(value)) || !isFinite(value) ? value : parseFloat(value);
+        // >>> MODIFICAÇÃO: Converte números corretamente <<<
+        feederDataForCalc[key] = (el.type === 'number' || el.step) ? parseFloat(value) || 0 : value;
     });
 
     const qdcsData = [];
-    const allCircuitsForCalc = []; // Array plano para o worker
-    
+    const allCircuitsForCalc = [];
+
     document.querySelectorAll('#qdc-container .qdc-block').forEach(qdcBlock => {
         const qdcId = qdcBlock.dataset.id;
-        
+
         const qdcConfigData = {};
         qdcBlock.querySelectorAll('.qdc-config-grid input, .qdc-config-grid select').forEach(el => {
             const value = el.type === 'checkbox' ? el.checked : el.value;
             qdcConfigData[el.id] = value;
         });
-        
+
         const qdc = {
             id: qdcId,
             name: document.getElementById(`qdcName-${qdcId}`).value,
             parentId: document.getElementById(`qdcParent-${qdcId}`).value,
-            config: qdcConfigData, 
+            config: qdcConfigData,
             circuits: []
         };
 
         qdcBlock.querySelectorAll('.circuit-block').forEach(circuitBlock => {
             const circuitId = circuitBlock.dataset.id;
-            const circuitData = { id: circuitId }; // Para salvar no JSON
-            const circuitDataForCalc = {}; // Para o worker
-            
+            const circuitData = { id: circuitId };
+            // >>> MODIFICAÇÃO: Adiciona qdcId para cálculo <<<
+            const circuitDataForCalc = { qdcId: qdcId };
+
             circuitBlock.querySelectorAll('input, select').forEach(el => {
                 const value = el.type === 'checkbox' ? el.checked : el.value;
                 circuitData[el.id] = value;
                 const key = el.id.replace(`-${circuitId}`, '');
-                circuitDataForCalc[key] = isNaN(parseFloat(value)) || !isFinite(value) ? value : parseFloat(value);
+                 // >>> MODIFICAÇÃO: Converte números corretamente <<<
+                 circuitDataForCalc[key] = (el.type === 'number' || el.step || ['potenciaW', 'fatorDemanda', 'fatorPotencia', 'comprimentoM', 'limiteQuedaTensao'].includes(key)) ? parseFloat(value) || 0 : value;
+
+                 // Trata campos específicos que podem vir de selects mas precisam ser número
+                 if (['tensaoV', 'temperaturaAmbienteC', 'numCircuitosAgrupados'].includes(key)) {
+                    circuitDataForCalc[key] = parseInt(value, 10) || 0;
+                 }
+                 if (key === 'resistividadeSolo') {
+                     circuitDataForCalc[key] = parseFloat(value) || 0;
+                 }
+
             });
+            // >>> MODIFICAÇÃO: Adiciona ID do circuito para cálculo, se necessário <<<
+            circuitDataForCalc.id = circuitId; // Adiciona ID original
+
             qdc.circuits.push(circuitData);
-            allCircuitsForCalc.push(circuitDataForCalc); // Adiciona ao array plano
+            allCircuitsForCalc.push(circuitDataForCalc);
         });
         qdcsData.push(qdc);
     });
 
     const currentClientId = document.getElementById('currentClientId').value;
     const client = allClients.find(c => c.id == currentClientId);
+    // >>> MODIFICAÇÃO: Adiciona dados do clientProfile ao formDataForCalc <<<
     const clientProfile = client ? { cliente: client.nome, tipoDocumento: client.documento_tipo, documento: client.documento_valor, celular: client.celular, telefone: client.telefone, email: client.email, enderecoCliente: client.endereco } : {};
-    
-    if (forSave) { 
-        return { 
-            project_name: mainData.obra, 
-            project_code: mainData.projectCode || null, 
-            client_id: currentClientId || null, 
-            main_data: mainData, 
-            tech_data: { respTecnico: document.getElementById('respTecnico').value, titulo: document.getElementById('titulo').value, crea: document.getElementById('crea').value }, 
+
+    if (forSave) {
+        return {
+            project_name: mainData.obra,
+            project_code: mainData.projectCode || null,
+            client_id: currentClientId || null,
+            main_data: mainData,
+            tech_data: { respTecnico: document.getElementById('respTecnico').value, titulo: document.getElementById('titulo').value, crea: document.getElementById('crea').value },
             feeder_data: feederData,
-            qdcs_data: qdcsData, 
-            owner_id: currentUserProfile.id 
-        }; 
+            qdcs_data: qdcsData,
+            owner_id: currentUserProfile.id
+        };
     }
-    
-    // Para cálculo via worker (que é plano)
-    return { 
-        mainData, 
+
+    // Para cálculo via Edge Function
+    return {
+        mainData,
         feederData: feederDataForCalc,
-        circuitsData: allCircuitsForCalc, // Envia o array plano de circuitos
-        clientProfile 
+        circuitsData: allCircuitsForCalc,
+        clientProfile // Inclui o clientProfile aqui
     };
 }
 
+
 async function handleSaveProject() {
-    // ... (função inalterada) ...
     if (!currentUserProfile) { alert("Você precisa estar logado."); return; }
     const nomeObra = document.getElementById('obra').value.trim();
     if (!nomeObra) { alert("Insira um 'Nome da Obra'."); return; }
@@ -131,29 +148,28 @@ async function handleSaveProject() {
     const loadingText = loadingOverlay.querySelector('p');
     loadingText.textContent = 'Salvando dados da obra...';
     loadingOverlay.classList.add('visible');
-    
+
     try {
         await new Promise(resolve => setTimeout(resolve, 50));
         const projectDataToSave = getFullFormData(true);
         const currentProjectId = document.getElementById('currentProjectId').value;
-        
+
         const { data, error } = await api.saveProject(projectDataToSave, currentProjectId);
         if (error) throw error;
-        
+
         alert(`Obra "${data.project_name}" salva!`);
         document.getElementById('currentProjectId').value = data.id;
         document.getElementById('project_code').value = data.project_code;
-        await handleSearch();
+        await handleSearch(); // Atualiza a lista de projetos salvos
     } catch (error) {
         alert('Erro ao salvar obra: ' + error.message);
     } finally {
         loadingOverlay.classList.remove('visible');
-        loadingText.textContent = 'Calculando...';
+        loadingText.textContent = 'Calculando...'; // Reset texto
     }
 }
 
 async function handleLoadProject() {
-    // ... (função inalterada) ...
     const projectId = document.getElementById('savedProjectsSelect').value;
     if (!projectId) return;
 
@@ -163,7 +179,7 @@ async function handleLoadProject() {
         await new Promise(resolve => setTimeout(resolve, 50));
         const project = await api.fetchProjectById(projectId);
         if (project) {
-            ui.populateFormWithProjectData(project); 
+            ui.populateFormWithProjectData(project);
             alert(`Obra "${project.project_name}" carregada.`);
         }
     } catch (error) {
@@ -179,65 +195,71 @@ async function showManageProjectsPanel() { const projects = await api.fetchProje
 async function handleProjectPanelClick(event) { const target = event.target; const projectId = target.dataset.projectId; if (target.classList.contains('transfer-client-btn')) { const select = target.parentElement.querySelector('.transfer-client-select'); const newClientId = select.value || null; const { error } = await api.transferProjectClient(projectId, newClientId); if (error) { alert('Erro: ' + error.message); } else { alert('Cliente atualizado!'); await showManageProjectsPanel(); } } if (target.classList.contains('transfer-owner-btn')) { const select = target.parentElement.querySelector('.transfer-owner-select'); const newOwnerId = select.value; if (newOwnerId && confirm('Transferir propriedade?')) { const { error } = await api.transferProjectOwner(projectId, newOwnerId); if (error) { alert('Erro: ' + error.message); } else { alert('Propriedade transferida!'); await showManageProjectsPanel(); } } } }
 async function showAdminPanel() { const users = await api.fetchAllUsers(); ui.populateUsersPanel(users); ui.openModal('adminPanelModalOverlay'); }
 async function handleAdminUserActions(event) {
-    // ... (função inalterada) ...
     const target = event.target;
     const userId = target.dataset.userId;
     if (target.classList.contains('approve-user-btn')) { await api.approveUser(userId); await showAdminPanel(); }
     if (target.classList.contains('edit-user-btn')) { const user = await api.fetchUserById(userId); if (user) ui.populateEditUserModal(user); }
-    if (target.classList.contains('block-user-btn')) { const shouldBlock = target.dataset.isBlocked === 'true'; const actionText = shouldBlock ? 'bloquear' : 'desbloquear'; if (confirm(`Tem certeza?`)) { await api.toggleUserBlock(userId, shouldBlock); await showAdminPanel(); } }
-    if (target.classList.contains('remove-user-btn')) { if (confirm('ATENÇÃO: Ação irreversível!')) { const { error } = await api.deleteUserFromAdmin(userId); if (error) { alert('Erro: ' + error.message); } else { alert('Usuário excluído.'); await showAdminPanel(); } } }
+    if (target.classList.contains('block-user-btn')) { const shouldBlock = target.dataset.isBlocked === 'true'; if (confirm(`Tem certeza que deseja ${shouldBlock ? 'bloquear' : 'desbloquear'} este usuário?`)) { await api.toggleUserBlock(userId, shouldBlock); await showAdminPanel(); } } // Corrigido texto confirmação
+    if (target.classList.contains('remove-user-btn')) { if (confirm('ATENÇÃO: Ação irreversível! Excluir usuário?')) { const { data, error } = await api.deleteUserFromAdmin(userId); if (error) { alert('Erro ao excluir usuário: ' + error.message); } else { alert(data?.message || 'Usuário excluído.'); await showAdminPanel(); } } } // Mostra mensagem da função
 }
-async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro: " + error.message); } else { alert("Usuário atualizado!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
+async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
+// ========================================================================
+// >>>>> FUNÇÃO ATUALIZADA: handleCalculateAndPdf (para usar Edge Function) <<<<<
+// ========================================================================
 async function handleCalculateAndPdf() {
-    // ... (função inalterada) ...
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = loadingOverlay.querySelector('p');
-    loadingText.textContent = 'Calculando, por favor aguarde...';
+    loadingText.textContent = 'Calculando no servidor...'; // Atualiza texto de loading
     loadingOverlay.classList.add('visible');
-    
-    const formData = getFullFormData(false);
+
+    // Pega os dados do formulário (incluindo a estrutura de QDCs e circuitsData plano com qdcId)
+    const formDataForFunction = getFullFormData(false);
 
     try {
-        const results = await new Promise((resolve, reject) => {
-            if (!uiData || !uiData.cabos || !uiData.disjuntores) {
-                reject(new Error("Os dados técnicos (cabos, disjuntores, etc.) não foram carregados. Tente recarregar a página."));
-                return;
-            }
-
-            const worker = new Worker('calculator.worker.js', { type: 'module' });
-
-            worker.onmessage = (e) => {
-                if (e.data.error) {
-                    reject(new Error(e.data.error));
-                } else {
-                    resolve(e.data); // Deve retornar { feederResult, circuitResults }
-                }
-                worker.terminate();
-            };
-
-            worker.onerror = (e) => {
-                reject(new Error(`Erro no Worker: ${e.message}`));
-                worker.terminate();
-            };
-
-            worker.postMessage({ formData: formData, technicalData: uiData });
+        // --- CHAMA A EDGE FUNCTION 'calculate' ---
+        console.log("Enviando para Edge Function 'calculate':", JSON.stringify(formDataForFunction, null, 2)); // Log para depuração formatado
+        const { data: results, error: functionError } = await supabase.functions.invoke('calculate', {
+            body: { formData: formDataForFunction }, // Envia o formData no corpo
         });
-        
+
+        if (functionError) {
+            // Tenta obter uma mensagem de erro mais detalhada do corpo da resposta
+            let errMsg = functionError.message;
+            let errorDetails = null; // Para log
+            try {
+                 errorDetails = await functionError.context?.json();
+                 if (errorDetails?.error) {
+                     errMsg = errorDetails.error;
+                 }
+                 console.error("Detalhes do erro da Edge Function:", errorDetails); // Log do erro
+            } catch(e) { /* Ignora erro ao parsear json de erro */ }
+            throw new Error(`Erro na Edge Function: ${errMsg}`);
+        }
+
+        // Verifica se a resposta da função contém os resultados esperados
+        if (!results || !results.feederResult || !results.circuitResults) {
+            console.error("Resposta inesperada da Edge Function:", results);
+            throw new Error("A função de cálculo retornou dados incompletos ou em formato inválido.");
+        }
+        console.log("Resultados recebidos da Edge Function:", results); // Log de sucesso
+        // --- FIM DA CHAMADA À EDGE FUNCTION ---
+
         loadingText.textContent = 'Gerando PDFs...';
         await new Promise(resolve => setTimeout(resolve, 50));
 
+        // Passa os resultados recebidos da função para as funções de PDF
         await ui.generateMemorialPdf(results, currentUserProfile);
         await ui.generateUnifilarPdf(results);
 
         alert("PDFs baixados com sucesso!");
 
     } catch (error) {
-        console.error("Erro ao gerar PDFs:", error);
+        console.error("Erro durante cálculo ou geração de PDF:", error);
         alert("Ocorreu um erro: " + error.message);
     } finally {
         loadingOverlay.classList.remove('visible');
-        loadingText.textContent = 'Calculando...';
+        loadingText.textContent = 'Calculando...'; // Reset texto original do loading
     }
 }
 
@@ -251,58 +273,58 @@ function setupEventListeners() {
     document.getElementById('forgotPasswordForm').addEventListener('submit', handleForgotPassword);
     document.getElementById('resetPasswordForm').addEventListener('submit', handleResetPassword);
     document.querySelectorAll('.close-modal-btn').forEach(btn => { btn.addEventListener('click', (e) => ui.closeModal(e.target.closest('.modal-overlay').id)); });
-    
+
     document.getElementById('saveBtn').addEventListener('click', handleSaveProject);
     document.getElementById('loadBtn').addEventListener('click', handleLoadProject);
     document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
     document.getElementById('newBtn').addEventListener('click', () => handleNewProject(true));
     const debouncedSearch = utils.debounce((e) => handleSearch(e.target.value), 300);
     document.getElementById('searchInput').addEventListener('input', debouncedSearch);
-        
-    // ========================================================================
-    // >>>>> LINHA CORRIGIDA <<<<<
-    // ========================================================================
-    document.getElementById('addQdcBtn').addEventListener('click', () => ui.addQdcBlock()); // Chama a função sem passar o evento
-    
+
+    // Listener corrigido para o botão principal Add QDC
+    document.getElementById('addQdcBtn').addEventListener('click', () => ui.addQdcBlock());
+
     document.getElementById('manageQdcsBtn').addEventListener('click', () => ui.openModal('qdcManagerModalOverlay'));
-    
+
     const appContainer = document.getElementById('appContainer');
     if(appContainer) {
         // Mantém o listener geral para outras interações (colapsar, remover, inputs)
+        // O listener específico para '+ Circuito' foi movido para dentro de addQdcBlock no ui.js
         appContainer.addEventListener('input', ui.handleMainContainerInteraction);
         appContainer.addEventListener('click', ui.handleMainContainerInteraction);
     }
-    
+
     document.getElementById('calculateAndPdfBtn').addEventListener('click', handleCalculateAndPdf);
-    
+
     document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
     const projectsTableBody = document.getElementById('adminProjectsTableBody');
     if(projectsTableBody) projectsTableBody.addEventListener('click', handleProjectPanelClick);
-    
+
     document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
     const adminUserList = document.getElementById('adminUserList');
     if(adminUserList) adminUserList.addEventListener('click', handleAdminUserActions);
-    
+
     const editUserForm = document.getElementById('editUserForm');
     if(editUserForm) editUserForm.addEventListener('submit', handleUpdateUser);
-    
+
     document.getElementById('manageClientsBtn').addEventListener('click', handleOpenClientManagement);
     const clientForm = document.getElementById('clientForm');
     if(clientForm) clientForm.addEventListener('submit', handleClientFormSubmit);
-    
+
     const clientList = document.getElementById('clientList');
     if(clientList) clientList.addEventListener('click', handleClientListClick);
-    
+
     const clientFormCancelBtn = document.getElementById('clientFormCancelBtn');
     if(clientFormCancelBtn) clientFormCancelBtn.addEventListener('click', ui.resetClientForm);
+
+    document.getElementById('confirmClientSelectionBtn').addEventListener('click', () => handleConfirmClientSelection(false)); // Corrigido para false ao selecionar
+    document.getElementById('changeClientBtn').addEventListener('click', async () => { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients, true); }); // Para botão 'Alterar Cliente'
     
-    document.getElementById('confirmClientSelectionBtn').addEventListener('click', () => handleConfirmClientSelection(true));
     document.getElementById('continueWithoutClientBtn').addEventListener('click', handleContinueWithoutClient);
     document.getElementById('addNewClientFromSelectModalBtn').addEventListener('click', () => { ui.closeModal('selectClientModalOverlay'); handleOpenClientManagement(); });
-    document.getElementById('changeClientBtn').addEventListener('click', async () => { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients, true); });
-    
+
+
     // --- Máscaras ---
-    // ... (listeners de máscara inalterados) ...
     document.getElementById('regCpf').addEventListener('input', utils.mascaraCPF);
     document.getElementById('regTelefone').addEventListener('input', utils.mascaraCelular);
     const editCpf = document.getElementById('editCpf');
@@ -321,37 +343,64 @@ function setupEventListeners() {
 
 function main() {
     setupEventListeners();
-    
+
     supabase.auth.onAuthStateChange(async (event, session) => {
-        // ... (lógica de auth state change inalterada) ...
         if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
             if (session) {
                 const userProfile = await auth.getSession();
-                if (userProfile && !userProfile.is_blocked && userProfile.is_approved) {
+                 // Verifica aprovação e bloqueio
+                if (userProfile && userProfile.is_approved && !userProfile.is_blocked) {
                     currentUserProfile = userProfile;
                     ui.showAppView(currentUserProfile);
                     allClients = await api.fetchClients();
-                    
-                    uiData = await api.fetchUiData();
-                    if (uiData) {
-                        ui.setupDynamicData(uiData);
+
+                    // Carrega dados técnicos UMA VEZ após login bem-sucedido
+                    if (!uiData) { // Evita recarregar a cada mudança de estado se já tiver os dados
+                        uiData = await api.fetchUiData();
+                        if (uiData) {
+                            ui.setupDynamicData(uiData);
+                        } else {
+                            alert("Erro ao carregar dados técnicos essenciais. Tente recarregar a página.");
+                            // Poderia desabilitar funcionalidades aqui
+                        }
                     }
 
-                    ui.resetForm();
-                    await handleSearch();
-                } else if (userProfile) {
-                    await auth.signOutUser(); 
+                    // Verifica se há hash para recuperação de senha
+                    if (window.location.hash.includes('type=recovery')) {
+                        ui.showResetPasswordView(); // Mostra a view de resetar senha
+                    } else {
+                        // Só reseta o form e busca se não estiver resetando senha
+                        ui.resetForm();
+                        await handleSearch();
+                    }
+
+                } else if (userProfile && !userProfile.is_approved) {
+                    alert("Seu cadastro ainda não foi aprovado por um administrador.");
+                    await auth.signOutUser();
+                    ui.showLoginView();
+                } else if (userProfile && userProfile.is_blocked) {
+                    alert("Seu usuário está temporariamente bloqueado. Contate um administrador.");
+                    await auth.signOutUser();
+                    ui.showLoginView();
+                } else {
+                     // Caso userProfile seja null ou falhe por outro motivo
+                    await auth.signOutUser();
+                    ui.showLoginView();
                 }
             } else {
+                // Sem sessão ativa
                 ui.showLoginView();
             }
         } else if (event === 'SIGNED_OUT') {
             currentUserProfile = null;
             allClients = [];
-            uiData = null;
+            // uiData = null; // Poderia manter os dados técnicos carregados se preferir
             ui.showLoginView();
+            window.location.hash = ''; // Limpa hash ao sair
         } else if (event === 'PASSWORD_RECOVERY') {
-            ui.showResetPasswordView();
+             // O evento agora é tratado dentro do SIGNED_IN/INITIAL_SESSION
+             // para garantir que o usuário está logado temporariamente
+             ui.showResetPasswordView();
         }
     });
 }
