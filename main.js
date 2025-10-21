@@ -1,4 +1,4 @@
-// Arquivo: main.js (Baseado na versão funcional + Edge Function + Ajustes getFullFormData)
+// Arquivo: main.js (Baseado na versão funcional + Edge Function + Log em handleSearch)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -8,7 +8,7 @@ import { supabase } from './supabaseClient.js';
 
 let currentUserProfile = null;
 let allClients = [];
-let uiData = null; // Armazenará todos os dados técnicos carregados
+let uiData = null;
 
 // --- handleLogin da versão funcional ---
 async function handleLogin() {
@@ -173,7 +173,22 @@ async function handleLoadProject() {
 }
 
 async function handleDeleteProject() { const projectId = document.getElementById('savedProjectsSelect').value; const projectNameOption = document.getElementById('savedProjectsSelect').options[document.getElementById('savedProjectsSelect').selectedIndex]; const projectName = projectNameOption ? projectNameOption.text : "Selecionada"; if (!projectId) { alert("Selecione uma obra para excluir."); return; } if (!confirm(`Tem certeza que deseja excluir permanentemente a obra "${projectName}"? Esta ação não pode ser desfeita.`)) return; const { error } = await api.deleteProject(projectId); if (error) { console.error('Erro ao excluir obra:', error); alert('Erro ao excluir obra: ' + error.message); } else { alert(`Obra "${projectName}" excluída com sucesso.`); ui.resetForm(); await handleSearch(); } }
-async function handleSearch(term = '') { if (!currentUserProfile) return; try { const projects = await api.fetchProjects(term); ui.populateProjectList(projects); } catch(error){ console.error("Erro ao buscar projetos:", error); /* Evita alert aqui */ } }
+
+// ========================================================================
+// >>>>> FUNÇÃO ATUALIZADA: handleSearch (com log) <<<<<
+// ========================================================================
+async function handleSearch(term = '') {
+    if (!currentUserProfile) return;
+    try {
+        const projects = await api.fetchProjects(term);
+        console.log("Projetos buscados:", projects); // <--- ADICIONADO LOG AQUI
+        ui.populateProjectList(projects); // Chama a função para preencher o dropdown
+    } catch(error){
+        console.error("Erro ao buscar projetos:", error);
+        // Evita alert para não interromper fluxo, mas loga o erro
+    }
+}
+
 async function showManageProjectsPanel() { try { const projects = await api.fetchProjects(''); allClients = await api.fetchClients(); const allUsers = await api.fetchAllUsers(); ui.populateProjectsPanel(projects, allClients, allUsers, currentUserProfile); ui.openModal('manageProjectsModalOverlay'); } catch(error){ console.error("Erro ao abrir gerenciador de obras:", error); alert("Erro ao carregar dados para o gerenciador de obras."); } }
 async function handleProjectPanelClick(event) { const target = event.target; const projectId = target.dataset.projectId; if(!projectId) return; if (target.classList.contains('transfer-client-btn')) { const select = target.closest('.action-group')?.querySelector('.transfer-client-select'); if(!select) return; const newClientId = select.value || null; const { error } = await api.transferProjectClient(projectId, newClientId); if (error) { alert('Erro ao transferir cliente: ' + error.message); } else { alert('Cliente da obra atualizado!'); await showManageProjectsPanel(); } } if (target.classList.contains('transfer-owner-btn')) { const select = target.closest('.action-group')?.querySelector('.transfer-owner-select'); if(!select) return; const newOwnerId = select.value; if (newOwnerId && confirm('Tem certeza que deseja transferir a propriedade desta obra para outro usuário?')) { const { error } = await api.transferProjectOwner(projectId, newOwnerId); if (error) { alert('Erro ao transferir propriedade: ' + error.message); } else { alert('Propriedade da obra transferida com sucesso!'); await showManageProjectsPanel(); } } } }
 async function showAdminPanel() { try { const users = await api.fetchAllUsers(); ui.populateUsersPanel(users); ui.openModal('adminPanelModalOverlay'); } catch(error){ console.error("Erro ao buscar usuários:", error); alert("Não foi possível carregar a lista de usuários."); } }
@@ -342,55 +357,39 @@ function main() {
     setupEventListeners();
 
     supabase.auth.onAuthStateChange(async (event, session) => {
-        const hash = window.location.hash; // Pega hash ANTES
+        const hash = window.location.hash;
 
         if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
             if (session) {
-                const userProfile = await auth.getSession(); // Busca perfil
-                // Verifica perfil, aprovação e bloqueio
+                const userProfile = await auth.getSession();
                 if (userProfile && userProfile.is_approved && !userProfile.is_blocked) {
                     currentUserProfile = userProfile;
-                    // Só mostra App se dados técnicos carregarem com sucesso
-                    // Carrega dados técnicos UMA VEZ
+                    // Carrega dados técnicos ANTES de mostrar App
                     if (!uiData) {
                         console.log("Carregando dados técnicos...");
-                        uiData = await api.fetchUiData(); // Usa await
+                        uiData = await api.fetchUiData();
                         if (uiData) {
                             ui.setupDynamicData(uiData);
                             console.log("Dados técnicos carregados.");
-                             // Agora que temos dados e perfil, mostra App e inicializa
-                             ui.showAppView(currentUserProfile);
-                             try { allClients = await api.fetchClients(); } catch (e) { console.error("Erro ao carregar clientes:", e); } // Carrega clientes
-
-                             if (hash.includes('type=recovery') && event === 'SIGNED_IN') {
-                                console.log("Recuperação de senha detectada.");
-                                ui.showResetPasswordView(); // Mostra view de reset
-                             } else if (!hash.includes('type=recovery')) {
-                                ui.resetForm();
-                                await handleSearch();
-                             }
-
                         } else {
-                            console.error("Falha ao carregar dados técnicos!");
-                            alert("Erro CRÍTICO ao carregar dados técnicos essenciais. A aplicação não pode continuar. Tente recarregar a página ou contate o suporte.");
-                            // Mantém na tela de login ou mostra uma tela de erro
-                            ui.showLoginView(); // Garante que fique no login
-                            currentUserProfile = null; // Limpa perfil
-                            await auth.signOutUser(); // Desloga forçadamente
-                            return; // Interrompe execução
+                            console.error("Falha CRÍTICA ao carregar dados técnicos!");
+                            alert("Erro CRÍTICO ao carregar dados técnicos. A aplicação não pode continuar.");
+                            ui.showLoginView(); // Mantém no login
+                            currentUserProfile = null;
+                            await auth.signOutUser();
+                            return; // Interrompe
                         }
-                    } else {
-                         // Se uiData já existe, apenas mostra App e inicializa
-                         ui.showAppView(currentUserProfile);
-                         try { allClients = await api.fetchClients(); } catch (e) { console.error("Erro ao carregar clientes:", e); } // Carrega clientes
+                    }
+                     // Agora mostra App e inicializa
+                    ui.showAppView(currentUserProfile);
+                    try { allClients = await api.fetchClients(); } catch (e) { console.error("Erro ao carregar clientes:", e); }
 
-                         if (hash.includes('type=recovery') && event === 'SIGNED_IN') {
-                            console.log("Recuperação de senha detectada.");
-                            ui.showResetPasswordView(); // Mostra view de reset
-                         } else if (!hash.includes('type=recovery')) {
-                            // Não reseta o form se já estiver logado e dados carregados
-                            // await handleSearch(); // Apenas atualiza lista de projetos?
-                         }
+                    if (hash.includes('type=recovery') && event === 'SIGNED_IN') {
+                        console.log("Recuperação de senha detectada.");
+                        ui.showResetPasswordView();
+                    } else if (!hash.includes('type=recovery')) {
+                        ui.resetForm();
+                        await handleSearch(); // Chama handleSearch AQUI
                     }
 
                 } else if (userProfile && !userProfile.is_approved) {
@@ -414,9 +413,8 @@ function main() {
             console.log("Usuário deslogado.");
             currentUserProfile = null;
             allClients = [];
-            // uiData = null; // Mantém uiData carregado
             ui.showLoginView();
-            window.location.hash = ''; // Limpa hash
+            window.location.hash = '';
         } else if (event === 'PASSWORD_RECOVERY') {
              console.log("Evento PASSWORD_RECOVERY.");
              ui.showResetPasswordView(); // Mostra a view imediatamente
