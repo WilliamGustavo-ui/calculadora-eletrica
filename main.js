@@ -1,4 +1,4 @@
-// Arquivo: main.js (CORRIGIDO - Bug 'adminPanelBtn' corrigido)
+// Arquivo: main.js (CORRIGIDO - Passando formData para generateMemorialPdf)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -171,9 +171,6 @@ async function handleSearch(term = '') {
 async function showManageProjectsPanel() { try { const projects = await api.fetchProjects(''); allClients = await api.fetchClients(); const allUsers = await api.fetchAllUsers(); ui.populateProjectsPanel(projects, allClients, allUsers, currentUserProfile); ui.openModal('manageProjectsModalOverlay'); } catch(error){ console.error("Erro ao abrir gerenciador de obras:", error); alert("Erro ao carregar dados para o gerenciador de obras."); } }
 async function handleProjectPanelClick(event) { const target = event.target; const projectId = target.dataset.projectId; if(!projectId) return; if (target.classList.contains('transfer-client-btn')) { const select = target.closest('.action-group')?.querySelector('.transfer-client-select'); if(!select) return; const newClientId = select.value || null; const { error } = await api.transferProjectClient(projectId, newClientId); if (error) { alert('Erro ao transferir cliente: ' + error.message); } else { alert('Cliente da obra atualizado!'); await showManageProjectsPanel(); } } if (target.classList.contains('transfer-owner-btn')) { const select = target.closest('.action-group')?.querySelector('.transfer-owner-select'); if(!select) return; const newOwnerId = select.value; if (newOwnerId && confirm('Tem certeza que deseja transferir a propriedade desta obra para outro usuário?')) { const { error } = await api.transferProjectOwner(projectId, newOwnerId); if (error) { alert('Erro ao transferir propriedade: ' + error.message); } else { alert('Propriedade da obra transferida com sucesso!'); await showManageProjectsPanel(); } } } }
 
-// ========================================================================
-// >>>>> FUNÇÃO CORRIGIDA (Bug ID Modal) <<<<<
-// ========================================================================
 async function showAdminPanel() { 
     try { 
         const users = await api.fetchAllUsers(); 
@@ -201,13 +198,18 @@ async function handleAdminUserActions(event) {
 }
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
-// --- handleCalculateAndPdf (Usando Edge Function) ---
+// ========================================================================
+// >>>>> FUNÇÃO ATUALIZADA <<<<<
+// ========================================================================
 async function handleCalculateAndPdf() {
     if (!uiData) { alert("Erro: Dados técnicos não carregados..."); return; }
     if (!currentUserProfile) { alert("Erro: Usuário não autenticado..."); await handleLogout(); return; }
     const loadingOverlay = document.getElementById('loadingOverlay'); const loadingText = loadingOverlay.querySelector('p');
     loadingText.textContent = 'Calculando no servidor...'; loadingOverlay.classList.add('visible');
+    
+    // 1. Pega TODOS os dados do formulário
     const formDataForFunction = getFullFormData(false);
+    
     try {
         console.log("Enviando para Edge Function 'calculate':", JSON.stringify(formDataForFunction, null, 2));
         const { data: results, error: functionError } = await supabase.functions.invoke('calculate', { body: { formData: formDataForFunction }, });
@@ -215,8 +217,11 @@ async function handleCalculateAndPdf() {
         if (!results || !results.feederResult || !results.circuitResults) { console.error("Resposta inesperada:", results); throw new Error("A função de cálculo retornou dados incompletos. Verifique os logs da Edge Function."); }
         console.log("Resultados recebidos:", results);
         loadingText.textContent = 'Gerando PDFs...'; await new Promise(resolve => setTimeout(resolve, 50));
-        await ui.generateMemorialPdf(results, currentUserProfile);
+        
+        // 2. Passa os resultados (results) E os dados do formulário (formDataForFunction) para o PDF
+        await ui.generateMemorialPdf(results, currentUserProfile, formDataForFunction);
         await ui.generateUnifilarPdf(results);
+        
         alert("PDFs gerados e baixados com sucesso!");
     } catch (error) {
         console.error("Erro durante cálculo ou PDF:", error); alert("Ocorreu um erro: " + error.message + "\nVerifique o console.");
