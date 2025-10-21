@@ -1,4 +1,4 @@
-// Arquivo: ui.js (Com console.log para depurar adição de circuito)
+// Arquivo: ui.js (Correção final para adição de circuito e dropdowns)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
@@ -93,8 +93,8 @@ function updateFeederPowerDisplay() {
             }
         });
 
-        const qdcPotInst = document.getElementById(`qdcPotenciaInstalada-${qdcId}`); // Correção: usar qdcId aqui
-        const qdcPotDem = document.getElementById(`qdcPotenciaDemandada-${qdcId}`); // Correção: usar qdcId aqui
+        const qdcPotInst = document.getElementById(`qdcPotenciaInstalada-${qdcId}`);
+        const qdcPotDem = document.getElementById(`qdcPotenciaDemandada-${qdcId}`);
         if (qdcPotInst) qdcPotInst.value = totalInstaladaQDC.toFixed(2);
         if (qdcPotDem) qdcPotDem.value = totalDemandadaQDC.toFixed(2);
 
@@ -205,6 +205,7 @@ function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
                 <div class="form-group"> <label for="qdcDpsClasse-${id}">Classe DPS</label> <select id="qdcDpsClasse-${id}"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select> </div>
                 <div class="checkbox-group"> <input type="checkbox" id="qdcRequerDR-${id}"><label for="qdcRequerDR-${id}">Requer DR</label> </div>
             </div>
+            
             <h4 style="margin-top: 20px; margin-bottom: 10px; color: var(--label-color); border-top: 1px solid var(--border-color); padding-top: 15px;">Circuitos deste QDC</h4>
             <div id="circuits-for-qdc-${id}" class="circuits-container-internal">
                 </div>
@@ -226,7 +227,6 @@ export function addQdcBlock(id = null, name = null, parentId = 'feeder') {
 
     updateQdcParentDropdowns();
     
-    // Inicializa os listeners dos campos do QDC
     initializeQdcListeners(internalId);
     
     if (!id) {
@@ -279,10 +279,6 @@ export function updateQdcParentDropdowns() {
 }
 
 // --- LÓGICA DE CIRCUITO ---
-// ========================================================================
-// >>>>> FUNÇÃO MODIFICADA: addCircuit <<<<<
-// Adicionado console.log para verificar o container
-// ========================================================================
 export function addCircuit(qdcId, savedCircuitData = null) {
     const internalId = savedCircuitData ? parseInt(savedCircuitData.id) : ++circuitCount;
     if (!savedCircuitData) circuitCount = Math.max(circuitCount, internalId); 
@@ -291,16 +287,12 @@ export function addCircuit(qdcId, savedCircuitData = null) {
     newCircuitDiv.innerHTML = getCircuitHTML(internalId);
 
     const circuitContainer = document.getElementById(`circuits-for-qdc-${qdcId}`);
-    // DEBUGGING LOG: Verifica se o container foi encontrado
-    console.log(`Attempting to add circuit to container: circuits-for-qdc-${qdcId}. Found element:`, circuitContainer);
     if (circuitContainer) { 
         circuitContainer.appendChild(newCircuitDiv.firstElementChild);
     } else {
+        // Log de erro se o container não for encontrado
         console.error(`Circuit container for QDC ${qdcId} not found! Cannot add circuit.`);
-        // DEBUGGING LOG: Tenta encontrar o container do QDC 2 para comparação
-        const fallbackContainer = document.getElementById('circuits-for-qdc-2');
-        console.log('Fallback check: Found container for QDC 2?', fallbackContainer);
-        return; // Impede a adição se o container não for encontrado
+        return; 
     }
 
     if (savedCircuitData) {
@@ -422,23 +414,21 @@ function handlePowerUnitChange(id, type) {
 
 // ========================================================================
 // >>>>> FUNÇÃO MODIFICADA: handleMainContainerInteraction <<<<<
-// Adicionado console.log para verificar o botão clicado
+// Corrigido para usar closest() para pegar o botão correto. Logs removidos.
 // ========================================================================
 export function handleMainContainerInteraction(event) {
     const target = event.target;
 
     // --- Lógica de Adicionar Circuito ---
-    if (target.classList.contains('add-circuit-to-qdc-btn')) {
-        const qdcId = target.dataset.qdcId; 
+    const addCircuitButton = target.closest('.add-circuit-to-qdc-btn'); // Procura o botão pai
+    if (addCircuitButton) {
+        const qdcId = addCircuitButton.dataset.qdcId; // Pega o ID do botão encontrado
         if (qdcId) {
-            // DEBUGGING LOG: Verifica qual botão foi clicado
-            console.log(`Add circuit button clicked for QDC ID: ${qdcId}`); 
             addCircuit(qdcId); 
         } else {
-             // DEBUGGING LOG: Se o ID não foi encontrado no botão
             console.error('Add circuit button clicked, but qdcId is missing from dataset!');
         }
-        return; 
+        return; // Impede que o evento continue propagando
     }
 
     // --- Lógica de QDC (Remover, Colapsar, Renomear, E NOVOS CAMPOS) ---
@@ -446,13 +436,16 @@ export function handleMainContainerInteraction(event) {
     if (qdcBlock) {
         const qdcId = qdcBlock.dataset.id; 
         
-        if (target.classList.contains('remove-qdc-btn')) { 
-            const idParaRemover = target.dataset.qdcId || qdcId;
+        const removeQdcButton = target.closest('.remove-qdc-btn'); // Procura o botão de remover
+        if (removeQdcButton) { 
+            const idParaRemover = removeQdcButton.dataset.qdcId || qdcId; // Usa o ID do botão se existir
             removeQdc(idParaRemover); 
             return; 
         }
+        
         if (target.classList.contains('qdc-name-input') && event.type === 'input') { 
             updateQdcParentDropdowns(); 
+            // Não precisa de return, pois é evento 'input'
         }
         
         // Gatilhos para os campos de config do QDC
@@ -465,7 +458,8 @@ export function handleMainContainerInteraction(event) {
 
         // Lógica de Colapsar/Expandir QDC
         const qdcHeader = target.closest('.qdc-header');
-        if (qdcHeader && !target.closest('.qdc-header-right') && !target.closest('.qdc-header-left input') && !target.closest('.qdc-header-center select')) { 
+        // Verifica se o clique NÃO foi nos elementos interativos do header
+        if (qdcHeader && !target.closest('.qdc-header-right button, .qdc-header-left input, .qdc-header-center select')) { 
             qdcBlock.classList.toggle('collapsed'); 
             return; 
         }
@@ -478,9 +472,10 @@ export function handleMainContainerInteraction(event) {
         
         // Lógica de Colapsar/Expandir Circuito
         const circuitHeader = target.closest('.circuit-header');
-        if (circuitHeader && !target.closest('.circuit-header-right')) { 
+        // Verifica se o clique NÃO foi no botão de remover
+        if (circuitHeader && !target.closest('.remove-circuit-btn')) { 
             circuitBlock.classList.toggle('collapsed'); 
-            return; 
+            // Não retorna aqui, pois pode haver ações dentro do header
         }
         
         // Lógica de Ações *dentro* do Circuito
@@ -488,8 +483,10 @@ export function handleMainContainerInteraction(event) {
             const lbl = document.getElementById(`nomeCircuitoLabel-${circuitId}`); 
             if(lbl) lbl.textContent = target.value; 
         }
-        if (target.classList.contains('remove-circuit-btn')) { 
-            removeCircuit(target.dataset.circuitId || circuitId); 
+        
+        const removeCircuitButton = target.closest('.remove-circuit-btn'); // Procura o botão remover circuito
+        if (removeCircuitButton) { 
+            removeCircuit(removeCircuitButton.dataset.circuitId || circuitId); // Usa o ID do botão
         }
         else if (target.id === `tipoCircuito-${circuitId}`) { handleCircuitTypeChange(circuitId); }
         else if (target.id === `fases-${circuitId}`) { atualizarLigacoes(circuitId); }
@@ -579,11 +576,9 @@ export function populateFormWithProjectData(project) {
                     }
                 });
 
-                // Dispara os listeners para carregar dropdowns dependentes
                 atualizarQdcLigacoes(newQdcId); 
                 handleQdcInsulationChange(newQdcId);
 
-                // Repopula os valores que foram sobrescritos pelos listeners
                 const qdcTipoLigacao = document.getElementById(`qdcTipoLigacao-${newQdcId}`);
                 if (qdcTipoLigacao && qdcData.config[`qdcTipoLigacao-${newQdcId}`]) {
                     qdcTipoLigacao.value = qdcData.config[`qdcTipoLigacao-${newQdcId}`];
