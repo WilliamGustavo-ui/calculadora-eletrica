@@ -1,4 +1,4 @@
-// Arquivo: ui.js (COM CAMPOS DE CONFIGURAÇÃO NO QDC E CORREÇÃO DO PDF)
+// Arquivo: ui.js (Com correção do bug de 'value_')
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
@@ -98,8 +98,6 @@ function updateFeederPowerDisplay() {
         if (qdcPotInst) qdcPotInst.value = totalInstaladaQDC.toFixed(2);
         if (qdcPotDem) qdcPotDem.value = totalDemandadaQDC.toFixed(2);
 
-        // A lógica de soma hierárquica ainda não está implementada
-        // Por enquanto, somamos todos os QDCs no Alimentador Geral
         totalInstaladaGeral += totalInstaladaQDC;
         totalDemandadaGeral += totalDemandadaQDC;
     });
@@ -158,6 +156,10 @@ export function resetForm(addDefaultQdc = true, linkedClient = null) {
     }
 }
 
+// ========================================================================
+// >>>>> FUNÇÃO MODIFICADA: getQdcHTML <<<<<
+// Corrigido o typo 'value_=""' para 'value="4"'
+// ========================================================================
 function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
     return `
     <div class="qdc-block" id="qdc-${id}" data-id="${id}">
@@ -201,7 +203,7 @@ function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
                 <div class="form-group"> <label for="qdcMetodoInstalacao-${id}">Instalação</label> <select id="qdcMetodoInstalacao-${id}"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select> </div>
                 <div class="form-group"> <label for="qdcTemperaturaAmbienteC-${id}">Temp. Ambiente</label> <select id="qdcTemperaturaAmbienteC-${id}"></select> </div>
                 <div class="form-group"> <label for="qdcResistividadeSolo-${id}">Resist. Solo</label> <select id="qdcResistividadeSolo-${id}"></select> </div>
-                <div class="form-group"> <label for="qdcNumCircuitosAgrupados-${id}">Ckt Agrupados</label> <select id="qdcNumCircuitosAgrupados-${id}"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value_="">4</option><option value="5">5</option><option value="6">6</option></select> </div>
+                <div class="form-group"> <label for="qdcNumCircuitosAgrupados-${id}">Ckt Agrupados</label> <select id="qdcNumCircuitosAgrupados-${id}"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select> </div>
                 <div class="form-group"> <label for="qdcLimiteQuedaTensao-${id}">Limite DV (%)</label> <input type="number" id="qdcLimiteQuedaTensao-${id}" step="0.1" value="2.0"> </div>
                 <div class="form-group"> <label for="qdcTipoDisjuntor-${id}">Disjuntor</label> <select id="qdcTipoDisjuntor-${id}"><option value="Minidisjuntor (DIN)">DIN</option><option value="Caixa Moldada (MCCB)">MCCB</option></select> </div>
                 <div class="form-group"> <label for="qdcDpsClasse-${id}">Classe DPS</label> <select id="qdcDpsClasse-${id}"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select> </div>
@@ -346,8 +348,12 @@ export function removeCircuit(circuitId) {
     if (circuitBlock) { circuitBlock.remove(); updateFeederPowerDisplay(); }
 }
 
+// ========================================================================
+// >>>>> FUNÇÃO MODIFICADA: getCircuitHTML <<<<<
+// Corrigido o typo 'value_=""' para 'value="4"'
+// ========================================================================
 function getCircuitHTML(id) {
-    return `<div class="circuit-block" id="circuit-${id}" data-id="${id}"> <div class="circuit-header"> <h3 class="circuit-header-left">Circuito <span class="circuit-number"></span></h3> <h3 class="circuit-header-center" id="nomeCircuitoLabel-${id}">Circuito ${id}</h3> <div class="circuit-header-right"> <button type="button" class="remove-circuit-btn btn-red" data-circuit-id="${id}">Remover</button> <span class="toggle-arrow">▼</span> </div> </div> <div class="circuit-content"> <div class="form-grid"> <div class="form-group"> <label for="nomeCircuito-${id}">Nome do Circuito</label> <input type="text" id="nomeCircuito-${id}" value="Circuito ${id}"> </div> <div class="full-width potencia-group"> <div class="form-group"> <label for="tipoCircuito-${id}">Tipo de Circuito</label> <select id="tipoCircuito-${id}"> <option value="iluminacao">Iluminação</option> <option value="tug" selected>TUG</option> <option value="tue">TUE</option> <option value="aquecimento">Aquecimento</option> <option value="motores">Motores</option> <option value="ar_condicionado">Ar Condicionado</option> </select> </div> <div class="form-group hidden" id="potenciaBTU_group-${id}"> <label for="potenciaBTU-${id}">Potência (BTU/h)</label> <select id="potenciaBTU-${id}"></select> </div> <div class="form-group hidden" id="potenciaCV_group-${id}"> <label for="potenciaCV-${id}">Potência (CV)</label> <select id="potenciaCV-${id}"></select> </div> <div class="form-group"> <label for="potenciaW-${id}">Potência (W)</label> <input type="number" id="potenciaW-${id}" value="2500"> </div> </div> <div class="form-group"> <label for="fatorDemanda-${id}">Fator Demanda (%)</label> <input type="number" id="fatorDemanda-${id}" value="100" step="1"> </div> <div class="form-group"> <label for="fases-${id}">Fases</label> <select id="fases-${id}"> <option value="Monofasico" selected>Monofásico</option> <option value="Bifasico">Bifásico</option> <option value="Trifasico">Trifásico</option> </select> </div> <div class="form-group"> <label for="tipoLigacao-${id}">Ligação</label> <select id="tipoLigacao-${id}"></select> </div> <div class="form-group"> <label for="tensaoV-${id}">Tensão (V)</label> <select id="tensaoV-${id}"><option value="12">12</option><option value="24">24</option><option value="36">36</option><option value="127">127</option><option value="220" selected>220</option><option value="380">380</option><option value="440">440</option><option value="760">760</option></select> </div> <div class="form-group"> <label for="fatorPotencia-${id}">Fator Potência</label> <input type="number" id="fatorPotencia-${id}" step="0.01" value="0.92"> </div> <div class="form-group"> <label for="comprimentoM-${id}">Comprimento (m)</label> <input type="number" id="comprimentoM-${id}" value="20"> </div> <div class="form-group"> <label for="tipoIsolacao-${id}">Isolação</label> <select id="tipoIsolacao-${id}"><option value="PVC" selected>PVC 70°C</option><option value="EPR">EPR 90°C</option><option value="XLPE">XLPE 90°C</option></select> </div> <div class="form-group"> <label for="materialCabo-${id}">Condutor</label> <select id="materialCabo-${id}"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Alumínio</option></select> </div> <div class="form-group"> <label for="metodoInstalacao-${id}">Instalação</label> <select id="metodoInstalacao-${id}"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select> </div> <div class="form-group"> <label for="temperaturaAmbienteC-${id}">Temp. Ambiente</label> <select id="temperaturaAmbienteC-${id}"></select> </div> <div class="form-group"> <label for="resistividadeSolo-${id}">Resist. Solo</label> <select id="resistividadeSolo-${id}"></select> </div> <div class="form-group"> <label for="numCircuitosAgrupados-${id}">Ckt Agrupados</label> <select id="numCircuitosAgrupados-${id}"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value_="">4</option><option value="5">5</option><option value="6">6</option></select> </div> <div class="form-group"> <label for="limiteQuedaTensao-${id}">Limite DV (%)</label> <input type="number" id="limiteQuedaTensao-${id}" step="0.1" value="4.0"> </div> <div class="form-group"> <label for="tipoDisjuntor-${id}">Disjuntor</label> <select id="tipoDisjuntor-${id}"><option value="Minidisjuntor (DIN)">DIN</option><option value="Caixa Moldada (MCCB)">MCCB</option></select> </div> <div class="form-group"> <label for="dpsClasse-${id}">Classe DPS</label> <select id="dpsClasse-${id}"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select> </div> <div class="checkbox-group"> <input type="checkbox" id="requerDR-${id}"><label for="requerDR-${id}">Requer DR</label> </div> </div> </div> </div>`;
+    return `<div class="circuit-block" id="circuit-${id}" data-id="${id}"> <div class="circuit-header"> <h3 class="circuit-header-left">Circuito <span class="circuit-number"></span></h3> <h3 class="circuit-header-center" id="nomeCircuitoLabel-${id}">Circuito ${id}</h3> <div class="circuit-header-right"> <button type="button" class="remove-circuit-btn btn-red" data-circuit-id="${id}">Remover</button> <span class="toggle-arrow">▼</span> </div> </div> <div class="circuit-content"> <div class="form-grid"> <div class="form-group"> <label for="nomeCircuito-${id}">Nome do Circuito</label> <input type="text" id="nomeCircuito-${id}" value="Circuito ${id}"> </div> <div class="full-width potencia-group"> <div class="form-group"> <label for="tipoCircuito-${id}">Tipo de Circuito</label> <select id="tipoCircuito-${id}"> <option value="iluminacao">Iluminação</option> <option value="tug" selected>TUG</option> <option value="tue">TUE</option> <option value="aquecimento">Aquecimento</option> <option value="motores">Motores</option> <option value="ar_condicionado">Ar Condicionado</option> </select> </div> <div class="form-group hidden" id="potenciaBTU_group-${id}"> <label for="potenciaBTU-${id}">Potência (BTU/h)</label> <select id="potenciaBTU-${id}"></select> </div> <div class="form-group hidden" id="potenciaCV_group-${id}"> <label for="potenciaCV-${id}">Potência (CV)</label> <select id="potenciaCV-${id}"></select> </div> <div class="form-group"> <label for="potenciaW-${id}">Potência (W)</label> <input type="number" id="potenciaW-${id}" value="2500"> </div> </div> <div class="form-group"> <label for="fatorDemanda-${id}">Fator Demanda (%)</label> <input type="number" id="fatorDemanda-${id}" value="100" step="1"> </div> <div class="form-group"> <label for="fases-${id}">Fases</label> <select id="fases-${id}"> <option value="Monofasico" selected>Monofásico</option> <option value="Bifasico">Bifásico</option> <option value="Trifasico">Trifásico</option> </select> </div> <div class="form-group"> <label for="tipoLigacao-${id}">Ligação</label> <select id="tipoLigacao-${id}"></select> </div> <div class="form-group"> <label for="tensaoV-${id}">Tensão (V)</label> <select id="tensaoV-${id}"><option value="12">12</option><option value="24">24</option><option value="36">36</option><option value="127">127</option><option value="220" selected>220</option><option value="380">380</option><option value="440">440</option><option value="760">760</option></select> </div> <div class="form-group"> <label for="fatorPotencia-${id}">Fator Potência</label> <input type="number" id="fatorPotencia-${id}" step="0.01" value="0.92"> </div> <div class="form-group"> <label for="comprimentoM-${id}">Comprimento (m)</label> <input type="number" id="comprimentoM-${id}" value="20"> </div> <div class="form-group"> <label for="tipoIsolacao-${id}">Isolação</label> <select id="tipoIsolacao-${id}"><option value="PVC" selected>PVC 70°C</option><option value="EPR">EPR 90°C</option><option value="XLPE">XLPE 90°C</option></select> </div> <div class="form-group"> <label for="materialCabo-${id}">Condutor</label> <select id="materialCabo-${id}"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Alumínio</option></select> </div> <div class="form-group"> <label for="metodoInstalacao-${id}">Instalação</label> <select id="metodoInstalacao-${id}"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select> </div> <div class="form-group"> <label for="temperaturaAmbienteC-${id}">Temp. Ambiente</label> <select id="temperaturaAmbienteC-${id}"></select> </div> <div class="form-group"> <label for="resistividadeSolo-${id}">Resist. Solo</label> <select id="resistividadeSolo-${id}"></select> </div> <div class="form-group"> <label for="numCircuitosAgrupados-${id}">Ckt Agrupados</label> <select id="numCircuitosAgrupados-${id}"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select> </div> <div class="form-group"> <label for="limiteQuedaTensao-${id}">Limite DV (%)</label> <input type="number" id="limiteQuedaTensao-${id}" step="0.1" value="4.0"> </div> <div class="form-group"> <label for="tipoDisjuntor-${id}">Disjuntor</label> <select id="tipoDisjuntor-${id}"><option value="Minidisjuntor (DIN)">DIN</option><option value="Caixa Moldada (MCCB)">MCCB</option></select> </div> <div class="form-group"> <label for="dpsClasse-${id}">Classe DPS</label> <select id="dpsClasse-${id}"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select> </div> <div class="checkbox-group"> <input type="checkbox" id="requerDR-${id}"><label for="requerDR-${id}">Requer DR</label> </div> </div> </div> </div>`;
 }
 
 function initializeFeederListeners() {
@@ -642,10 +648,6 @@ export async function generateUnifilarPdf(calculationResults) {
     try { const { jsPDF } = window.jspdf; const doc = new jsPDF('l', 'mm', 'a3'); const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); const svgEl = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svgEl.innerHTML = svgString; document.body.appendChild(svgEl); const { width, height } = svgEl.getBBox(); document.body.removeChild(svgEl); canvas.width = width || 800; canvas.height = height || 600; const v = await Canvg.fromString(ctx, svgString); await v.render(); const imgData = canvas.toDataURL('image/png'); const pdfW = doc.internal.pageSize.getWidth(); const pdfH = doc.internal.pageSize.getHeight(); const m = 10; let imgW = pdfW - (m * 2); let imgH = (canvas.height / canvas.width) * imgW; if (imgH > pdfH - (m*2)) { imgH = pdfH - (m*2); imgW = (canvas.width / canvas.height) * imgH; } let fY = m; if (imgH < (pdfH - (m * 2))) { fY = (pdfH - imgH) / 2; } let fX = (pdfW - imgW) / 2; doc.addImage(imgData, 'PNG', fX, fY, imgW, imgH); doc.save(`Unifilar_${document.getElementById('obra').value || 'Projeto'}.pdf`); } catch (e) { console.error("Erro PDF Unifilar:", e); alert("Erro ao gerar PDF Unifilar."); }
 }
 
-// ========================================================================
-// >>>>> FUNÇÃO CORRIGIDA: generateMemorialPdf <<<<<
-// A chave '}' de fechamento da função foi movida para o final.
-// ========================================================================
 export function generateMemorialPdf(calculationResults, currentUserProfile) {
     if (!calculationResults) { alert("Execute o cálculo primeiro."); return; }
     
@@ -714,8 +716,6 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
         doc.autoTable({ startY: yPos, head: head, body: body, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
     }
     
-    // **A CHAVE '}' QUE ESTAVA AQUI FOI REMOVIDA**
-
     const allCalculationsForMemorial = [feederResult, ...circuitResults];
     
     allCalculationsForMemorial.forEach((result, index) => {
@@ -724,7 +724,6 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
         const { dados, calculos } = result;
         const potenciaDemandadaVA = dados.fatorPotencia > 0 ? (calculos.potenciaDemandada / dados.fatorPotencia).toFixed(2) : "0.00";
         const correnteCorrigidaTexto = isFinite(calculos.correnteCorrigidaA) ? `${calculos.correnteCorrigidaA.toFixed(2)} A` : "Incalculável";
-        // Corrigindo um pequeno erro de digitação no nome da variável
         const title = (dados.id === 'Geral' || dados.id === 'feeder') ? `MEMORIAL DE CÁLCULO - ALIMENTADOR GERAL` : `MEMORIAL DE CÁLCULO - CIRCUITO ${index}: ${dados.nomeCircuito}`;
         
         addT(title);
@@ -738,7 +737,7 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
         addL("Tipo de Ligação:", dados.tipoLigacao);
         addL("Tensão (V):", `${dados.tensaoV} V`);
         addL("Comprimento:", `${dados.comprimentoM} m`);
-        addL("Limite Queda de Tensão:", `${dados.limiteQuedaTensao}%`); // Corrigido de 'limiteQuedaDesejoTensao'
+        addL("Limite Queda de Tensão:", `${dados.limiteQuedaTensao}%`);
         yPos += 5;
         addS("-- ESPECIFICAÇÕES DE INSTALAÇÃO E CORREÇÕES --");
         addL("Material / Isolação:", `${dados.materialCabo} / ${dados.tipoIsolacao}`);
@@ -772,7 +771,4 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
 
     doc.save(`Memorial_${document.getElementById('obra').value || 'Projeto'}.pdf`);
     
-} // <--- **ESTE É O LOCAL CORRETO PARA A CHAVE '}'**
-// ========================================================================
-// >>>>> FIM DAS CORREÇÕES <<<<<
-// ========================================================================
+}
