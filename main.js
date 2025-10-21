@@ -1,4 +1,4 @@
-// Arquivo: main.js (VERSÃO ATUALIZADA E CORRIGIDA)
+// Arquivo: main.js (Com correção no listener do addQdcBtn)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -122,6 +122,7 @@ function getFullFormData(forSave = false) {
 }
 
 async function handleSaveProject() {
+    // ... (função inalterada) ...
     if (!currentUserProfile) { alert("Você precisa estar logado."); return; }
     const nomeObra = document.getElementById('obra').value.trim();
     if (!nomeObra) { alert("Insira um 'Nome da Obra'."); return; }
@@ -152,6 +153,7 @@ async function handleSaveProject() {
 }
 
 async function handleLoadProject() {
+    // ... (função inalterada) ...
     const projectId = document.getElementById('savedProjectsSelect').value;
     if (!projectId) return;
 
@@ -161,7 +163,7 @@ async function handleLoadProject() {
         await new Promise(resolve => setTimeout(resolve, 50));
         const project = await api.fetchProjectById(projectId);
         if (project) {
-            ui.populateFormWithProjectData(project); // Chama a função de UI para preencher
+            ui.populateFormWithProjectData(project); 
             alert(`Obra "${project.project_name}" carregada.`);
         }
     } catch (error) {
@@ -177,6 +179,7 @@ async function showManageProjectsPanel() { const projects = await api.fetchProje
 async function handleProjectPanelClick(event) { const target = event.target; const projectId = target.dataset.projectId; if (target.classList.contains('transfer-client-btn')) { const select = target.parentElement.querySelector('.transfer-client-select'); const newClientId = select.value || null; const { error } = await api.transferProjectClient(projectId, newClientId); if (error) { alert('Erro: ' + error.message); } else { alert('Cliente atualizado!'); await showManageProjectsPanel(); } } if (target.classList.contains('transfer-owner-btn')) { const select = target.parentElement.querySelector('.transfer-owner-select'); const newOwnerId = select.value; if (newOwnerId && confirm('Transferir propriedade?')) { const { error } = await api.transferProjectOwner(projectId, newOwnerId); if (error) { alert('Erro: ' + error.message); } else { alert('Propriedade transferida!'); await showManageProjectsPanel(); } } } }
 async function showAdminPanel() { const users = await api.fetchAllUsers(); ui.populateUsersPanel(users); ui.openModal('adminPanelModalOverlay'); }
 async function handleAdminUserActions(event) {
+    // ... (função inalterada) ...
     const target = event.target;
     const userId = target.dataset.userId;
     if (target.classList.contains('approve-user-btn')) { await api.approveUser(userId); await showAdminPanel(); }
@@ -187,6 +190,7 @@ async function handleAdminUserActions(event) {
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro: " + error.message); } else { alert("Usuário atualizado!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
 async function handleCalculateAndPdf() {
+    // ... (função inalterada) ...
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = loadingOverlay.querySelector('p');
     loadingText.textContent = 'Calculando, por favor aguarde...';
@@ -255,11 +259,16 @@ function setupEventListeners() {
     const debouncedSearch = utils.debounce((e) => handleSearch(e.target.value), 300);
     document.getElementById('searchInput').addEventListener('input', debouncedSearch);
         
-    document.getElementById('addQdcBtn').addEventListener('click', ui.addQdcBlock);
+    // ========================================================================
+    // >>>>> LINHA CORRIGIDA <<<<<
+    // ========================================================================
+    document.getElementById('addQdcBtn').addEventListener('click', () => ui.addQdcBlock()); // Chama a função sem passar o evento
+    
     document.getElementById('manageQdcsBtn').addEventListener('click', () => ui.openModal('qdcManagerModalOverlay'));
     
     const appContainer = document.getElementById('appContainer');
     if(appContainer) {
+        // Mantém o listener geral para outras interações (colapsar, remover, inputs)
         appContainer.addEventListener('input', ui.handleMainContainerInteraction);
         appContainer.addEventListener('click', ui.handleMainContainerInteraction);
     }
@@ -278,8 +287,6 @@ function setupEventListeners() {
     if(editUserForm) editUserForm.addEventListener('submit', handleUpdateUser);
     
     document.getElementById('manageClientsBtn').addEventListener('click', handleOpenClientManagement);
-    
-    // LINHA 301 CORRIGIDA (removido o 'm')
     const clientForm = document.getElementById('clientForm');
     if(clientForm) clientForm.addEventListener('submit', handleClientFormSubmit);
     
@@ -292,11 +299,10 @@ function setupEventListeners() {
     document.getElementById('confirmClientSelectionBtn').addEventListener('click', () => handleConfirmClientSelection(true));
     document.getElementById('continueWithoutClientBtn').addEventListener('click', handleContinueWithoutClient);
     document.getElementById('addNewClientFromSelectModalBtn').addEventListener('click', () => { ui.closeModal('selectClientModalOverlay'); handleOpenClientManagement(); });
-    
-    // LINHA 312 CORRIGIDA (removido o 's')
     document.getElementById('changeClientBtn').addEventListener('click', async () => { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients, true); });
     
     // --- Máscaras ---
+    // ... (listeners de máscara inalterados) ...
     document.getElementById('regCpf').addEventListener('input', utils.mascaraCPF);
     document.getElementById('regTelefone').addEventListener('input', utils.mascaraCelular);
     const editCpf = document.getElementById('editCpf');
@@ -317,6 +323,7 @@ function main() {
     setupEventListeners();
     
     supabase.auth.onAuthStateChange(async (event, session) => {
+        // ... (lógica de auth state change inalterada) ...
         if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
             if (session) {
                 const userProfile = await auth.getSession();
@@ -325,7 +332,6 @@ function main() {
                     ui.showAppView(currentUserProfile);
                     allClients = await api.fetchClients();
                     
-                    // Carrega todos os dados (UI e Cálculo)
                     uiData = await api.fetchUiData();
                     if (uiData) {
                         ui.setupDynamicData(uiData);
@@ -337,7 +343,6 @@ function main() {
                     await auth.signOutUser(); 
                 }
             } else {
-                // LINHA 341 CORRIGIDA (removido o 's')
                 ui.showLoginView();
             }
         } else if (event === 'SIGNED_OUT') {
@@ -346,7 +351,6 @@ function main() {
             uiData = null;
             ui.showLoginView();
         } else if (event === 'PASSWORD_RECOVERY') {
-            // LINHA 354 CORRIGIDA (removido o 's')
             ui.showResetPasswordView();
         }
     });
