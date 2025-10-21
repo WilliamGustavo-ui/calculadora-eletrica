@@ -1118,7 +1118,7 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
                 margin: { left: lM, right: lM, bottom: bottomMargin + 5 }
             });
              // Atualiza yPos para a posição final da tabela na PÁGINA ATUAL
-             yPos = (doc as any).lastAutoTable.finalY + 10; // Adiciona um espaço após a tabela
+             yPos = (doc).lastAutoTable.finalY + 10; // Adiciona um espaço após a tabela
             // <<<<< FIM DA ALTERAÇÃO >>>>>
         }
     });
