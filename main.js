@@ -79,38 +79,116 @@ function handleContinueWithoutClient() {
 
 // --- getFullFormData (Formatado para Edge Function E Salvar) ---
 function getFullFormData(forSave = false) {
+    // --- Dados Principais, Cliente, Técnico (sem alterações) ---
     const mainData = { obra: document.getElementById('obra').value, cidadeObra: document.getElementById('cidadeObra').value, enderecoObra: document.getElementById('enderecoObra').value, areaObra: document.getElementById('areaObra').value, unidadesResidenciais: document.getElementById('unidadesResidenciais').value, unidadesComerciais: document.getElementById('unidadesComerciais').value, observacoes: document.getElementById('observacoes').value, projectCode: document.getElementById('project_code').value };
-    const feederData = {}; const feederDataForCalc = { id: 'feeder', nomeCircuito: "Alimentador Geral" };
-    document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(el => {
-        const value = el.type === 'checkbox' ? el.checked : el.value; feederData[el.id] = value;
-        const key = el.id.replace('feeder', '').charAt(0).toLowerCase() + el.id.replace('feeder', '').slice(1);
-        let calcValue = value; if (el.type === 'number' || ['fatorDemanda', 'fatorPotencia', 'comprimentoM', 'limiteQuedaTensao'].includes(key)) { calcValue = parseFloat(value) || 0; } else if (['tensaoV', 'temperaturaAmbienteC'].includes(key)) { calcValue = parseInt(value, 10) || 0; } else if (key === 'resistividadeSolo') { calcValue = parseFloat(value) || 0; } else if (el.type === 'checkbox') { calcValue = el.checked; } feederDataForCalc[key] = calcValue;
-    });
-    const qdcsData = []; const allCircuitsForCalc = [];
-    document.querySelectorAll('#qdc-container .qdc-block').forEach(qdcBlock => {
-        const qdcId = qdcBlock.dataset.id; const qdcConfigData = {};
-        qdcBlock.querySelectorAll('.qdc-config-grid input, .qdc-config-grid select').forEach(el => { qdcConfigData[el.id] = el.type === 'checkbox' ? el.checked : el.value; });
-        const qdc = { id: qdcId, name: document.getElementById(`qdcName-${qdcId}`).value, parentId: document.getElementById(`qdcParent-${qdcId}`).value, config: qdcConfigData, circuits: [] };
-        qdcBlock.querySelectorAll('.circuit-block').forEach(circuitBlock => {
-            const circuitId = circuitBlock.dataset.id; const circuitData = { id: circuitId }; const circuitDataForCalc = { qdcId: qdcId, id: circuitId };
-            circuitBlock.querySelectorAll('input, select').forEach(el => {
-                const value = el.type === 'checkbox' ? el.checked : el.value; circuitData[el.id] = value;
-                const key = el.id.replace(`-${circuitId}`, ''); let calcValue = value;
-                if (el.type === 'number' || ['potenciaW', 'fatorDemanda', 'fatorPotencia', 'comprimentoM', 'limiteQuedaTensao'].includes(key)) { calcValue = parseFloat(value) || 0; } else if (['tensaoV', 'temperaturaAmbienteC', 'numCircuitosAgrupados'].includes(key)) { calcValue = parseInt(value, 10) || 0; } else if (key === 'resistividadeSolo') { calcValue = parseFloat(value) || 0; } else if (el.type === 'checkbox') { calcValue = el.checked; } circuitDataForCalc[key] = calcValue;
-            });
-            qdc.circuits.push(circuitData); allCircuitsForCalc.push(circuitDataForCalc);
-        });
-        qdcsData.push(qdc);
-    });
-    const currentClientId = document.getElementById('currentClientId').value; const client = allClients.find(c => c.id == currentClientId); const clientProfile = client ? { cliente: client.nome, tipoDocumento: client.documento_tipo, documento: client.documento_valor, celular: client.celular, telefone: client.telefone, email: client.email, enderecoCliente: client.endereco } : {};
+    const currentClientId = document.getElementById('currentClientId').value;
+    const client = allClients.find(c => c.id == currentClientId);
+    const clientProfile = client ? { cliente: client.nome, tipoDocumento: client.documento_tipo, documento: client.documento_valor, celular: client.celular, telefone: client.telefone, email: client.email, enderecoCliente: client.endereco } : {};
     const techData = { respTecnico: document.getElementById('respTecnico').value, titulo: document.getElementById('titulo').value, crea: document.getElementById('crea').value };
-    
-    if (forSave) { 
-        return { project_name: mainData.obra, project_code: mainData.projectCode || null, client_id: currentClientId || null, main_data: mainData, tech_data: techData, feeder_data: feederData, qdcs_data: qdcsData, owner_id: currentUserProfile?.id }; 
+
+    // --- Dados Alimentador Geral (sem alterações na coleta para 'feederDataForCalc') ---
+    const feederData = {}; // Para salvar no BD
+    const feederDataForCalc = { id: 'feeder', nomeCircuito: "Alimentador Geral" }; // Para Edge Function
+    document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(el => {
+        const value = el.type === 'checkbox' ? el.checked : el.value;
+        feederData[el.id] = value; // Para salvar
+        // Para cálculo
+        const key = el.id.replace('feeder', '').charAt(0).toLowerCase() + el.id.replace('feeder', '').slice(1);
+        let calcValue = value;
+        if (el.type === 'number' || ['fatorDemanda', 'fatorPotencia', 'comprimentoM', 'limiteQuedaTensao'].includes(key)) { calcValue = parseFloat(value) || 0; }
+        else if (['tensaoV', 'temperaturaAmbienteC'].includes(key)) { calcValue = parseInt(value, 10) || 0; }
+        else if (key === 'resistividadeSolo') { calcValue = parseFloat(value) || 0; }
+        else if (el.type === 'checkbox') { calcValue = el.checked; }
+        feederDataForCalc[key] = calcValue;
+    });
+
+    // --- Dados QDCs e Circuitos ---
+    const qdcsDataForSave = []; // Array completo para salvar no BD
+    const qdcsDataForCalc = []; // Array simplificado para Edge Function (config do alimentador)
+    const allCircuitsForCalc = []; // Array de circuitos para Edge Function
+
+    document.querySelectorAll('#qdc-container .qdc-block').forEach(qdcBlock => {
+        const qdcId = qdcBlock.dataset.id;
+        const qdcConfigDataForSave = {}; // Config para salvar
+        const qdcConfigDataForCalc = {}; // Config para cálculo
+
+        // Coleta config do alimentador do QDC
+        qdcBlock.querySelectorAll('.qdc-config-grid input, .qdc-config-grid select').forEach(el => {
+            const value = el.type === 'checkbox' ? el.checked : el.value;
+            qdcConfigDataForSave[el.id] = value; // Salva com ID original (ex: qdcFases-1)
+
+            // Mapeia para cálculo (ex: qdcFases-1 -> fases)
+            const key = el.id.replace(`qdc`, '').replace(`-${qdcId}`, '').replace(/^[A-Z]/, l => l.toLowerCase());
+             let calcValue = value;
+             if (el.type === 'number' || ['fatorDemanda', 'fatorPotencia', 'comprimentoM', 'limiteQuedaTensao'].includes(key)) { calcValue = parseFloat(value) || 0; }
+             else if (['tensaoV', 'temperaturaAmbienteC', 'numCircuitosAgrupados'].includes(key)) { calcValue = parseInt(value, 10) || 0; }
+             else if (key === 'resistividadeSolo') { calcValue = parseFloat(value) || 0; }
+             else if (el.type === 'checkbox') { calcValue = el.checked; }
+             qdcConfigDataForCalc[key] = calcValue;
+
+        });
+
+        const qdcInfo = {
+             id: qdcId,
+             name: document.getElementById(`qdcName-${qdcId}`)?.value || `QDC ${qdcId}`,
+             parentId: document.getElementById(`qdcParent-${qdcId}`)?.value || 'feeder'
+        };
+
+        // Adiciona ao array para cálculo
+        qdcsDataForCalc.push({ ...qdcInfo, config: qdcConfigDataForCalc });
+
+        // Coleta circuitos para salvar e para cálculo
+        const circuitsForSave = [];
+        qdcBlock.querySelectorAll('.circuit-block').forEach(circuitBlock => {
+            const circuitId = circuitBlock.dataset.id;
+            const circuitDataForSave = { id: circuitId }; // Para salvar
+            const circuitDataForCalc = { qdcId: qdcId, id: circuitId }; // Para cálculo
+
+            circuitBlock.querySelectorAll('input, select').forEach(el => {
+                 const value = el.type === 'checkbox' ? el.checked : el.value;
+                 circuitDataForSave[el.id] = value; // Salva com ID original (ex: nomeCircuito-1)
+
+                 // Mapeia para cálculo (ex: nomeCircuito-1 -> nomeCircuito)
+                 const key = el.id.replace(`-${circuitId}`, '');
+                 let calcValue = value;
+                 if (el.type === 'number' || ['potenciaW', 'fatorDemanda', 'fatorPotencia', 'comprimentoM', 'limiteQuedaTensao'].includes(key)) { calcValue = parseFloat(value) || 0; }
+                 else if (['tensaoV', 'temperaturaAmbienteC', 'numCircuitosAgrupados'].includes(key)) { calcValue = parseInt(value, 10) || 0; }
+                 else if (key === 'resistividadeSolo') { calcValue = parseFloat(value) || 0; }
+                 else if (el.type === 'checkbox') { calcValue = el.checked; }
+                 circuitDataForCalc[key] = calcValue;
+            });
+            circuitsForSave.push(circuitDataForSave);
+            allCircuitsForCalc.push(circuitDataForCalc);
+        });
+
+        // Adiciona ao array para salvar
+        qdcsDataForSave.push({ ...qdcInfo, config: qdcConfigDataForSave, circuits: circuitsForSave });
+    });
+
+    // --- Retorno ---
+    if (forSave) {
+        // Retorna estrutura completa para salvar no banco de dados
+        return {
+            project_name: mainData.obra,
+            project_code: mainData.projectCode || null,
+            client_id: currentClientId || null,
+            main_data: mainData,
+            tech_data: techData,
+            feeder_data: feederData, // Dados do alimentador geral com IDs originais
+            qdcs_data: qdcsDataForSave, // Dados dos QDCs e Circuitos com IDs originais
+            owner_id: currentUserProfile?.id
+        };
+    } else {
+        // Retorna estrutura simplificada para a Edge Function
+        return {
+            mainData,
+            feederData: feederDataForCalc, // Dados do alimentador geral mapeados
+            qdcsData: qdcsDataForCalc,     // <<< Dados dos QDCs (config) mapeados
+            circuitsData: allCircuitsForCalc, // Dados dos circuitos mapeados
+            clientProfile,
+            techData
+        };
     }
-    
-    // Para Edge Function
-    return { mainData, feederData: feederDataForCalc, circuitsData: allCircuitsForCalc, clientProfile, techData }; 
 }
 
 
