@@ -1,4 +1,4 @@
-// Arquivo: main.js (CORRIGIDO - Funções 'handleConfirmClientSelection' e 'handleContinueWithoutClient' adicionadas)
+// Arquivo: main.js (CORRIGIDO - Bug 'adminPanelBtn' corrigido)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -103,8 +103,14 @@ function getFullFormData(forSave = false) {
         qdcsData.push(qdc);
     });
     const currentClientId = document.getElementById('currentClientId').value; const client = allClients.find(c => c.id == currentClientId); const clientProfile = client ? { cliente: client.nome, tipoDocumento: client.documento_tipo, documento: client.documento_valor, celular: client.celular, telefone: client.telefone, email: client.email, enderecoCliente: client.endereco } : {};
-    if (forSave) { return { project_name: mainData.obra, project_code: mainData.projectCode || null, client_id: currentClientId || null, main_data: mainData, tech_data: { respTecnico: document.getElementById('respTecnico').value, titulo: document.getElementById('titulo').value, crea: document.getElementById('crea').value }, feeder_data: feederData, qdcs_data: qdcsData, owner_id: currentUserProfile?.id }; }
-    return { mainData, feederData: feederDataForCalc, circuitsData: allCircuitsForCalc, clientProfile }; // Para Edge Function
+    const techData = { respTecnico: document.getElementById('respTecnico').value, titulo: document.getElementById('titulo').value, crea: document.getElementById('crea').value };
+    
+    if (forSave) { 
+        return { project_name: mainData.obra, project_code: mainData.projectCode || null, client_id: currentClientId || null, main_data: mainData, tech_data: techData, feeder_data: feederData, qdcs_data: qdcsData, owner_id: currentUserProfile?.id }; 
+    }
+    
+    // Para Edge Function
+    return { mainData, feederData: feederDataForCalc, circuitsData: allCircuitsForCalc, clientProfile, techData }; 
 }
 
 
@@ -150,9 +156,6 @@ async function handleLoadProject() {
 
 async function handleDeleteProject() { const projectId = document.getElementById('savedProjectsSelect').value; const projectNameOption = document.getElementById('savedProjectsSelect').options[document.getElementById('savedProjectsSelect').selectedIndex]; const projectName = projectNameOption ? projectNameOption.text : "Selecionada"; if (!projectId) { alert("Selecione uma obra para excluir."); return; } if (!confirm(`Tem certeza que deseja excluir permanentemente a obra "${projectName}"? Esta ação não pode ser desfeita.`)) return; const { error } = await api.deleteProject(projectId); if (error) { console.error('Erro ao excluir obra:', error); alert('Erro ao excluir obra: ' + error.message); } else { alert(`Obra "${projectName}" excluída com sucesso.`); ui.resetForm(); await handleSearch(); } }
 
-// ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA: handleSearch (com log) <<<<<
-// ========================================================================
 async function handleSearch(term = '') {
     if (!currentUserProfile) return;
     try {
@@ -167,13 +170,32 @@ async function handleSearch(term = '') {
 
 async function showManageProjectsPanel() { try { const projects = await api.fetchProjects(''); allClients = await api.fetchClients(); const allUsers = await api.fetchAllUsers(); ui.populateProjectsPanel(projects, allClients, allUsers, currentUserProfile); ui.openModal('manageProjectsModalOverlay'); } catch(error){ console.error("Erro ao abrir gerenciador de obras:", error); alert("Erro ao carregar dados para o gerenciador de obras."); } }
 async function handleProjectPanelClick(event) { const target = event.target; const projectId = target.dataset.projectId; if(!projectId) return; if (target.classList.contains('transfer-client-btn')) { const select = target.closest('.action-group')?.querySelector('.transfer-client-select'); if(!select) return; const newClientId = select.value || null; const { error } = await api.transferProjectClient(projectId, newClientId); if (error) { alert('Erro ao transferir cliente: ' + error.message); } else { alert('Cliente da obra atualizado!'); await showManageProjectsPanel(); } } if (target.classList.contains('transfer-owner-btn')) { const select = target.closest('.action-group')?.querySelector('.transfer-owner-select'); if(!select) return; const newOwnerId = select.value; if (newOwnerId && confirm('Tem certeza que deseja transferir a propriedade desta obra para outro usuário?')) { const { error } = await api.transferProjectOwner(projectId, newOwnerId); if (error) { alert('Erro ao transferir propriedade: ' + error.message); } else { alert('Propriedade da obra transferida com sucesso!'); await showManageProjectsPanel(); } } } }
-async function showAdminPanel() { try { const users = await api.fetchAllUsers(); ui.populateUsersPanel(users); ui.openModal('adminPanelBtn'); } catch(error){ console.error("Erro ao buscar usuários:", error); alert("Não foi possível carregar a lista de usuários."); } }
+
+// ========================================================================
+// >>>>> FUNÇÃO CORRIGIDA (Bug ID Modal) <<<<<
+// ========================================================================
+async function showAdminPanel() { 
+    try { 
+        const users = await api.fetchAllUsers(); 
+        ui.populateUsersPanel(users); 
+        ui.openModal('adminPanelModalOverlay'); // <-- CORRIGIDO
+    } catch(error){ 
+        console.error("Erro ao buscar usuários:", error); 
+        alert("Não foi possível carregar a lista de usuários."); 
+    } 
+}
+
 async function handleAdminUserActions(event) {
     const target = event.target; const userId = target.dataset.userId; if (!userId) return;
     try {
         if (target.classList.contains('approve-user-btn')) { await api.approveUser(userId); await showAdminPanel(); }
         if (target.classList.contains('edit-user-btn')) { const user = await api.fetchUserById(userId); if (user) ui.populateEditUserModal(user); }
-        if (target.classList.contains('block-user-btn')) { const shouldBlock = target.dataset.isBlocked === 'true'; if (confirm(`Tem certeza que deseja ${shouldBlock ? 'bloquear' : 'desbloquear'} este usuário?`)) { await api.toggleUserBlock(userId, shouldBlock); await showAdminPanel(); } }
+        if (target.classList.contains('block-user-btn')) { const shouldBlock = target.dataset.isBlocked !== 'false'; // Inverte a lógica para bloquear
+            if (confirm(`Tem certeza que deseja ${shouldBlock ? 'bloquear' : 'desbloquear'} este usuário?`)) { 
+                await api.toggleUserBlock(userId, shouldBlock); 
+                await showAdminPanel(); 
+            } 
+        }
         if (target.classList.contains('remove-user-btn')) { if (confirm('ATENÇÃO: Ação irreversível! Excluir este usuário permanentemente?')) { const { data, error } = await api.deleteUserFromAdmin(userId); if (error) { throw error; } alert(data?.message || 'Usuário excluído com sucesso.'); await showAdminPanel(); } }
     } catch (error) { console.error("Erro na ação administrativa:", error); alert("Ocorreu um erro: " + error.message); await showAdminPanel(); }
 }
@@ -278,7 +300,7 @@ function main() {
 
                 } else if (userProfile && !userProfile.is_approved) {
                     alert("Seu cadastro ainda não foi aprovado."); await auth.signOutUser();
-                } else if (userProfile && user.is_blocked) { // Correção: userProfile.is_blocked
+                } else if (userProfile && userProfile.is_blocked) { // Correção: userProfile.is_blocked
                     alert("Seu usuário está bloqueado."); await auth.signOutUser();
                 } else {
                     console.warn("Sessão encontrada, mas perfil inválido/não encontrado."); await auth.signOutUser();
