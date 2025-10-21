@@ -12,7 +12,7 @@
 
     <div id="registerModalOverlay" class="modal-overlay">
         <div class="modal-content">
-            <button type="button" class="close-modal-btn" data-modal-id="registerModalOverlay">&times;</button>
+            <button type="button" class="close-modal-btn" data-modal-id="registerModalOverlay">X</button>
             <h2>Registrar Novo Usuário</h2>
             <form id="registerForm" autocomplete="off">
                 <div class="form-grid">
@@ -25,14 +25,13 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn-green">Registrar</button>
-                    <button type="button" class="btn-grey close-modal-btn" data-modal-id="registerModalOverlay">Cancelar</button>
-                </div>
+                    <button type="button" class="close-modal-btn btn-grey" data-modal-id="registerModalOverlay">X</button> </div>
             </form>
         </div>
     </div>
     <div id="forgotPasswordModalOverlay" class="modal-overlay">
         <div class="modal-content">
-            <button type="button" class="close-modal-btn" data-modal-id="forgotPasswordModalOverlay">&times;</button>
+            <button type="button" class="close-modal-btn" data-modal-id="forgotPasswordModalOverlay">X</button>
             <h2>Redefinir Senha</h2>
             <form id="forgotPasswordForm" autocomplete="off">
                 <div class="form-group">
@@ -41,24 +40,22 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn-blue-dark">Enviar Link</button>
-                    <button type="button" class="btn-grey close-modal-btn" data-modal-id="forgotPasswordModalOverlay">Cancelar</button>
-                </div>
+                    <button type="button" class="close-modal-btn btn-grey" data-modal-id="forgotPasswordModalOverlay">X</button> </div>
             </form>
         </div>
     </div>
     <div id="adminPanelModalOverlay" class="modal-overlay">
         <div class="modal-content">
-            <button type="button" class="close-modal-btn" data-modal-id="adminPanelModalOverlay">&times;</button>
+            <button type="button" class="close-modal-btn" data-modal-id="adminPanelModalOverlay">X</button>
             <h3>Painel de Administrador - Gerenciar Usuários</h3>
             <ul id="adminUserList"></ul>
             <div class="modal-footer">
-                <button type="button" class="btn-grey close-modal-btn" data-modal-id="adminPanelModalOverlay">Fechar</button>
-            </div>
+                <button type="button" class="close-modal-btn btn-grey" data-modal-id="adminPanelModalOverlay">X</button> </div>
         </div>
     </div>
     <div id="editUserModalOverlay" class="modal-overlay">
         <div class="modal-content">
-            <button type="button" class="close-modal-btn" data-modal-id="editUserModalOverlay">&times;</button>
+            <button type="button" class="close-modal-btn" data-modal-id="editUserModalOverlay">X</button>
             <h3>Editar Usuário</h3>
             <form id="editUserForm" autocomplete="off">
                 <input type="hidden" id="editUserId">
@@ -71,27 +68,25 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn-green">Salvar Alterações</button>
-                    <button type="button" class="btn-grey close-modal-btn" data-modal-id="editUserModalOverlay">Cancelar</button>
-                </div>
+                    <button type="button" class="close-modal-btn btn-grey" data-modal-id="editUserModalOverlay">X</button> </div>
             </form>
         </div>
     </div>
     <div id="manageProjectsModalOverlay" class="modal-overlay">
         <div class="modal-content large">
-            <button type="button" class="close-modal-btn" data-modal-id="manageProjectsModalOverlay">&times;</button>
+            <button type="button" class="close-modal-btn" data-modal-id="manageProjectsModalOverlay">X</button>
             <h3>Gerenciamento de Obras</h3>
             <table id="adminProjectsTable">
                 <thead> <tr> <th>Código</th> <th>Obra</th> <th>Dono</th> <th>Cliente</th> <th>Ações</th> </tr> </thead>
                 <tbody id="adminProjectsTableBody"></tbody>
             </table>
             <div class="modal-footer">
-                <button type="button" class="btn-grey close-modal-btn" data-modal-id="manageProjectsModalOverlay">Fechar</button>
-            </div>
+                <button type="button" class="close-modal-btn btn-grey" data-modal-id="manageProjectsModalOverlay">X</button> </div>
         </div>
     </div>
     <div id="clientManagementModalOverlay" class="modal-overlay">
         <div class="modal-content large">
-            <button type="button" class="close-modal-btn" data-modal-id="clientManagementModalOverlay">&times;</button>
+            <button type="button" class="close-modal-btn" data-modal-id="clientManagementModalOverlay">X</button>
             <h3>Gerenciamento de Clientes</h3>
             <div id="clientListContainer">
                 <h4>Clientes Cadastrados</h4>
@@ -112,15 +107,14 @@
                     </div>
                     <div class="modal-footer">
                         <button type="submit" id="clientFormSubmitBtn" class="btn-green">Salvar Cliente</button>
-                        <button type="button" id="clientFormCancelBtn" class="btn-grey" style="display: none;">Cancelar Edição</button>
-                    </div>
+                        <button type="button" id="clientFormCancelBtn" class="close-modal-btn btn-grey" style="display: none;">X</button> </div>
                 </form>
             </div>
         </div>
     </div>
     <div id="selectClientModalOverlay" class="modal-overlay">
         <div class="modal-content">
-             <button type="button" class="close-modal-btn" data-modal-id="selectClientModalOverlay">&times;</button>
+             <button type="button" class="close-modal-btn" data-modal-id="selectClientModalOverlay">X</button>
             <h3>Vincular Cliente à Nova Obra</h3>
             <div class="form-group">
                 <label for="clientSelectForNewProject">Selecione um Cliente Existente</label>
@@ -137,15 +131,14 @@
     </div>
     <div id="qdcManagerModalOverlay" class="modal-overlay">
         <div class="modal-content large">
-            <button type="button" class="close-modal-btn" data-modal-id="qdcManagerModalOverlay">&times;</button>
+            <button type="button" class="close-modal-btn" data-modal-id="qdcManagerModalOverlay">X</button>
             <h3>Gerenciador de Quadros de Distribuição (QDCs)</h3>
             <p>Arraste e solte os quadros para reorganizar a hierarquia. O quadro no nível mais alto será o QDC Principal.</p>
             <div id="qdcTreeContainer" class="qdc-tree">
                 </div>
             <div class="modal-footer">
                 <button type="button" id="saveQdcHierarchyBtn" class="btn-green">Salvar Alterações</button>
-                <button type="button" class="btn-grey close-modal-btn" data-modal-id="qdcManagerModalOverlay">Fechar</button>
-            </div>
+                <button type="button" class="close-modal-btn btn-grey" data-modal-id="qdcManagerModalOverlay">X</button> </div>
         </div>
     </div>
     
@@ -161,7 +154,7 @@
             </div>
         </form>
         <button id="loginBtn" class="btn-green" style="width:100%; margin-top: 10px;">Entrar</button>
-        <button id="registerBtn" class="btn-grey" style="width:100%; margin-top: 10px;">Registrar-se</button>
+        <button id="registerBtn" class="btn-blue-dark" style="width:100%; margin-top: 10px;">Registrar-se</button>
         <p style="text-align: center; margin-top: 15px;">
             <a href="#" id="forgotPasswordLink">Esqueceu a senha?</a>
         </p>
@@ -205,7 +198,7 @@
                     <select id="savedProjectsSelect"></select>
                 </div>
                 <div class="button-wrapper full-width">
-                    <button id="newBtn" class="btn-grey">Nova Obra</button>
+                    <button id="newBtn" class="btn-blue-dark">Nova Obra</button>
                     <button id="loadBtn" class="btn-load">Carregar Obra</button>
                     <button id="saveBtn" class="btn-green">Salvar / Atualizar</button>
                     <button id="deleteBtn" class="btn-red">Excluir Obra</button>
@@ -218,7 +211,7 @@
             <input type="hidden" id="currentClientId">
             <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <h2>Informações da Obra</h2>
-                <button type="button" id="changeClientBtn" class="btn-grey" style="padding: 5px 10px; font-size: 0.8rem;">Vincular / Alterar Cliente</button>
+                <button type="button" id="changeClientBtn" class="btn-blue-dark" style="padding: 5px 10px; font-size: 0.8rem;">Vincular / Alterar Cliente</button>
             </div>
             <div id="clientLinkDisplay">Cliente: Nenhum</div>
             <div class="form-grid-3-col">

@@ -1,4 +1,4 @@
-// Arquivo: ui.js (COMPLETO E CORRIGIDO - Lógica de ID em addQdcBlock)
+// Arquivo: ui.js (COMPLETO E CORRIGIDO - Cores botões user + PDF Tabela + Fator Potência)
 
 console.log("--- ui.js: Iniciando carregamento ---");
 
@@ -221,12 +221,9 @@ function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
     </div>`;
 }
 
-// ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA (Lógica de ID Corrigida) <<<<<
-// ========================================================================
 export function addQdcBlock(id = null, name = null, parentId = 'feeder') {
     const isNewQdc = !id;
-    
+
     // <<<<< FIX: Determine next ID based on current max, or use provided ID >>>>>
     let internalId;
     if (id) {
@@ -353,7 +350,7 @@ export function addCircuit(qdcId, savedCircuitData = null) {
         internalId = circuitCount;
     }
     // <<<<< FIM DA ALTERAÇÃO >>>>>
-    
+
     console.log(`Circuit internalId: ${internalId} (New: ${isNewCircuit}, circuitCount now: ${circuitCount})`); // DEBUG
 
     const newCircuitDiv = document.createElement('div');
@@ -600,8 +597,8 @@ export function handleMainContainerInteraction(event) {
         if (target.classList.contains('qdc-name-input') && event.type === 'input') { updateQdcParentDropdowns(); return; }
         if (target.classList.contains('qdc-parent-select') && event.type === 'change') { updateFeederPowerDisplay(); return; }
         if (target.id === `qdcFases-${qdcId}`) { atualizarQdcLigacoes(qdcId); }
-        else if (target.id === `qdcTipoIsolacao-${qdcId}`) { handleQdcInsulationChange(id); } // Deveria ser qdcId? Sim. Corrigido abaixo.
-        else if (target.id === `qdcTipoIsolacao-${qdcId}`) { handleQdcInsulationChange(qdcId); } // Correção
+        // Correção aqui também:
+        else if (target.id === `qdcTipoIsolacao-${qdcId}`) { handleQdcInsulationChange(qdcId); }
         const qdcHeader = target.closest('.qdc-header'); if (qdcHeader && !target.closest('.qdc-header-right button, .qdc-header-left input, .qdc-header-center select')) { qdcBlock.classList.toggle('collapsed'); return; }
     }
 
@@ -815,6 +812,9 @@ export function populateFormWithProjectData(project) {
     }, 150); // Aumenta delay ligeiramente
 }
 
+// ========================================================================
+// >>>>> FUNÇÃO ATUALIZADA (Cores botões user) <<<<<
+// ========================================================================
 export function populateUsersPanel(users) {
     const list = document.getElementById('adminUserList');
     if (!list) return;
@@ -827,6 +827,11 @@ export function populateUsersPanel(users) {
 
     users.forEach(user => {
         const li = document.createElement('li');
+
+        // Determina a classe e texto do botão de bloquear/desbloquear
+        const blockButtonClass = user.is_blocked ? 'btn-green' : 'btn-orange'; // Verde para Desbloquear, Laranja para Bloquear
+        const blockButtonText = user.is_blocked ? 'Desbloquear' : 'Bloquear';
+
         li.innerHTML = `
             <span>
                 <strong>${user.nome || 'Usuário sem nome'}</strong><br>
@@ -835,16 +840,14 @@ export function populateUsersPanel(users) {
             </span>
             <div class="admin-user-actions">
                 ${!user.is_approved ? `<button class="btn-green approve-user-btn" data-user-id="${user.id}">Aprovar</button>` : ''}
-                <button class="btn-edit edit-user-btn" data-user-id="${user.id}">Editar</button>
-                <button class="btn-warning block-user-btn" data-user-id="${user.id}" data-is-blocked="${!user.is_blocked}">
-                    ${user.is_blocked ? 'Desbloquear' : 'Bloquear'}
+                <button class="btn-blue-dark edit-user-btn" data-user-id="${user.id}">Editar</button> <button class="${blockButtonClass} block-user-btn" data-user-id="${user.id}" data-is-blocked="${user.is_blocked}"> ${blockButtonText}
                 </button>
-                <button class="btn-danger remove-user-btn" data-user-id="${user.id}">Excluir</button>
-            </div>
+                <button class="btn-red remove-user-btn" data-user-id="${user.id}">Excluir</button> </div>
         `;
         list.appendChild(li);
     });
 }
+
 
 export function populateEditUserModal(user) {
     if (!user) return;
@@ -1007,7 +1010,7 @@ export function populateSelectClientModal(clients, isChange = false) {
 // --- FUNÇÕES DE GERAÇÃO DE PDF ---
 
 // ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA (Resumo com Tabela) <<<<<
+// >>>>> FUNÇÃO ATUALIZADA (Resumo com Tabela + Estilo Tabela) <<<<<
 // ========================================================================
 export function generateMemorialPdf(calculationResults, currentUserProfile, formData) {
     if (!calculationResults) { alert("Execute o cálculo primeiro."); return; }
@@ -1037,9 +1040,12 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
     const lM = 15; // Left Margin
     const vM = 75; // Value Margin
 
+    // Define a fonte padrão para o documento
+    doc.setFont('helvetica', 'normal');
+
     const addT = (t) => { doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.text(t, 105, yPos, { align: 'center' }); yPos += 12; };
-    const addS = (t) => { if (yPos > 260) { doc.addPage(); yPos = 20; } doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.text(t, lM, yPos); yPos += 8; };
-    const addL = (l, v) => { if (yPos > 270) { doc.addPage(); yPos = 20; } doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.text(l, lM, yPos); doc.setFont('helvetica', 'normal'); doc.text(String(v ?? '-'), vM, yPos, { maxWidth: doc.internal.pageSize.width - vM - lM }); yPos += 6; };
+    const addS = (t) => { if (yPos > 260) { doc.addPage(); yPos = 20; doc.setFont('helvetica', 'normal'); } doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.text(t, lM, yPos); yPos += 8; };
+    const addL = (l, v) => { if (yPos > 270) { doc.addPage(); yPos = 20; doc.setFont('helvetica', 'normal'); } doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.text(l, lM, yPos); doc.setFont('helvetica', 'normal'); doc.text(String(v ?? '-'), vM, yPos, { maxWidth: doc.internal.pageSize.width - vM - lM }); yPos += 6; };
 
     // Pega os dados do formData (passado por parâmetro)
     const mainData = formData?.mainData || {};
@@ -1088,7 +1094,7 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
     addL("Eletroduto:", fc?.dutoRecomendado || 'N/A');
     yPos += 5;
 
-    // <<<<< ALTERAÇÃO: Loop Resumo Circuitos por QDC com Tabela >>>>>
+    // <<<<< ALTERAÇÃO: Loop Resumo Circuitos por QDC com Tabela e Estilos >>>>>
     const qdcOrder = Object.keys(circuitsByQdc).filter(id => id !== 'failed').sort((a, b) => parseInt(a) - parseInt(b));
 
     qdcOrder.forEach(qdcId => {
@@ -1100,6 +1106,7 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
             if (yPos > 260) {
                 doc.addPage();
                 yPos = 20;
+                doc.setFont('helvetica', 'normal'); // Reseta fonte na nova página
             }
             addS(`RESUMO - ${qdcName.toUpperCase()}`);
 
@@ -1153,8 +1160,21 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
                 body: tableBody,
                 startY: yPos,
                 theme: 'grid',
-                headStyles: { fillColor: [63, 81, 181], textColor: 255, fontSize: 8, cellPadding: 1.5 },
-                bodyStyles: { fontSize: 7, cellPadding: 1 },
+                // <<<<< ESTILOS DA TABELA ALTERADOS >>>>>
+                styles: { // Estilo base (corpo)
+                    font: 'helvetica',
+                    fontSize: 7,
+                    cellPadding: 1
+                },
+                headStyles: { // Estilo cabeçalho
+                    fillColor: '#3f51b5', // Azul índigo (var(--header-bg-color))
+                    textColor: '#ffffff', // Branco (var(--header-text-color))
+                    font: 'helvetica',
+                    fontStyle: 'bold',
+                    fontSize: 8,
+                    cellPadding: 1.5
+                },
+                // <<<<< FIM DA ALTERAÇÃO DE ESTILOS >>>>>
                 columnStyles: {
                     0: { cellWidth: 10 }, // Ckt nº
                     1: { cellWidth: 30 }, // Nome
@@ -1165,15 +1185,15 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
                     6: { cellWidth: 20 }, // Eletroduto
                 },
                 didDrawPage: (data) => {
-                    // Atualiza yPos para depois da tabela na página atual (ou nova página)
                     yPos = data.cursor.y + 5;
-                    // Se uma nova página foi adicionada pela autoTable, reseta yPos
+                     // Se nova página, reseta a fonte
                     if (data.pageNumber > doc.internal.getNumberOfPages()) {
-                        yPos = data.cursor.y + 5;
+                         doc.setFont('helvetica', 'normal');
+                         yPos = data.cursor.y + 5; // Pega yPos da nova página
+                    } else {
+                         doc.setFont('helvetica', 'normal'); // Garante reset da fonte na mesma página
                     }
                 },
-                 // Garante que a tabela não quebre linhas de forma estranha
-                // e adiciona página se necessário
                 margin: { left: lM, right: lM, bottom: 15 }
             });
             // yPos é atualizado pelo didDrawPage
@@ -1182,7 +1202,7 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
 
     // Mostra circuitos que falharam no cálculo, se houver
     if (circuitsByQdc['failed']?.length > 0) {
-         if (yPos > 260) { doc.addPage(); yPos = 20; }
+         if (yPos > 260) { doc.addPage(); yPos = 20; doc.setFont('helvetica', 'normal');}
         addS("CIRCUITOS COM FALHA NO CÁLCULO");
         circuitsByQdc['failed'].forEach((c) => {
              const cD = c?.dados;
@@ -1198,6 +1218,7 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
     if (feederResult) {
         doc.addPage();
         yPos = 20;
+        doc.setFont('helvetica', 'normal'); // Garante fonte na nova pág
         generateMemorialPage(doc, feederResult, "ALIMENTADOR GERAL", 0, addT, addS, addL, () => yPos, (newY) => yPos = newY);
     }
 
@@ -1208,6 +1229,7 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
             circuits.forEach((c, idx) => {
                 doc.addPage();
                 yPos = 20;
+                doc.setFont('helvetica', 'normal'); // Garante fonte na nova pág
                 const title = `CIRCUITO ${idx + 1} (QDC: ${qdcName})`;
                 generateMemorialPage(doc, c, title, (idx + 1), addT, addS, addL, () => yPos, (newY) => yPos = newY);
             });
@@ -1274,7 +1296,6 @@ function generateMemorialPage(doc, result, titlePrefix, circuitIndex, addT, addS
     setY(getY() + 5);
 
     addS("RESULTADO FINAL");
-    // <<<<< ALTERAÇÃO: Formatação do Cabo Recomendado >>>>>
     const numCondutores = calculos.numCondutores || (dados.fases === 'Monofasico' ? 2 : (dados.fases === 'Bifasico' ? 3 : 4)); // Fallback
     const fasesCabo = (numCondutores - (dados.tipoLigacao.includes('N') ? 1 : 0));
     const terraCabo = calculos.bitolaRecomendadaMm2; // Assumindo terra=fase
