@@ -1,4 +1,4 @@
-// Arquivo: ui.js (CORRIGIDO FINAL - HTML Restaurado + Carga Hierárquica VISUAL + Debug Memorial)
+// Arquivo: ui.js (CORRIGIDO FINAL - Bloco duplicado removido)
 
 console.log("--- ui.js: Iniciando carregamento ---");
 
@@ -221,6 +221,7 @@ function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
 }
 
 // addQdcBlock com listener direto e collapse
+
 export function addQdcBlock(id = null, name = null, parentId = 'feeder') {
     const isNewQdc = !id;
     const internalId = id || ++qdcCount;
@@ -229,7 +230,7 @@ export function addQdcBlock(id = null, name = null, parentId = 'feeder') {
     console.log(`Adicionando QDC ${internalId} (Novo: ${isNewQdc})`);
 
     const newQdcDiv = document.createElement('div');
-    newQdcDiv.innerHTML = getQdcHTML(internalId, qdcName, parentId); // Usa HTML completo
+    newQdcDiv.innerHTML = getQdcHTML(internalId, qdcName, parentId); // Usa a função com HTML completo
     const qdcElement = newQdcDiv.firstElementChild;
     if(!qdcElement) { console.error("Falha ao criar elemento QDC."); return; }
 
@@ -237,36 +238,38 @@ export function addQdcBlock(id = null, name = null, parentId = 'feeder') {
     if(qdcContainer) qdcContainer.appendChild(qdcElement);
     else { console.error("Container principal de QDCs não encontrado."); return;}
 
-    // Listener direto no botão '+ Circuito'
-    const addCircuitBtn = qdcElement.querySelector('.add-circuit-to-qdc-btn');
-    if (addCircuitBtn) {
-        addCircuitBtn.addEventListener('click', (event) => {
-            event.stopPropagation();
-            console.log(`Botão + Circuito clicado para QDC ${internalId}`);
-            addCircuit(internalId);
-        });
-    } else {
-        console.error(`Botão '+ Circuito' NÃO encontrado para QDC ${internalId} após adicionar ao DOM.`); // Agora este erro indica problema
-    }
+    // O LISTENER DE CLIQUE DIRETO QUE ESTAVA AQUI FOI REMOVIDO
+    // A LÓGICA AGORA ESTÁ EM handleMainContainerInteraction
 
     updateQdcParentDropdowns(); // Atualiza dropdowns
-    initializeQdcListeners(internalId); // Adiciona listeners
+    initializeQdcListeners(internalId); // Adiciona outros listeners
 
     // Colapsa se necessário
     if ((isNewQdc && qdcCount > 1) || (!isNewQdc && qdcElement.previousElementSibling)) {
-         if (!qdcElement.classList.contains('collapsed')) { qdcElement.classList.add('collapsed'); }
+         if (!qdcElement.classList.contains('collapsed')) {
+            qdcElement.classList.add('collapsed');
+         }
     }
 
     // Adiciona circuito inicial se for novo
-    if (isNewQdc) { addCircuit(internalId); }
+    if (isNewQdc) {
+       addCircuit(internalId);
+    }
 
     // Listener para recalcular cargas quando o parent mudar
     const parentSelect = qdcElement.querySelector('.qdc-parent-select');
-    if(parentSelect) { parentSelect.addEventListener('change', updateFeederPowerDisplay); }
+    if(parentSelect) {
+        parentSelect.addEventListener('change', updateFeederPowerDisplay);
+    }
 
     updateFeederPowerDisplay(); // Atualiza display geral
     return internalId;
 }
+
+// ========================================================================
+// >>>>> O BLOCO DUPLICADO QUE ESTAVA AQUI FOI REMOVIDO <<<<<
+// ========================================================================
+
 
 export function removeQdc(qdcId) { /* ... (inalterada) ... */ }
 export function updateQdcParentDropdowns() { /* ... (inalterada) ... */ }
@@ -336,7 +339,46 @@ function initializeQdcListeners(id) { /* ... (inalterada) ... */ }
 function atualizarQdcLigacoes(id) { /* ... (inalterada) ... */ }
 function handleQdcInsulationChange(id) { /* ... (inalterada) ... */ }
 function handlePowerUnitChange(id, type) { /* ... (inalterada) ... */ }
-export function handleMainContainerInteraction(event) { /* ... (inalterada) ... */ }
+// Arquivo: ui.js
+
+export function handleMainContainerInteraction(event) {
+    const target = event.target;
+
+    // --- Lógica de QDC ---
+    const qdcBlock = target.closest('.qdc-block');
+    if (qdcBlock) {
+        const qdcId = qdcBlock.dataset.id; if (!qdcId) return;
+        
+        // >>>>> LÓGICA DE ADICIONAR CIRCUITO (DELEGADA) ADICIONADA AQUI <<<<<
+        const addCircuitButton = target.closest('.add-circuit-to-qdc-btn');
+        if (addCircuitButton) {
+            event.stopPropagation(); // Impede o colapso do QDC
+            // console.log(`Botão + Circuito (delegado) clicado para QDC ${qdcId}`);
+            addCircuit(qdcId); // Usa o qdcId do data-id do qdcBlock
+            return; // Encerra a interação
+        }
+        // >>>>> FIM DA LÓGICA ADICIONADA <<<<<
+
+        const removeQdcButton = target.closest('.remove-qdc-btn'); if (removeQdcButton) { removeQdc(qdcId); return; }
+        if (target.classList.contains('qdc-name-input') && event.type === 'input') { updateQdcParentDropdowns(); return; }
+        if (target.classList.contains('qdc-parent-select') && event.type === 'change') { updateFeederPowerDisplay(); return; }
+        if (target.id === `qdcFases-${qdcId}`) { atualizarQdcLigacoes(qdcId); }
+        else if (target.id === `qdcTipoIsolacao-${qdcId}`) { handleQdcInsulationChange(qdcId); }
+        const qdcHeader = target.closest('.qdc-header'); if (qdcHeader && !target.closest('.qdc-header-right button, .qdc-header-left input, .qdc-header-center select')) { qdcBlock.classList.toggle('collapsed'); return; }
+    }
+
+    // --- Lógica de Circuito ---
+    const circuitBlock = target.closest('.circuit-block');
+    if (circuitBlock) {
+        const circuitId = circuitBlock.dataset.id; if (!circuitId) return;
+        const circuitHeader = target.closest('.circuit-header'); if (circuitHeader && !target.closest('.remove-circuit-btn')) { circuitBlock.classList.toggle('collapsed'); }
+        if (target.id === `nomeCircuito-${circuitId}` && event.type === 'input') { const lbl = document.getElementById(`nomeCircuitoLabel-${circuitId}`); if(lbl) lbl.textContent = target.value || `Circuito ${circuitId}`; }
+        const removeCircuitButton = target.closest('.remove-circuit-btn'); if (removeCircuitButton) { removeCircuit(circuitId); }
+        else if (target.id === `tipoCircuito-${circuitId}`) { handleCircuitTypeChange(circuitId); }
+        else if (target.id === `fases-${circuitId}`) { atualizarLigacoes(circuitId); }
+        else if (target.id === `tipoIsolacao-${circuitId}`) { handleInsulationChange(circuitId); }
+    }
+}
 function atualizarLigacoes(id) { /* ... (inalterada) ... */ }
 function handleInsulationChange(id) { /* ... (inalterada) ... */ }
 function handleCircuitTypeChange(id) { /* ... (inalterada) ... */ }
