@@ -1,4 +1,4 @@
-// Arquivo: ui.js (COMPLETO E CORRIGIDO - Lendo PDF do obj 'calculos')
+// Arquivo: ui.js (COMPLETO E CORRIGIDO - PDF Resumo com Tabela + Fator Potência)
 
 console.log("--- ui.js: Iniciando carregamento ---");
 
@@ -919,19 +919,12 @@ export function populateSelectClientModal(clients, isChange = false) {
 // --- FUNÇÕES DE GERAÇÃO DE PDF ---
 
 // ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA <<<<<
+// >>>>> FUNÇÃO ATUALIZADA (Resumo com Tabela) <<<<<
 // ========================================================================
 export function generateMemorialPdf(calculationResults, currentUserProfile, formData) {
     if (!calculationResults) { alert("Execute o cálculo primeiro."); return; }
     const { feederResult, circuitResults } = calculationResults;
     if (!feederResult) { alert("Dados do alimentador geral ausentes. Não é possível gerar Memorial."); return;}
-
-    // DEBUG
-    console.log("--- Debugging generateMemorialPdf ---");
-    console.log("Feeder Result:", feederResult);
-    console.log("Circuit Results:", circuitResults);
-    console.log("FormData:", formData);
-    // FIM DEBUG
 
     const circuitsByQdc = {};
     if (circuitResults && Array.isArray(circuitResults)) {
@@ -948,20 +941,17 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
         });
     } else { console.warn("circuitResults não é um array ou está vazio:", circuitResults); }
 
-    console.log("Circuits Grouped by QDC:", circuitsByQdc);
-    console.log("------------------------------------");
-
     const { jsPDF } = window.jspdf; 
     const doc = new jsPDF('p', 'mm', 'a4'); 
     let yPos = 20; 
     const lM = 15; // Left Margin
-    const vM = 75; // Value Margin (onde o texto do valor começa)
+    const vM = 75; // Value Margin
     
     const addT = (t) => { doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.text(t, 105, yPos, { align: 'center' }); yPos += 12; };
     const addS = (t) => { if (yPos > 260) { doc.addPage(); yPos = 20; } doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.text(t, lM, yPos); yPos += 8; };
     const addL = (l, v) => { if (yPos > 270) { doc.addPage(); yPos = 20; } doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.text(l, lM, yPos); doc.setFont('helvetica', 'normal'); doc.text(String(v ?? '-'), vM, yPos, { maxWidth: doc.internal.pageSize.width - vM - lM }); yPos += 6; };
     
-    // ** CORREÇÃO: Pega os dados do formData, não do feederResult **
+    // Pega os dados do formData (passado por parâmetro)
     const mainData = formData?.mainData || {};
     const clientProfile = formData?.clientProfile || {};
     const techData = formData?.techData || {};
@@ -999,7 +989,6 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
     yPos += 5;
 
     addS("RESUMO DA ALIMENTAÇÃO GERAL"); 
-    // ** CORREÇÃO: Lendo do 'calculos' em vez de 'resultados' **
     const fc = feederResult.calculos; // Feeder Calculos
     addL("Potência Instalada Total:", `${fc?.potenciaInstalada?.toFixed(2) || 'N/A'} W`);
     addL("Potência Demandada Total:", `${fc?.potenciaDemandada?.toFixed(2) || 'N/A'} W`);
@@ -1009,29 +998,97 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
     addL("Eletroduto:", fc?.dutoRecomendado || 'N/A');
     yPos += 5;
 
-    // Loop Resumo Circuitos por QDC
+    // <<<<< ALTERAÇÃO: Loop Resumo Circuitos por QDC com Tabela >>>>>
     const qdcOrder = Object.keys(circuitsByQdc).filter(id => id !== 'unknown').sort((a,b) => parseInt(a) - parseInt(b));
     
     qdcOrder.forEach(qdcId => {
         const qdcName = document.getElementById(`qdcName-${qdcId}`)?.value || `QDC ${qdcId}`;
         const circuits = circuitsByQdc[qdcId];
         if (circuits && circuits.length > 0) {
+            
+            // Verifica se a tabela caberá na página atual
+            const tableHeaderHeight = 10; // Estimativa
+            const tableRowHeight = 7; // Estimativa
+            const estimatedTableHeight = tableHeaderHeight + (circuits.length * tableRowHeight);
+            if (yPos + estimatedTableHeight + 10 > 280) { // +10 de margem
+                doc.addPage();
+                yPos = 20;
+            }
+            
             addS(`RESUMO - ${qdcName.toUpperCase()}`);
+            
+            const tableHead = [
+                "Ckt nº", 
+                "Nome", 
+                "Disjuntor", 
+                "DR", 
+                "DPS", 
+                "Cabo", 
+                "Eletroduto"
+            ];
+            const tableBody = [];
+
             circuits.forEach((c, idx) => {
                 const cktNum = idx + 1;
-                const cktName = c.dados?.nomeCircuito || `Circuito ${c.dados?.id}`;
-                // ** CORREÇÃO: Lendo do 'calculos' **
-                const cc = c.calculos;
-                const cabo = `${cc?.bitolaRecomendadaMm2 || 'N/A'} mm²`;
-                const disjuntor = cc?.disjuntorRecomendado?.nome || 'N/A';
-                addL(`Ckt ${cktNum} (${cktName}):`, `${cabo} | ${disjuntor}`);
+                const cD = c.dados;
+                const cC = c.calculos;
+
+                // Formata Disjuntor
+                const polosDisjuntor = (cD.fases === 'Monofasico' ? '1P' : (cD.fases === 'Bifasico' ? '2P' : '3P'));
+                const disjuntorStr = `${polosDisjuntor} ${cC?.disjuntorRecomendado?.nome || 'N/A'} (ICC ${cC?.disjuntorRecomendado?.icc || 'N/A'} kA)`;
+
+                // Formata DR
+                const polosDR = (cD.fases === 'Monofasico' || cD.tipoLigacao === 'FF' ? '2P' : '4P');
+                const drStr = cD.requerDR ? `${polosDR} 30mA` : 'Não'; // Assumindo 30mA padrão
+                
+                // Formata DPS
+                const dpsStr = cD.dpsClasse ? `Classe ${cD.dpsClasse}` : 'Não'; // Simplificado, pode precisar de corrente
+
+                // Formata Cabo
+                const numCondutores = cC.numCondutores || (cD.fases === 'Monofasico' ? 2 : (cD.fases === 'Bifasico' ? 3 : 4)); // Fallback
+                const fasesCabo = (numCondutores - (cD.tipoLigacao.includes('N') ? 1 : 0));
+                const neutroStr = cD.tipoLigacao.includes('N') ? `+ N ${cC?.bitolaRecomendadaMm2 || 'N/A'}mm²` : '';
+                const caboStr = `${fasesCabo}x${cC?.bitolaRecomendadaMm2 || 'N/A'}mm²${neutroStr} (${cD.tipoIsolacao})`;
+                
+                tableBody.push([
+                    cktNum,
+                    cD.nomeCircuito || `Circuito ${cD.id}`,
+                    disjuntorStr,
+                    drStr,
+                    dpsStr,
+                    caboStr,
+                    cC.dutoRecomendado || 'N/A'
+                ]);
             });
-            yPos += 5;
+
+            doc.autoTable({
+                head: [tableHead],
+                body: tableBody,
+                startY: yPos,
+                theme: 'grid',
+                headStyles: { fillColor: [63, 81, 181], textColor: 255, fontSize: 8 },
+                bodyStyles: { fontSize: 7, cellPadding: 1 },
+                columnStyles: {
+                    0: { cellWidth: 10 }, // Ckt nº
+                    1: { cellWidth: 30 }, // Nome
+                    2: { cellWidth: 35 }, // Disjuntor
+                    3: { cellWidth: 15 }, // DR
+                    4: { cellWidth: 15 }, // DPS
+                    5: { cellWidth: 'auto' }, // Cabo
+                    6: { cellWidth: 20 }, // Eletroduto
+                },
+                didDrawPage: (data) => {
+                    // Atualiza yPos para depois da tabela
+                    yPos = data.cursor.y + 5; 
+                }
+            });
+            // autoTable atualiza yPos internamente no didDrawPage
         }
     });
 
     if (circuitsByQdc['unknown']?.length > 0) {
         addS("RESUMO - CIRCUITOS SEM QDC (ERRO)");
+        // Poderia adicionar uma tabela similar aqui se necessário
         circuitsByQdc['unknown'].forEach((c, idx) => {
              const cc = c.calculos;
              const cabo = `${cc?.bitolaRecomendadaMm2 || 'N/A'} mm²`;
@@ -1040,6 +1097,7 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
         });
         yPos += 5;
     }
+    // <<<<< FIM DA ALTERAÇÃO >>>>>
 
 
     // Páginas Detalhadas
@@ -1071,10 +1129,9 @@ export function generateMemorialPdf(calculationResults, currentUserProfile, form
 }
 
 // ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA <<<<<
+// >>>>> FUNÇÃO ATUALIZADA (Fator Potência) <<<<<
 // ========================================================================
 function generateMemorialPage(doc, result, titlePrefix, circuitIndex, addT, addS, addL, getY, setY) {
-    // ** CORREÇÃO: Verifica 'calculos.disjuntorRecomendado' em vez de 'resultados' **
     const { dados, calculos, logs } = result || {};
     if (!dados || !calculos || !calculos.disjuntorRecomendado) {
         addT(titlePrefix);
@@ -1092,14 +1149,13 @@ function generateMemorialPage(doc, result, titlePrefix, circuitIndex, addT, addS
     addL("Potência Demandada (W):", calculos.potenciaDemandada?.toFixed(2));
     addL("Tensão (V):", dados.tensaoV);
     addL("Sistema:", `${dados.fases} (${dados.tipoLigacao})`);
-    addL("Fator de Potência (cos φ):", dados.fatorPotencia);
+    addL("Fator de Potência:", dados.fatorPotencia); // <<<<< ALTERAÇÃO: Removido (cos φ)
     addL("Comprimento (m):", dados.comprimentoM);
     addL("Queda de Tensão Limite (%):", dados.limiteQuedaTensao);
     setY(getY() + 5);
 
     addS("DADOS AMBIENTAIS E INSTALAÇÃO");
     addL("Método de Instalação:", dados.metodoInstalacao);
-    // ** CORREÇÃO: Temperatura da isolação não está no log, removemos **
     addL("Isolação:", dados.tipoIsolacao);
     addL("Material Condutor:", dados.materialCabo);
     addL("Temp. Ambiente (°C):", dados.temperaturaAmbienteC);
@@ -1108,7 +1164,6 @@ function generateMemorialPage(doc, result, titlePrefix, circuitIndex, addT, addS
     setY(getY() + 5);
 
     addS("CÁLCULO DE CORRENTE");
-    // ** CORREÇÃO: 'correnteProjetoA' não está no log, usamos 'correnteDemandada' **
     addL("Corrente de Projeto (A):", calculos.correnteDemandada?.toFixed(2));
     addL("Fator K1 (Temp.):", calculos.fatorK1);
     addL("Fator K2 (Solo):", calculos.fatorK2);
@@ -1123,21 +1178,23 @@ function generateMemorialPage(doc, result, titlePrefix, circuitIndex, addT, addS
     addL("Capacidade Corrente (A):", calculos.correnteMaximaCabo);
     addL("Disjuntor (Capacidade):", calculos.disjuntorRecomendado?.nome || 'N/A');
     addL("Queda de Tensão (%):", calculos.quedaTensaoCalculada?.toFixed(3));
-    // ** CORREÇÃO: Seção de Curto-Circuito removida (ausente nos logs) **
     setY(getY() + 5);
     
     addS("RESULTADO FINAL");
-    // ** CORREÇÃO: 'Critério Decisivo' removido (ausente nos logs) **
+    // <<<<< ALTERAÇÃO: Formatação do Cabo Recomendado >>>>>
     const numCondutores = calculos.numCondutores || (dados.fases === 'Monofasico' ? 2 : (dados.fases === 'Bifasico' ? 3 : 4)); // Fallback
     const fasesCabo = (numCondutores - (dados.tipoLigacao.includes('N') ? 1 : 0));
-    addL("Cabo Recomendado:", `${fasesCabo}x ${calculos.bitolaRecomendadaMm2 || 'N/A'} mm² (Cond.) + 1x ${calculos.bitolaRecomendadaMm2 || 'N/A'} mm² (Neutro)`);
+    const terraCabo = calculos.bitolaRecomendadaMm2; // Assumindo terra igual fase por simplicidade
+    const caboStr = `${fasesCabo}x${calculos.bitolaRecomendadaMm2 || 'N/A'}mm²` + 
+                   (dados.tipoLigacao.includes('N') ? `+ N ${calculos.bitolaRecomendadaMm2 || 'N/A'}mm²` : '') +
+                   `+ T ${terraCabo || 'N/A'}mm² (${dados.tipoIsolacao})`;
+    addL("Cabo Recomendado:", caboStr);
     addL("Disjuntor Recomendado:", `${calculos.disjuntorRecomendado?.nome || 'N/A'} (ICC: ${calculos.disjuntorRecomendado?.icc || 'N/A'} kA)`);
     addL("DR Recomendado:", dados.requerDR ? "Sim" : "Não");
-    addL("DPS Recomendado:", dados.dpsClasse || "Nenhum");
+    addL("DPS Recomendado:", dados.dpsClasse ? `Classe ${dados.dpsClasse}` : "Nenhum");
     addL("Eletroduto:", calculos.dutoRecomendado || 'N/A');
     setY(getY() + 5);
     
-    // ** CORREÇÃO: Logs agora são opcionais e formatados **
     if (logs && logs.length > 0) {
         addS("LOGS DE CÁLCULO");
         logs.forEach(log => {
@@ -1163,7 +1220,6 @@ export async function generateUnifilarPdf(calculationResults) {
     // Agrupa circuitos por QDC
     const qdcs = {};
     circuitResults.forEach(c => {
-        // ** CORREÇÃO: Lê 'calculos' em vez de 'resultados' **
         if (!c.dados || !c.calculos) return; // Pula circuitos com falha
         
         const qdcId = c.dados?.qdcId || 'unknown';
@@ -1205,15 +1261,11 @@ export async function generateUnifilarPdf(calculationResults) {
     }
 }
 
-// ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA <<<<<
-// ========================================================================
 function buildUnifilarSvgString(feeder, qdcs) {
-    // ** CORREÇÃO: Lê 'calculos' em vez de 'resultados' **
     const fC = feeder.calculos; // Feeder Calculos
     const fD = feeder.dados; // Feeder Data
     
-    // ** CORREÇÃO: Pega dados do formulário (que estão em fD) **
+    // Pega dados do formulário (que estão em fD)
     const obra = fD.mainData?.obra || 'Projeto';
     const projectCode = fD.mainData?.projectCode || 'S/C';
     const cliente = fD.clientProfile?.cliente || 'N/A';
@@ -1236,7 +1288,6 @@ function buildUnifilarSvgString(feeder, qdcs) {
         qdc.circuits.sort((a,b) => (a.dados?.id || 0) - (b.dados?.id || 0)); // Ordena
         
         qdc.circuits.forEach((c, idx) => {
-            // ** CORREÇÃO: Lê 'calculos' em vez de 'resultados' **
             const cC = c.calculos;
             const cD = c.dados;
             const cktNum = idx + 1;
@@ -1265,7 +1316,6 @@ function buildUnifilarSvgString(feeder, qdcs) {
         qdcIndex++;
     }
 
-    // ** CORREÇÃO: Monta cabo e DR/DPS do Feeder **
     const feederCabo = `${fC.bitolaRecomendadaMm2 || 'N/A'} mm²`;
     const feederDR = fD.requerDR ? "DR Geral" : "Nenhum DR";
     const feederDPS = fD.dpsClasse ? `DPS Classe ${fD.dpsClasse}` : "Nenhum DPS";
