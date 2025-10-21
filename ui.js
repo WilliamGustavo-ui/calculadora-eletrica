@@ -1,4 +1,4 @@
-// Arquivo: ui.js (VERSÃO 100% COMPLETA E CORRIGIDA)
+// Arquivo: ui.js (COM CAMPOS DE CONFIGURAÇÃO NO QDC)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
@@ -93,11 +93,13 @@ function updateFeederPowerDisplay() {
             }
         });
 
-        const qdcPotInst = document.getElementById(`qdcPotenciaInstalada-${qdcId}`);
-        const qdcPotDem = document.getElementById(`qdcPotenciaDemandada-${qdcId}`);
+        const qdcPotInst = document.getElementById(`qdcPotenciaInstalada-${id}`);
+        const qdcPotDem = document.getElementById(`qdcPotenciaDemandada-${id}`);
         if (qdcPotInst) qdcPotInst.value = totalInstaladaQDC.toFixed(2);
         if (qdcPotDem) qdcPotDem.value = totalDemandadaQDC.toFixed(2);
 
+        // A lógica de soma hierárquica ainda não está implementada
+        // Por enquanto, somamos todos os QDCs no Alimentador Geral
         totalInstaladaGeral += totalInstaladaQDC;
         totalDemandadaGeral += totalDemandadaQDC;
     });
@@ -156,6 +158,10 @@ export function resetForm(addDefaultQdc = true, linkedClient = null) {
     }
 }
 
+// ========================================================================
+// >>>>> FUNÇÃO MODIFICADA: getQdcHTML <<<<<
+// Adiciona os campos de configuração para o alimentador do QDC
+// ========================================================================
 function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
     return `
     <div class="qdc-block" id="qdc-${id}" data-id="${id}">
@@ -186,6 +192,26 @@ function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
                 </div>
             </div>
             
+            <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--label-color);">Configuração do Alimentador deste QDC</h4>
+            <div class="form-grid qdc-config-grid">
+                <div class="form-group"> <label for="qdcFatorDemanda-${id}">Fator Demanda (%)</label> <input type="number" id="qdcFatorDemanda-${id}" value="100" step="1"> </div>
+                <div class="form-group"> <label for="qdcFases-${id}">Fases</label> <select id="qdcFases-${id}"> <option value="Monofasico">Monofásico</option> <option value="Bifasico">Bifásico</option> <option value="Trifasico" selected>Trifásico</option> </select> </div>
+                <div class="form-group"> <label for="qdcTipoLigacao-${id}">Ligação</label> <select id="qdcTipoLigacao-${id}"></select> </div>
+                <div class="form-group"> <label for="qdcTensaoV-${id}">Tensão (V)</label> <select id="qdcTensaoV-${id}"><option value="12">12</option><option value="24">24</option><option value="36">36</option><option value="127">127</option><option value="220" selected>220</option><option value="380">380</option><option value="440">440</option><option value="760">760</option></select> </div>
+                <div class="form-group"> <label for="qdcFatorPotencia-${id}">Fator Potência</label> <input type="number" id="qdcFatorPotencia-${id}" step="0.01" value="0.92"> </div>
+                <div class="form-group"> <label for="qdcComprimentoM-${id}">Comprimento (m)</label> <input type="number" id="qdcComprimentoM-${id}" value="10"> </div>
+                <div class="form-group"> <label for="qdcTipoIsolacao-${id}">Isolação</label> <select id="qdcTipoIsolacao-${id}"><option value="PVC" selected>PVC 70°C</option><option value="EPR">EPR 90°C</option><option value="XLPE">XLPE 90°C</option></select> </div>
+                <div class="form-group"> <label for="qdcMaterialCabo-${id}">Condutor</label> <select id="qdcMaterialCabo-${id}"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Alumínio</option></select> </div>
+                <div class="form-group"> <label for="qdcMetodoInstalacao-${id}">Instalação</label> <select id="qdcMetodoInstalacao-${id}"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select> </div>
+                <div class="form-group"> <label for="qdcTemperaturaAmbienteC-${id}">Temp. Ambiente</label> <select id="qdcTemperaturaAmbienteC-${id}"></select> </div>
+                <div class="form-group"> <label for="qdcResistividadeSolo-${id}">Resist. Solo</label> <select id="qdcResistividadeSolo-${id}"></select> </div>
+                <div class="form-group"> <label for="qdcNumCircuitosAgrupados-${id}">Ckt Agrupados</label> <select id="qdcNumCircuitosAgrupados-${id}"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value_="">4</option><option value="5">5</option><option value="6">6</option></select> </div>
+                <div class="form-group"> <label for="qdcLimiteQuedaTensao-${id}">Limite DV (%)</label> <input type="number" id="qdcLimiteQuedaTensao-${id}" step="0.1" value="2.0"> </div>
+                <div class="form-group"> <label for="qdcTipoDisjuntor-${id}">Disjuntor</label> <select id="qdcTipoDisjuntor-${id}"><option value="Minidisjuntor (DIN)">DIN</option><option value="Caixa Moldada (MCCB)">MCCB</option></select> </div>
+                <div class="form-group"> <label for="qdcDpsClasse-${id}">Classe DPS</label> <select id="qdcDpsClasse-${id}"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select> </div>
+                <div class="checkbox-group"> <input type="checkbox" id="qdcRequerDR-${id}"><label for="qdcRequerDR-${id}">Requer DR</label> </div>
+            </div>
+            <h4 style="margin-top: 20px; margin-bottom: 10px; color: var(--label-color); border-top: 1px solid var(--border-color); padding-top: 15px;">Circuitos deste QDC</h4>
             <div id="circuits-for-qdc-${id}" class="circuits-container-internal">
                 </div>
         </div>
@@ -205,6 +231,9 @@ export function addQdcBlock(id = null, name = null, parentId = 'feeder') {
     if(qdcContainer) qdcContainer.appendChild(newQdcDiv.firstElementChild);
 
     updateQdcParentDropdowns();
+    
+    // >>>>> NOVO: Inicializa os listeners dos campos do QDC <<<<<
+    initializeQdcListeners(internalId);
     
     if (!id) {
        addCircuit(internalId); 
@@ -347,6 +376,45 @@ function initializeFeederListeners() {
     handleFeederInsulationChange();
 }
 
+// ========================================================================
+// >>>>> NOVAS FUNÇÕES: Listeners para os campos do QDC <<<<<
+// ========================================================================
+
+function initializeQdcListeners(id) {
+    const fases = document.getElementById(`qdcFases-${id}`);
+    const tipoIsolacao = document.getElementById(`qdcTipoIsolacao-${id}`);
+    const temperaturaAmbiente = document.getElementById(`qdcTemperaturaAmbienteC-${id}`);
+    const resistividadeSolo = document.getElementById(`qdcResistividadeSolo-${id}`);
+    
+    if (uiData) { 
+        populateSoilResistivityDropdown(resistividadeSolo, uiData.fatores_k2); 
+    } 
+    
+    if(fases) fases.addEventListener('change', () => atualizarQdcLigacoes(id));
+    if(tipoIsolacao) tipoIsolacao.addEventListener('change', () => handleQdcInsulationChange(id));
+    
+    atualizarQdcLigacoes(id);
+    handleQdcInsulationChange(id);
+}
+
+function atualizarQdcLigacoes(id) {
+    const fasesSelect = document.getElementById(`qdcFases-${id}`);
+    const tipoLigacaoSelect = document.getElementById(`qdcTipoLigacao-${id}`);
+    if (!fasesSelect || !tipoLigacaoSelect) return;
+    const f = fasesSelect.value; const l = ligacoes[f] || []; tipoLigacaoSelect.innerHTML = ''; l.forEach(o => { const op = document.createElement('option'); op.value = o.value; op.textContent = o.text; tipoLigacaoSelect.appendChild(op); });
+}
+
+function handleQdcInsulationChange(id) {
+    const tipoIsolacaoSelect = document.getElementById(`qdcTipoIsolacao-${id}`);
+    const tempAmbSelect = document.getElementById(`qdcTemperaturaAmbienteC-${id}`);
+    if (!tipoIsolacaoSelect || !tempAmbSelect) return;
+    const sel = tipoIsolacaoSelect.value; const t = (sel === 'EPR' || sel === 'XLPE') ? tempOptions.epr : tempOptions.pvc;
+    populateTemperatureDropdown(tempAmbSelect, t);
+}
+// ========================================================================
+// >>>>> FIM DAS NOVAS FUNÇÕES <<<<<
+// ========================================================================
+
 
 function handlePowerUnitChange(id, type) {
     const pW = document.getElementById(`potenciaW-${id}`);
@@ -357,47 +425,49 @@ function handlePowerUnitChange(id, type) {
 }
 
 // ========================================================================
-// >>>>> INÍCIO DA CORREÇÃO <<<<<
-// A função foi reestruturada para garantir que o botão correto
-// acione a ação correta para o QDC correto.
+// >>>>> FUNÇÃO MODIFICADA: handleMainContainerInteraction <<<<<
+// Adiciona os gatilhos para os novos campos do QDC
 // ========================================================================
 export function handleMainContainerInteraction(event) {
     const target = event.target;
 
     // --- Lógica de Adicionar Circuito ---
-    // Verifica PRIMEIRO se o clique foi no botão de adicionar
-    // Esta é a correção principal para o seu bug.
     if (target.classList.contains('add-circuit-to-qdc-btn')) {
-        const qdcId = target.dataset.qdcId; // Pega o ID DO PRÓPRIO BOTÃO
+        const qdcId = target.dataset.qdcId; 
         if (qdcId) {
             addCircuit(qdcId);
         }
-        return; // Para a execução para não disparar outros eventos (como colapso)
+        return; 
     }
 
-    // --- Lógica de QDC (Remover, Colapsar, Renomear) ---
+    // --- Lógica de QDC (Remover, Colapsar, Renomear, E NOVOS CAMPOS) ---
     const qdcBlock = target.closest('.qdc-block'); 
     if (qdcBlock) {
         const qdcId = qdcBlock.dataset.id; 
         
-        // A lógica de adicionar circuito foi movida para cima
-        
         if (target.classList.contains('remove-qdc-btn')) { 
-            // Usa o ID do botão, que é mais específico
             const idParaRemover = target.dataset.qdcId || qdcId;
             removeQdc(idParaRemover); 
-            return; // Para
+            return; 
         }
         if (target.classList.contains('qdc-name-input') && event.type === 'input') { 
             updateQdcParentDropdowns(); 
-            // Não precisa de return, pois é evento 'input'
         }
         
+        // >>>>> NOVO: Gatilhos para os campos de config do QDC <<<<<
+        else if (target.id === `qdcFases-${qdcId}`) { 
+            atualizarQdcLigacoes(qdcId); 
+        }
+        else if (target.id === `qdcTipoIsolacao-${qdcId}`) { 
+            handleQdcInsulationChange(qdcId); 
+        }
+        // >>>>> FIM DOS NOVOS GATILHOS <<<<<
+
         // Lógica de Colapsar/Expandir QDC
         const qdcHeader = target.closest('.qdc-header');
         if (qdcHeader && !target.closest('.qdc-header-right') && !target.closest('.qdc-header-left input') && !target.closest('.qdc-header-center select')) { 
             qdcBlock.classList.toggle('collapsed'); 
-            return; // Para
+            return; 
         }
     }
     
@@ -410,7 +480,7 @@ export function handleMainContainerInteraction(event) {
         const circuitHeader = target.closest('.circuit-header');
         if (circuitHeader && !target.closest('.circuit-header-right')) { 
             circuitBlock.classList.toggle('collapsed'); 
-            return; // Para
+            return; 
         }
         
         // Lógica de Ações *dentro* do Circuito
@@ -429,7 +499,7 @@ export function handleMainContainerInteraction(event) {
     }
 }
 // ========================================================================
-// >>>>> FIM DA CORREÇÃO <<<<<
+// >>>>> FIM DA MODIFICAÇÃO <<<<<
 // ========================================================================
 
 
@@ -462,6 +532,11 @@ function handleCircuitTypeChange(id) {
 export function populateProjectList(projects) {
     const select = document.getElementById('savedProjectsSelect'); if(!select) return; select.innerHTML = '<option value="">-- Selecione uma obra --</option>'; projects.forEach(p => { const o = document.createElement('option'); o.value = p.id; o.textContent = `${p.project_code || 'S/C'} - ${p.project_name}`; select.appendChild(o); });
 }
+
+// ========================================================================
+// >>>>> FUNÇÃO MODIFICADA: populateFormWithProjectData <<<<<
+// Agora lê e preenche os dados de 'qdcData.config'
+// ========================================================================
 export function populateFormWithProjectData(project) {
     resetForm(false, project.client); 
     const currentProjId = document.getElementById('currentProjectId'); if(currentProjId) currentProjId.value = project.id;
@@ -494,11 +569,39 @@ export function populateFormWithProjectData(project) {
     if (project.qdcs_data && Array.isArray(project.qdcs_data)) {
         project.qdcs_data.forEach((qdcData, index) => {
             const newQdcId = addQdcBlock(parseInt(qdcData.id), qdcData.name, qdcData.parentId);
+            
             if (qdcData.circuits && Array.isArray(qdcData.circuits)) {
                 qdcData.circuits.forEach(circuitData => {
                     addCircuit(newQdcId, circuitData); 
                 });
             }
+            
+            // >>>>> NOVO: Preenche os campos de configuração do QDC <<<<<
+            if (qdcData.config) {
+                Object.keys(qdcData.config).forEach(key => {
+                    const element = document.getElementById(key);
+                    if (element) {
+                        if (element.type === 'checkbox') { element.checked = qdcData.config[key]; }
+                        else { element.value = qdcData.config[key]; }
+                    }
+                });
+
+                // Dispara os listeners para carregar dropdowns dependentes
+                atualizarQdcLigacoes(newQdcId); 
+                handleQdcInsulationChange(newQdcId);
+
+                // Repopula os valores que foram sobrescritos pelos listeners
+                const qdcTipoLigacao = document.getElementById(`qdcTipoLigacao-${newQdcId}`);
+                if (qdcTipoLigacao && qdcData.config[`qdcTipoLigacao-${newQdcId}`]) {
+                    qdcTipoLigacao.value = qdcData.config[`qdcTipoLigacao-${newQdcId}`];
+                }
+                const qdcTemp = document.getElementById(`qdcTemperaturaAmbienteC-${newQdcId}`);
+                if (qdcTemp && qdcData.config[`qdcTemperaturaAmbienteC-${newQdcId}`]) {
+                    qdcTemp.value = qdcData.config[`qdcTemperaturaAmbienteC-${newQdcId}`];
+                }
+            }
+            // >>>>> FIM DO NOVO BLOCO <<<<<
+
             if (index > 0) { const qdcElem = document.getElementById(`qdc-${newQdcId}`); if(qdcElem) qdcElem.classList.add('collapsed'); }
         });
     } else { addQdcBlock(); } 
@@ -506,6 +609,10 @@ export function populateFormWithProjectData(project) {
     updateQdcParentDropdowns();
     updateFeederPowerDisplay();
 }
+// ========================================================================
+// >>>>> FIM DA MODIFICAÇÃO <<<<<
+// ========================================================================
+
 export function populateUsersPanel(users) {
     const list = document.getElementById('adminUserList'); if(!list) return; list.innerHTML = ''; if (!users || users.length === 0) { list.innerHTML = '<li>Nenhum usuário.</li>'; return; }
     users.forEach(u => { const li = document.createElement('li'); let act = '<div class="admin-user-actions">'; if (!u.is_approved) { act += `<button class="approve-user-btn btn-green" data-user-id="${u.id}">Aprovar</button>`; } else { act += u.is_blocked ? `<button class="block-user-btn btn-green" data-user-id="${u.id}" data-is-blocked="false">Desbloquear</button>` : `<button class="block-user-btn btn-block" data-user-id="${u.id}" data-is-blocked="true">Bloquear</button>`; } act += `<button class="edit-user-btn btn-edit" data-user-id="${u.id}">Editar</button><button class="remove-user-btn btn-red" data-user-id="${u.id}">Excluir</button></div>`; const st = u.is_blocked ? '<small style="color:var(--btn-red);">(Bloqueado)</small>' : ''; li.innerHTML = `<span><strong>${u.nome || u.email}</strong> ${st}<br><small>${u.email}</small></span>${act}`; list.appendChild(li); });
@@ -524,6 +631,7 @@ export function openEditClientForm(c) { const cId = document.getElementById('cli
 export function populateSelectClientModal(clients, isChange = false) { const s = document.getElementById('clientSelectForNewProject'); if(!s) return; s.innerHTML = '<option value="">-- Selecione --</option>'; clients.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = `${c.nome} (${c.client_code})`; o.dataset.client = JSON.stringify(c); s.appendChild(o); }); const t = document.querySelector('#selectClientModalOverlay h3'); const b = document.getElementById('confirmClientSelectionBtn'); if(t && b) { if (isChange) { t.textContent = 'Vincular / Alterar Cliente'; b.textContent = 'Confirmar'; } else { t.textContent = 'Vincular Cliente'; b.textContent = 'Vincular'; } } openModal('selectClientModalOverlay'); }
 
 // --- FUNÇÕES DE GERAÇÃO DE PDF ---
+// (Sem modificações)
 function getDpsText(dpsInfo) { if (!dpsInfo) return 'Não'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
 function drawHeader(x, y, projectData, totalPower) { const t = projectData.obra || "Diagrama"; const p = `(${totalPower.toFixed(2)} W)`; return `<g text-anchor="end"> <text x="${x}" y="${y}" style="font-family: Arial; font-size: 16px; font-weight: bold;">Q.D. ${t.toUpperCase()}</text> <text x="${x}" y="${y + 15}" style="font-family: Arial; font-size: 12px;">${p}</text> </g>`; }
 function drawDisjuntor(x, y, text, fases = 'Monofasico') { let sP=''; switch(fases){ case 'Trifasico':sP=`<path d="M ${x-5} ${y-2} q 5 -10 10 0 M ${x-5} ${y+2} q 5 -10 10 0 M ${x-5} ${y+6} q 5 -10 10 0" stroke="black" stroke-width="1.5" fill="none"/>`;break; case 'Bifasico':sP=`<path d="M ${x-5} ${y} q 5 -10 10 0 M ${x-5} ${y+4} q 5 -10 10 0" stroke="black" stroke-width="1.5" fill="none"/>`;break; default:sP=`<path d="M ${x-5} ${y+2} q 5 -10 10 0" stroke="black" stroke-width="1.5" fill="none"/>`;break;} return `<g text-anchor="middle"> <circle cx="${x-12.5}" cy="${y}" r="1.5" fill="black"/> <circle cx="${x+12.5}" cy="${y}" r="1.5" fill="black"/> ${sP} <text x="${x}" y="${y-18}" style="font-family: Arial; font-size: 11px;">${text}</text> </g>`; }
@@ -531,7 +639,7 @@ function drawDR(x, y, text, fases = 'Monofasico') { const dC='#27ae60'; let iS='
 function drawDPS(x, y, feederData) { const dC='#27ae60'; let n=feederData.fases==='Monofasico'?2:(feederData.fases==='Bifasico'?3:4); const dI=feederData.dpsInfo; const t=dI?`${n}x DPS Cl.${dI.classe} ${dI.corrente_ka}kA`:`${n}x DPS`; return `<g> <rect x="${x-45}" y="${y-12.5}" width="90" height="25" stroke="${dC}" stroke-width="1.5" fill="white"/> <text x="${x}" y="${y+4}" text-anchor="middle" style="font-family: Arial; font-size: 10px; fill:${dC};">${t}</text> <line x1="${x}" y1="${y+12.5}" x2="${x}" y2="${y+30}" stroke="black" stroke-width="1"/> ${drawGroundSymbol(x,y+30)} </g>`; }
 function drawGroundSymbol(x, y) { return `<line x1="${x}" y1="${y}" x2="${x}" y2="${y+5}" stroke="black" stroke-width="1"/> <line x1="${x-8}" y1="${y+5}" x2="${x+8}" y2="${y+5}" stroke="black" stroke-width="1.5"/> <line x1="${x-5}" y1="${y+8}" x2="${x+5}" y2="${y+8}" stroke="black" stroke-width="1.5"/> <line x1="${x-2}" y1="${y+11}" x2="${x+2}" y2="${y+11}" stroke="black" stroke-width="1.5"/>`; }
 function drawConductorSymbol(x, y, numConductors) { let p=''; for(let i=0;i<numConductors;i++){p+=` M ${x-5} ${y+5+(i*4)} l 10 -5`;} return `<path d="${p}" stroke="black" stroke-width="1" fill="none"/>`; }
-function drawCircuitLine(result, x, y, index) { const {dados,calculos}=result; const yE=y+250; const fS=`font-family: Arial;`; return `<g text-anchor="middle"> ${drawDisjuntor(x,y,`${calculos.disjuntorRecomendado.nome}`,dados.fases)} <line x1="${x}" y1="${y+12.5}" x2="${x}" y2="${yE}" stroke="black" stroke-width="1"/> ${drawConductorSymbol(x,y+60,calculos.numCondutores)} <text x="${x}" y="${y+90}" style="${fS} font-size: 11px;">${calculos.bitolaRecomendadaMm2}</text> <text x="${x}" y="${yE+20}" style="${fS} font-size: 11px; font-weight: bold;">(${calculos.potenciaDemandada.toFixed(0)} W)</text> <text x="${x}" y="${yE+35}" style="${fS} font-size: 12px;">${index} - ${dados.nomeCircuito}</text> </g>`; }
+function drawCircuitLine(result, x, y, index) { const {dados,calculos}=result; const yE=y+250; const fS=`font-family: Arial;`; return `<g text-anchor="middle"> ${drawDisjuntor(x,y,`${calculos.disjuntorRecomendado.nome}`,dados.fases)} <line x1="${x}" y1="${y+12.5}" x2="${x}" y2="${yE}" stroke="black" stroke-width="1"/> ${drawConductorSymbol(x,y+60,calculos.numConductors)} <text x="${x}" y="${y+90}" style="${fS} font-size: 11px;">${calculos.bitolaRecomendadaMm2}</text> <text x="${x}" y="${yE+20}" style="${fS} font-size: 11px; font-weight: bold;">(${calculos.potenciaDemandada.toFixed(0)} W)</text> <text x="${x}" y="${yE+35}" style="${fS} font-size: 12px;">${index} - ${dados.nomeCircuito}</text> </g>`; }
 
 function buildUnifilarSvgString(calculationResults) {
     if (!calculationResults) return null; 
@@ -568,7 +676,7 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
     const { feederResult, circuitResults } = calculationResults;
     if (!feederResult || !circuitResults || circuitResults.length === 0) { alert("Dados insuficientes para gerar Memorial."); return;}
     
-    const { jsPDF } = window.jspdf; const doc = new jsPDF('p', 'mm', 'a4'); let y = 20; const lM = 15; const vM = 75;
+     const { jsPDF } = window.jspdf; const doc = new jsPDF('p', 'mm', 'a4'); let y = 20; const lM = 15; const vM = 75;
     const addT = (t) => { doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.text(t, 105, y, { align: 'center' }); y += 12; }; const addS = (t) => { if (y > 260) { doc.addPage(); y = 20; } doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.text(t, lM, y); y += 8; }; const addL = (l, v) => { if (y > 270) { doc.addPage(); y = 20; } doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.text(l, lM, y); doc.setFont('helvetica', 'normal'); doc.text(String(v || '-'), vM, y); y += 6; };
     
     addT("RELATÓRIO DE PROJETO ELÉTRICO"); 
