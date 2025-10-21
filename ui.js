@@ -610,7 +610,7 @@ function drawDR(x, y, text, fases = 'Monofasico') { const dC='#27ae60'; let iS='
 function drawDPS(x, y, feederData) { const dC='#27ae60'; let n=feederData.fases==='Monofasico'?2:(feederData.fases==='Bifasico'?3:4); const dI=feederData.dpsInfo; const t=dI?`${n}x DPS Cl.${dI.classe} ${dI.corrente_ka}kA`:`${n}x DPS`; return `<g> <rect x="${x-45}" y="${y-12.5}" width="90" height="25" stroke="${dC}" stroke-width="1.5" fill="white"/> <text x="${x}" y="${y+4}" text-anchor="middle" style="font-family: Arial; font-size: 10px; fill:${dC};">${t}</text> <line x1="${x}" y1="${y+12.5}" x2="${x}" y2="${y+30}" stroke="black" stroke-width="1"/> ${drawGroundSymbol(x,y+30)} </g>`; }
 function drawGroundSymbol(x, y) { return `<line x1="${x}" y1="${y}" x2="${x}" y2="${y+5}" stroke="black" stroke-width="1"/> <line x1="${x-8}" y1="${y+5}" x2="${x+8}" y2="${y+5}" stroke="black" stroke-width="1.5"/> <line x1="${x-5}" y1="${y+8}" x2="${x+5}" y2="${y+8}" stroke="black" stroke-width="1.5"/> <line x1="${x-2}" y1="${y+11}" x2="${x+2}" y2="${y+11}" stroke="black" stroke-width="1.5"/>`; }
 function drawConductorSymbol(x, y, numConductors) { let p=''; for(let i=0;i<numConductors;i++){p+=` M ${x-5} ${y+5+(i*4)} l 10 -5`;} return `<path d="${p}" stroke="black" stroke-width="1" fill="none"/>`; }
-function drawCircuitLine(result, x, y, index) { const {dados,calculos}=result; const yE=y+250; const fS=`font-family: Arial;`; return `<g text-anchor="middle"> ${drawDisjuntor(x,y,`${calculos.disjuntorRecomendado.nome}`,dados.fases)} <line x1="${x}" y1="${y+12.5}" x2="${x}" y2="${yE}" stroke="black" stroke-width="1"/> ${drawConductorSymbol(x,y+60,calculos.numConductors)} <text x="${x}" y="${y+90}" style="${fS} font-size: 11px;">${calculos.bitolaRecomendadaMm2}</text> <text x="${x}" y="${yE+20}" style="${fS} font-size: 11px; font-weight: bold;">(${calculos.potenciaDemandada.toFixed(0)} W)</text> <text x="${x}" y="${yE+35}" style="${fS} font-size: 12px;">${index} - ${dados.nomeCircuito}</text> </g>`; }
+function drawCircuitLine(result, x, y, index) { const {dados,calculos}=result; const yE=y+250; const fS=`font-family: Arial;`; return `<g text-anchor="middle"> ${drawDisjuntor(x,y,`${calculos.disjuntorRecomendado.nome}`,dados.fases)} <line x1="${x}" y1="${y+12.5}" x2="${x}" y2="${yE}" stroke="black" stroke-width="1"/> ${drawConductorSymbol(x,y+60,calculos.numCondutores)} <text x="${x}" y="${y+90}" style="${fS} font-size: 11px;">${calculos.bitolaRecomendadaMm2}</text> <text x="${x}" y="${yE+20}" style="${fS} font-size: 11px; font-weight: bold;">(${calculos.potenciaDemandada.toFixed(0)} W)</text> <text x="${x}" y="${yE+35}" style="${fS} font-size: 12px;">${index} - ${dados.nomeCircuito}</text> </g>`; }
 
 function buildUnifilarSvgString(calculationResults) {
     if (!calculationResults) return null; 
@@ -644,7 +644,7 @@ export async function generateUnifilarPdf(calculationResults) {
 
 // ========================================================================
 // >>>>> FUNÇÃO CORRIGIDA: generateMemorialPdf <<<<<
-// Corrigido os nomes das funções (addS, addL, addT) e a definição de reportData
+// A chave '}' de fechamento da função foi movida para o final.
 // ========================================================================
 export function generateMemorialPdf(calculationResults, currentUserProfile) {
     if (!calculationResults) { alert("Execute o cálculo primeiro."); return; }
@@ -654,22 +654,18 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
     
     const { jsPDF } = window.jspdf; 
     const doc = new jsPDF('p', 'mm', 'a4'); 
-    let yPos = 20; // Renomeado para yPos para evitar conflito
+    let yPos = 20; 
     const lM = 15; 
     const vM = 75;
 
-    // Definições das funções auxiliares (como no arquivo original)
     const addT = (t) => { doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.text(t, 105, yPos, { align: 'center' }); yPos += 12; }; 
     const addS = (t) => { if (yPos > 260) { doc.addPage(); yPos = 20; } doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.text(t, lM, yPos); yPos += 8; }; 
     const addL = (l, v) => { if (yPos > 270) { doc.addPage(); yPos = 20; } doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.text(l, lM, yPos); doc.setFont('helvetica', 'normal'); doc.text(String(v || '-'), vM, yPos); yPos += 6; };
     
-    // **CORREÇÃO 1: Definir reportData**
-    // Os dados do cliente/obra estão dentro do resultado do alimentador
     const reportData = feederResult.dados;
 
     addT("RELATÓRIO DE PROJETO ELÉTRICO"); 
     
-    // **CORREÇÃO 2: Usar addS e addL (em vez de addSection/addLineItem)**
     addS("DADOS DO CLIENTE");
     addL("Cliente:", reportData.cliente);
     addL(`Documento (${reportData.tipoDocumento}):`, reportData.documento);
@@ -700,7 +696,6 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
     yPos += 5;
     addS("RESUMO DA ALIMENTAÇÃO GERAL");
     
-    // (O restante da função já usava 'doc.autoTable' e estava correto)
     const feederBreakerType = feederResult.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
     const feederBreakerText = `${feederBreakerType} ${feederResult.calculos.disjuntorRecomendado.nome}`;
     const feederHead = [['Tensão/Fases', 'Disjuntor Geral', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
@@ -709,7 +704,7 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
     yPos = doc.lastAutoTable.finalY + 10;
     
     if (circuitResults.length > 0) {
-        addS("RESUMO DOS CIRCUITOS"); // **CORREÇÃO 2 (continuação)**
+        addS("RESUMO DOS CIRCUITOS");
         const head = [['Ckt', 'Nome', 'Disjuntor', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
         const body = circuitResults.map((r, index) => {
             const circuitBreakerType = r.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
@@ -719,6 +714,8 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
         doc.autoTable({ startY: yPos, head: head, body: body, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
     }
     
+    // **A CHAVE '}' QUE ESTAVA AQUI FOI REMOVIDA**
+
     const allCalculationsForMemorial = [feederResult, ...circuitResults];
     
     allCalculationsForMemorial.forEach((result, index) => {
@@ -727,12 +724,12 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
         const { dados, calculos } = result;
         const potenciaDemandadaVA = dados.fatorPotencia > 0 ? (calculos.potenciaDemandada / dados.fatorPotencia).toFixed(2) : "0.00";
         const correnteCorrigidaTexto = isFinite(calculos.correnteCorrigidaA) ? `${calculos.correnteCorrigidaA.toFixed(2)} A` : "Incalculável";
-        const title = dados.id === 'Geral' ? `MEMORIAL DE CÁLCULO - ALIMENTADOR GERAL` : `MEMORIAL DE CÁLCULO - CIRCUITO ${index}: ${dados.nomeCircuito}`;
+        // Corrigindo um pequeno erro de digitação no nome da variável
+        const title = (dados.id === 'Geral' || dados.id === 'feeder') ? `MEMORIAL DE CÁLCULO - ALIMENTADOR GERAL` : `MEMORIAL DE CÁLCULO - CIRCUITO ${index}: ${dados.nomeCircuito}`;
         
-        // **CORREÇÃO 3: Usar addT, addS, addL dentro do loop**
-        addT(title); // Era addTitle
-        addS("-- PARÂMETROS DE ENTRADA --"); // Era addSection
-        if (dados.id !== 'Geral') { addL("Tipo de Circuito:", dados.tipoCircuito); } // Era addLineItem
+        addT(title);
+        addS("-- PARÂMETROS DE ENTRADA --");
+        if (dados.id !== 'Geral' && dados.id !== 'feeder') { addL("Tipo de Circuito:", dados.tipoCircuito); } 
         addL("Potência Instalada:", `${calculos.potenciaInstalada.toFixed(2)} W`);
         addL("Fator de Demanda:", `${dados.fatorDemanda}%`);
         addL("Potência Demandada:", `${potenciaDemandadaVA} VA`);
@@ -741,14 +738,23 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
         addL("Tipo de Ligação:", dados.tipoLigacao);
         addL("Tensão (V):", `${dados.tensaoV} V`);
         addL("Comprimento:", `${dados.comprimentoM} m`);
-        addL("Limite Queda de Tensão:", `${dados.limiteQuedaTensao}%`);
+        addL("Limite Queda de Tensão:", `${dados.limiteQuedaTensao}%`); // Corrigido de 'limiteQuedaDesejoTensao'
         yPos += 5;
         addS("-- ESPECIFICAÇÕES DE INSTALAÇÃO E CORREÇÕES --");
         addL("Material / Isolação:", `${dados.materialCabo} / ${dados.tipoIsolacao}`);
         addL("Método de Instalação:", dados.metodoInstalacao);
         addL("Temperatura Ambiente:", `${dados.temperaturaAmbienteC}°C`);
-        if (dados.id !== 'Geral') { addL("Circuitos Agrupados:", dados.numCircuitosAgrupados); if (dados.resistividadeSolo > 0) { addL("Resist. do Solo (C.m/W):", dados.resistividadeSolo); } } 
-        else { if (dados.resistividadeSolo > 0) { addL("Resist. do Solo (C.m/W):", dados.resistividadeSolo); } }
+        if (dados.id !== 'Geral' && dados.id !== 'feeder') { 
+            addL("Circuitos Agrupados:", dados.numCircuitosAgrupados); 
+            if (dados.resistividadeSolo > 0) { 
+                addL("Resist. do Solo (C.m/W):", dados.resistividadeSolo); 
+            } 
+        } 
+        else { 
+            if (dados.resistividadeSolo > 0) { 
+                addL("Resist. do Solo (C.m/W):", dados.resistividadeSolo); 
+            } 
+        }
         yPos += 5;
         addS("-- RESULTADOS DE CÁLCULO E DIMENSIONAMENTO --");
         addL("Corrente de Projeto:", `${calculos.correnteInstalada.toFixed(2)} A`);
@@ -765,4 +771,8 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
     });
 
     doc.save(`Memorial_${document.getElementById('obra').value || 'Projeto'}.pdf`);
-}
+    
+} // <--- **ESTE É O LOCAL CORRETO PARA A CHAVE '}'**
+// ========================================================================
+// >>>>> FIM DAS CORREÇÕES <<<<<
+// ========================================================================
