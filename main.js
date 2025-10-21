@@ -18,17 +18,17 @@ async function handleLogin() {
     // A lógica principal de UI/dados agora fica no onAuthStateChange
     // para lidar com login inicial e reautenticação de forma consistente.
     if (!userProfile) {
-        // signInUser já deve mostrar alerta de erro
+        // signInUser já deve mostrar alerta de erro ou tratar bloqueio/aprovação
         console.error("Falha no login ou usuário bloqueado/não aprovado.");
     }
 }
 
 // --- Funções de Autenticação e Gerenciamento (Sem alterações da versão funcional) ---
 async function handleLogout() { await auth.signOutUser(); }
-async function handleRegister(event) { event.preventDefault(); const email = document.getElementById('regEmail').value; const password = document.getElementById('regPassword').value; const details = { nome: document.getElementById('regNome').value, cpf: document.getElementById('regCpf').value, telefone: document.getElementById('regTelefone').value, crea: document.getElementById('regCrea').value, email: email }; const { error } = await auth.signUpUser(email, password, details); if (!error) { alert('Cadastro realizado com sucesso! Aguarde a aprovação de um administrador.'); ui.closeModal('registerModalOverlay'); event.target.reset(); } }
+async function handleRegister(event) { event.preventDefault(); const email = document.getElementById('regEmail').value; const password = document.getElementById('regPassword').value; const details = { nome: document.getElementById('regNome').value, cpf: document.getElementById('regCpf').value, telefone: document.getElementById('regTelefone').value, crea: document.getElementById('regCrea').value, email: email }; const { error } = await auth.signUpUser(email, password, details); if (!error) { alert('Cadastro realizado com sucesso! Aguarde a aprovação de um administrador.'); ui.closeModal('registerModalOverlay'); event.target.reset(); } else { alert(`Erro no registro: ${error.message}`)} }
 async function handleForgotPassword(event) { event.preventDefault(); const email = document.getElementById('forgotEmail').value; const { error } = await auth.sendPasswordResetEmail(email); if (error) { alert("Erro ao enviar e-mail: " + error.message); } else { alert("Se o e-mail estiver cadastrado, um link de redefinição foi enviado!"); ui.closeModal('forgotPasswordModalOverlay'); event.target.reset(); } }
 async function handleResetPassword(event) { event.preventDefault(); const newPassword = document.getElementById('newPassword').value; if (!newPassword || newPassword.length < 6) { alert("A senha precisa ter no mínimo 6 caracteres."); return; } const { error } = await auth.updatePassword(newPassword); if (error) { alert("Erro ao atualizar senha: " + error.message); } else { alert("Senha atualizada com sucesso! A página será recarregada. Por favor, faça o login com sua nova senha."); window.location.hash = ''; window.location.reload(); } }
-async function handleOpenClientManagement() { try { allClients = await api.fetchClients(); ui.populateClientManagementModal(allClients); ui.openModal('clientManagementModalOverlay'); } catch(e) {alert('Erro ao carregar clientes.')}}
+async function handleOpenClientManagement() { try { allClients = await api.fetchClients(); ui.populateClientManagementModal(allClients); ui.openModal('clientManagementModalOverlay'); } catch(e) {console.error("Erro ao carregar clientes:", e); alert('Erro ao carregar clientes.')}}
 async function handleClientFormSubmit(event) { event.preventDefault(); const clientId = document.getElementById('clientId').value; const clientData = { nome: document.getElementById('clientNome').value, documento_tipo: document.getElementById('clientDocumentoTipo').value, documento_valor: document.getElementById('clientDocumentoValor').value, email: document.getElementById('clientEmail').value, celular: document.getElementById('clientCelular').value, telefone: document.getElementById('clientTelefone').value, endereco: document.getElementById('clientEndereco').value, owner_id: currentUserProfile.id }; try { let result; if (clientId) { result = await api.updateClient(clientId, clientData); } else { result = await api.addClient(clientData); } if (result.error) { throw result.error; } alert(clientId ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!'); ui.resetClientForm(); await handleOpenClientManagement(); } catch (error) { alert('Erro ao salvar cliente: ' + error.message); } }
 async function handleClientListClick(event) { const target = event.target; const clientId = target.dataset.clientId; if (target.classList.contains('edit-client-btn')) { const clientToEdit = allClients.find(c => c.id == clientId); if (clientToEdit) ui.openEditClientForm(clientToEdit); } if (target.classList.contains('delete-client-btn')) { if (confirm('Tem certeza que deseja excluir este cliente?')) { const { error } = await api.deleteClient(clientId); if (error) { alert('Erro ao excluir cliente: ' + error.message); } else { await handleOpenClientManagement(); } } } }
 async function handleNewProject(showModal = true) { try { if (showModal) { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients); } else { ui.resetForm(); } } catch(e){ alert('Erro ao buscar clientes para nova obra.')}}
@@ -114,7 +114,7 @@ function getFullFormData(forSave = false) {
     if (forSave) {
         // Objeto para salvar no banco
         return {
-            project_name: mainData.obra, project_code: mainData.projectCode || null, client_id: currentClientId || null, main_data: mainData, tech_data: { respTecnico: document.getElementById('respTecnico').value, titulo: document.getElementById('titulo').value, crea: document.getElementById('crea').value }, feeder_data: feederData, qdcs_data: qdcsData, owner_id: currentUserProfile.id
+            project_name: mainData.obra, project_code: mainData.projectCode || null, client_id: currentClientId || null, main_data: mainData, tech_data: { respTecnico: document.getElementById('respTecnico').value, titulo: document.getElementById('titulo').value, crea: document.getElementById('crea').value }, feeder_data: feederData, qdcs_data: qdcsData, owner_id: currentUserProfile?.id // Adicionado ?. para segurança
         };
     }
 
@@ -175,7 +175,7 @@ async function handleLoadProject() {
 async function handleDeleteProject() { const projectId = document.getElementById('savedProjectsSelect').value; const projectNameOption = document.getElementById('savedProjectsSelect').options[document.getElementById('savedProjectsSelect').selectedIndex]; const projectName = projectNameOption ? projectNameOption.text : "Selecionada"; if (!projectId) { alert("Selecione uma obra para excluir."); return; } if (!confirm(`Tem certeza que deseja excluir permanentemente a obra "${projectName}"? Esta ação não pode ser desfeita.`)) return; const { error } = await api.deleteProject(projectId); if (error) { console.error('Erro ao excluir obra:', error); alert('Erro ao excluir obra: ' + error.message); } else { alert(`Obra "${projectName}" excluída com sucesso.`); ui.resetForm(); await handleSearch(); } }
 async function handleSearch(term = '') { if (!currentUserProfile) return; try { const projects = await api.fetchProjects(term); ui.populateProjectList(projects); } catch(error){ console.error("Erro ao buscar projetos:", error); /* Evita alert aqui */ } }
 async function showManageProjectsPanel() { try { const projects = await api.fetchProjects(''); allClients = await api.fetchClients(); const allUsers = await api.fetchAllUsers(); ui.populateProjectsPanel(projects, allClients, allUsers, currentUserProfile); ui.openModal('manageProjectsModalOverlay'); } catch(error){ console.error("Erro ao abrir gerenciador de obras:", error); alert("Erro ao carregar dados para o gerenciador de obras."); } }
-async function handleProjectPanelClick(event) { const target = event.target; const projectId = target.dataset.projectId; if (target.classList.contains('transfer-client-btn')) { const select = target.closest('.action-group').querySelector('.transfer-client-select'); const newClientId = select.value || null; const { error } = await api.transferProjectClient(projectId, newClientId); if (error) { alert('Erro ao transferir cliente: ' + error.message); } else { alert('Cliente da obra atualizado!'); await showManageProjectsPanel(); } } if (target.classList.contains('transfer-owner-btn')) { const select = target.closest('.action-group').querySelector('.transfer-owner-select'); const newOwnerId = select.value; if (newOwnerId && confirm('Tem certeza que deseja transferir a propriedade desta obra para outro usuário?')) { const { error } = await api.transferProjectOwner(projectId, newOwnerId); if (error) { alert('Erro ao transferir propriedade: ' + error.message); } else { alert('Propriedade da obra transferida com sucesso!'); await showManageProjectsPanel(); } } } }
+async function handleProjectPanelClick(event) { const target = event.target; const projectId = target.dataset.projectId; if(!projectId) return; if (target.classList.contains('transfer-client-btn')) { const select = target.closest('.action-group')?.querySelector('.transfer-client-select'); if(!select) return; const newClientId = select.value || null; const { error } = await api.transferProjectClient(projectId, newClientId); if (error) { alert('Erro ao transferir cliente: ' + error.message); } else { alert('Cliente da obra atualizado!'); await showManageProjectsPanel(); } } if (target.classList.contains('transfer-owner-btn')) { const select = target.closest('.action-group')?.querySelector('.transfer-owner-select'); if(!select) return; const newOwnerId = select.value; if (newOwnerId && confirm('Tem certeza que deseja transferir a propriedade desta obra para outro usuário?')) { const { error } = await api.transferProjectOwner(projectId, newOwnerId); if (error) { alert('Erro ao transferir propriedade: ' + error.message); } else { alert('Propriedade da obra transferida com sucesso!'); await showManageProjectsPanel(); } } } }
 async function showAdminPanel() { try { const users = await api.fetchAllUsers(); ui.populateUsersPanel(users); ui.openModal('adminPanelModalOverlay'); } catch(error){ console.error("Erro ao buscar usuários:", error); alert("Não foi possível carregar a lista de usuários."); } }
 async function handleAdminUserActions(event) {
     const target = event.target;
@@ -198,13 +198,13 @@ async function handleUpdateUser(event) { event.preventDefault(); const userId = 
 // >>>>> FUNÇÃO ATUALIZADA: handleCalculateAndPdf (para usar Edge Function) <<<<<
 // ========================================================================
 async function handleCalculateAndPdf() {
-    if (!uiData) { // Verifica se os dados técnicos foram carregados
+    if (!uiData) {
         alert("Erro: Dados técnicos não carregados. Não é possível calcular. Tente recarregar a página.");
         return;
     }
-    if (!currentUserProfile) { // Verifica se o usuário está logado
+    if (!currentUserProfile) {
          alert("Erro: Usuário não autenticado. Faça login novamente.");
-         await handleLogout(); // Força logout se o perfil estiver inválido
+         await handleLogout();
          return;
     }
 
@@ -213,7 +213,7 @@ async function handleCalculateAndPdf() {
     loadingText.textContent = 'Calculando no servidor...';
     loadingOverlay.classList.add('visible');
 
-    const formDataForFunction = getFullFormData(false); // Pega dados formatados
+    const formDataForFunction = getFullFormData(false);
 
     try {
         console.log("Enviando para Edge Function 'calculate':", JSON.stringify(formDataForFunction, null, 2));
@@ -312,7 +312,7 @@ function setupEventListeners() {
 
     // Listeners do modal de seleção de cliente
     document.getElementById('confirmClientSelectionBtn').addEventListener('click', () => {
-         const isChange = document.querySelector('#selectClientModalOverlay h3').textContent.includes('Alterar');
+         const isChange = document.querySelector('#selectClientModalOverlay h3')?.textContent.includes('Alterar'); // Adicionado ?
          handleConfirmClientSelection(isChange);
     });
     // Botão "Alterar Cliente" no formulário principal
@@ -350,33 +350,49 @@ function main() {
                 // Verifica perfil, aprovação e bloqueio
                 if (userProfile && userProfile.is_approved && !userProfile.is_blocked) {
                     currentUserProfile = userProfile;
-                    ui.showAppView(currentUserProfile); // Mostra App
-
-                    // Carrega clientes (necessário para getFullFormData)
-                    try { allClients = await api.fetchClients(); } catch (e) { console.error("Erro ao carregar clientes:", e); }
-
+                    // Só mostra App se dados técnicos carregarem com sucesso
                     // Carrega dados técnicos UMA VEZ
                     if (!uiData) {
                         console.log("Carregando dados técnicos...");
-                        uiData = await api.fetchUiData();
+                        uiData = await api.fetchUiData(); // Usa await
                         if (uiData) {
                             ui.setupDynamicData(uiData);
                             console.log("Dados técnicos carregados.");
+                             // Agora que temos dados e perfil, mostra App e inicializa
+                             ui.showAppView(currentUserProfile);
+                             try { allClients = await api.fetchClients(); } catch (e) { console.error("Erro ao carregar clientes:", e); } // Carrega clientes
+
+                             if (hash.includes('type=recovery') && event === 'SIGNED_IN') {
+                                console.log("Recuperação de senha detectada.");
+                                ui.showResetPasswordView(); // Mostra view de reset
+                             } else if (!hash.includes('type=recovery')) {
+                                ui.resetForm();
+                                await handleSearch();
+                             }
+
                         } else {
                             console.error("Falha ao carregar dados técnicos!");
-                            alert("Erro ao carregar dados técnicos essenciais. Tente recarregar a página.");
+                            alert("Erro CRÍTICO ao carregar dados técnicos essenciais. A aplicação não pode continuar. Tente recarregar a página ou contate o suporte.");
+                            // Mantém na tela de login ou mostra uma tela de erro
+                            ui.showLoginView(); // Garante que fique no login
+                            currentUserProfile = null; // Limpa perfil
+                            await auth.signOutUser(); // Desloga forçadamente
+                            return; // Interrompe execução
                         }
+                    } else {
+                         // Se uiData já existe, apenas mostra App e inicializa
+                         ui.showAppView(currentUserProfile);
+                         try { allClients = await api.fetchClients(); } catch (e) { console.error("Erro ao carregar clientes:", e); } // Carrega clientes
+
+                         if (hash.includes('type=recovery') && event === 'SIGNED_IN') {
+                            console.log("Recuperação de senha detectada.");
+                            ui.showResetPasswordView(); // Mostra view de reset
+                         } else if (!hash.includes('type=recovery')) {
+                            // Não reseta o form se já estiver logado e dados carregados
+                            // await handleSearch(); // Apenas atualiza lista de projetos?
+                         }
                     }
 
-                    // Verifica se está no fluxo de recuperação de senha
-                    if (hash.includes('type=recovery') && event === 'SIGNED_IN') {
-                        console.log("Recuperação de senha detectada.");
-                        ui.showResetPasswordView(); // Mostra view de reset
-                    } else if (!hash.includes('type=recovery')) {
-                        // Fluxo normal: reseta form e busca projetos
-                        ui.resetForm();
-                        await handleSearch();
-                    }
                 } else if (userProfile && !userProfile.is_approved) {
                     alert("Seu cadastro ainda não foi aprovado.");
                     await auth.signOutUser();
@@ -384,28 +400,24 @@ function main() {
                     alert("Seu usuário está bloqueado.");
                     await auth.signOutUser();
                 } else {
-                     // Perfil não encontrado ou inválido
-                    console.warn("Sessão encontrada, mas perfil inválido/não encontrado.");
+                     console.warn("Sessão encontrada, mas perfil inválido/não encontrado.");
                     await auth.signOutUser();
                 }
             } else {
-                 // Sem sessão E não é recuperação inicial (link clicado sem estar logado)
                  if (!hash.includes('type=recovery')) {
                     ui.showLoginView();
                  } else {
-                     // Permite que o fluxo de PASSWORD_RECOVERY (abaixo) mostre a tela de reset
-                     console.log("Hash de recuperação sem sessão (provável clique no link do email).");
+                     console.log("Hash de recuperação sem sessão.");
                  }
             }
         } else if (event === 'SIGNED_OUT') {
             console.log("Usuário deslogado.");
             currentUserProfile = null;
             allClients = [];
-            // uiData = null; // Decide se quer limpar
+            // uiData = null; // Mantém uiData carregado
             ui.showLoginView();
             window.location.hash = ''; // Limpa hash
         } else if (event === 'PASSWORD_RECOVERY') {
-             // Ocorre quando o link do email é clicado, ANTES do SIGNED_IN forçado
              console.log("Evento PASSWORD_RECOVERY.");
              ui.showResetPasswordView(); // Mostra a view imediatamente
         }
