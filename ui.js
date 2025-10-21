@@ -1,4 +1,4 @@
-// Arquivo: ui.js (COM CAMPOS DE CONFIGURAÇÃO NO QDC)
+// Arquivo: ui.js (COM CAMPOS DE CONFIGURAÇÃO NO QDC E CORREÇÃO DO PDF)
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
@@ -158,10 +158,6 @@ export function resetForm(addDefaultQdc = true, linkedClient = null) {
     }
 }
 
-// ========================================================================
-// >>>>> FUNÇÃO MODIFICADA: getQdcHTML <<<<<
-// Adiciona os campos de configuração para o alimentador do QDC
-// ========================================================================
 function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
     return `
     <div class="qdc-block" id="qdc-${id}" data-id="${id}">
@@ -232,7 +228,7 @@ export function addQdcBlock(id = null, name = null, parentId = 'feeder') {
 
     updateQdcParentDropdowns();
     
-    // >>>>> NOVO: Inicializa os listeners dos campos do QDC <<<<<
+    // Inicializa os listeners dos campos do QDC
     initializeQdcListeners(internalId);
     
     if (!id) {
@@ -242,7 +238,6 @@ export function addQdcBlock(id = null, name = null, parentId = 'feeder') {
 }
 
 export function removeQdc(qdcId) {
-    // CORREÇÃO: Pega o ID do botão, não do qdcBlock (mais seguro)
     const qdcBlock = document.getElementById(`qdc-${qdcId}`);
     if (qdcBlock) {
         const qdcNameInput = qdcBlock.querySelector('.qdc-name-input');
@@ -376,10 +371,7 @@ function initializeFeederListeners() {
     handleFeederInsulationChange();
 }
 
-// ========================================================================
-// >>>>> NOVAS FUNÇÕES: Listeners para os campos do QDC <<<<<
-// ========================================================================
-
+// Funções para os Listeners dos campos do QDC
 function initializeQdcListeners(id) {
     const fases = document.getElementById(`qdcFases-${id}`);
     const tipoIsolacao = document.getElementById(`qdcTipoIsolacao-${id}`);
@@ -411,9 +403,6 @@ function handleQdcInsulationChange(id) {
     const sel = tipoIsolacaoSelect.value; const t = (sel === 'EPR' || sel === 'XLPE') ? tempOptions.epr : tempOptions.pvc;
     populateTemperatureDropdown(tempAmbSelect, t);
 }
-// ========================================================================
-// >>>>> FIM DAS NOVAS FUNÇÕES <<<<<
-// ========================================================================
 
 
 function handlePowerUnitChange(id, type) {
@@ -424,10 +413,6 @@ function handlePowerUnitChange(id, type) {
     updateFeederPowerDisplay();
 }
 
-// ========================================================================
-// >>>>> FUNÇÃO MODIFICADA: handleMainContainerInteraction <<<<<
-// Adiciona os gatilhos para os novos campos do QDC
-// ========================================================================
 export function handleMainContainerInteraction(event) {
     const target = event.target;
 
@@ -454,14 +439,13 @@ export function handleMainContainerInteraction(event) {
             updateQdcParentDropdowns(); 
         }
         
-        // >>>>> NOVO: Gatilhos para os campos de config do QDC <<<<<
+        // Gatilhos para os campos de config do QDC
         else if (target.id === `qdcFases-${qdcId}`) { 
             atualizarQdcLigacoes(qdcId); 
         }
         else if (target.id === `qdcTipoIsolacao-${qdcId}`) { 
             handleQdcInsulationChange(qdcId); 
         }
-        // >>>>> FIM DOS NOVOS GATILHOS <<<<<
 
         // Lógica de Colapsar/Expandir QDC
         const qdcHeader = target.closest('.qdc-header');
@@ -498,9 +482,6 @@ export function handleMainContainerInteraction(event) {
         else if (target.id === `potenciaW-${circuitId}` || target.id === `fatorDemanda-${circuitId}`) { updateFeederPowerDisplay(); }
     }
 }
-// ========================================================================
-// >>>>> FIM DA MODIFICAÇÃO <<<<<
-// ========================================================================
 
 
 function atualizarLigacoes(id) {
@@ -533,10 +514,6 @@ export function populateProjectList(projects) {
     const select = document.getElementById('savedProjectsSelect'); if(!select) return; select.innerHTML = '<option value="">-- Selecione uma obra --</option>'; projects.forEach(p => { const o = document.createElement('option'); o.value = p.id; o.textContent = `${p.project_code || 'S/C'} - ${p.project_name}`; select.appendChild(o); });
 }
 
-// ========================================================================
-// >>>>> FUNÇÃO MODIFICADA: populateFormWithProjectData <<<<<
-// Agora lê e preenche os dados de 'qdcData.config'
-// ========================================================================
 export function populateFormWithProjectData(project) {
     resetForm(false, project.client); 
     const currentProjId = document.getElementById('currentProjectId'); if(currentProjId) currentProjId.value = project.id;
@@ -576,7 +553,7 @@ export function populateFormWithProjectData(project) {
                 });
             }
             
-            // >>>>> NOVO: Preenche os campos de configuração do QDC <<<<<
+            // Preenche os campos de configuração do QDC
             if (qdcData.config) {
                 Object.keys(qdcData.config).forEach(key => {
                     const element = document.getElementById(key);
@@ -600,7 +577,6 @@ export function populateFormWithProjectData(project) {
                     qdcTemp.value = qdcData.config[`qdcTemperaturaAmbienteC-${newQdcId}`];
                 }
             }
-            // >>>>> FIM DO NOVO BLOCO <<<<<
 
             if (index > 0) { const qdcElem = document.getElementById(`qdc-${newQdcId}`); if(qdcElem) qdcElem.classList.add('collapsed'); }
         });
@@ -609,10 +585,6 @@ export function populateFormWithProjectData(project) {
     updateQdcParentDropdowns();
     updateFeederPowerDisplay();
 }
-// ========================================================================
-// >>>>> FIM DA MODIFICAÇÃO <<<<<
-// ========================================================================
-
 export function populateUsersPanel(users) {
     const list = document.getElementById('adminUserList'); if(!list) return; list.innerHTML = ''; if (!users || users.length === 0) { list.innerHTML = '<li>Nenhum usuário.</li>'; return; }
     users.forEach(u => { const li = document.createElement('li'); let act = '<div class="admin-user-actions">'; if (!u.is_approved) { act += `<button class="approve-user-btn btn-green" data-user-id="${u.id}">Aprovar</button>`; } else { act += u.is_blocked ? `<button class="block-user-btn btn-green" data-user-id="${u.id}" data-is-blocked="false">Desbloquear</button>` : `<button class="block-user-btn btn-block" data-user-id="${u.id}" data-is-blocked="true">Bloquear</button>`; } act += `<button class="edit-user-btn btn-edit" data-user-id="${u.id}">Editar</button><button class="remove-user-btn btn-red" data-user-id="${u.id}">Excluir</button></div>`; const st = u.is_blocked ? '<small style="color:var(--btn-red);">(Bloqueado)</small>' : ''; li.innerHTML = `<span><strong>${u.nome || u.email}</strong> ${st}<br><small>${u.email}</small></span>${act}`; list.appendChild(li); });
@@ -631,7 +603,6 @@ export function openEditClientForm(c) { const cId = document.getElementById('cli
 export function populateSelectClientModal(clients, isChange = false) { const s = document.getElementById('clientSelectForNewProject'); if(!s) return; s.innerHTML = '<option value="">-- Selecione --</option>'; clients.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = `${c.nome} (${c.client_code})`; o.dataset.client = JSON.stringify(c); s.appendChild(o); }); const t = document.querySelector('#selectClientModalOverlay h3'); const b = document.getElementById('confirmClientSelectionBtn'); if(t && b) { if (isChange) { t.textContent = 'Vincular / Alterar Cliente'; b.textContent = 'Confirmar'; } else { t.textContent = 'Vincular Cliente'; b.textContent = 'Vincular'; } } openModal('selectClientModalOverlay'); }
 
 // --- FUNÇÕES DE GERAÇÃO DE PDF ---
-// (Sem modificações)
 function getDpsText(dpsInfo) { if (!dpsInfo) return 'Não'; return `Sim, Classe ${dpsInfo.classe} (${dpsInfo.corrente_ka} kA)`; }
 function drawHeader(x, y, projectData, totalPower) { const t = projectData.obra || "Diagrama"; const p = `(${totalPower.toFixed(2)} W)`; return `<g text-anchor="end"> <text x="${x}" y="${y}" style="font-family: Arial; font-size: 16px; font-weight: bold;">Q.D. ${t.toUpperCase()}</text> <text x="${x}" y="${y + 15}" style="font-family: Arial; font-size: 12px;">${p}</text> </g>`; }
 function drawDisjuntor(x, y, text, fases = 'Monofasico') { let sP=''; switch(fases){ case 'Trifasico':sP=`<path d="M ${x-5} ${y-2} q 5 -10 10 0 M ${x-5} ${y+2} q 5 -10 10 0 M ${x-5} ${y+6} q 5 -10 10 0" stroke="black" stroke-width="1.5" fill="none"/>`;break; case 'Bifasico':sP=`<path d="M ${x-5} ${y} q 5 -10 10 0 M ${x-5} ${y+4} q 5 -10 10 0" stroke="black" stroke-width="1.5" fill="none"/>`;break; default:sP=`<path d="M ${x-5} ${y+2} q 5 -10 10 0" stroke="black" stroke-width="1.5" fill="none"/>`;break;} return `<g text-anchor="middle"> <circle cx="${x-12.5}" cy="${y}" r="1.5" fill="black"/> <circle cx="${x+12.5}" cy="${y}" r="1.5" fill="black"/> ${sP} <text x="${x}" y="${y-18}" style="font-family: Arial; font-size: 11px;">${text}</text> </g>`; }
@@ -670,53 +641,75 @@ export async function generateUnifilarPdf(calculationResults) {
     if (!svgString) { alert("Dados insuficientes para gerar Diagrama Unifilar."); return; }
     try { const { jsPDF } = window.jspdf; const doc = new jsPDF('l', 'mm', 'a3'); const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); const svgEl = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svgEl.innerHTML = svgString; document.body.appendChild(svgEl); const { width, height } = svgEl.getBBox(); document.body.removeChild(svgEl); canvas.width = width || 800; canvas.height = height || 600; const v = await Canvg.fromString(ctx, svgString); await v.render(); const imgData = canvas.toDataURL('image/png'); const pdfW = doc.internal.pageSize.getWidth(); const pdfH = doc.internal.pageSize.getHeight(); const m = 10; let imgW = pdfW - (m * 2); let imgH = (canvas.height / canvas.width) * imgW; if (imgH > pdfH - (m*2)) { imgH = pdfH - (m*2); imgW = (canvas.width / canvas.height) * imgH; } let fY = m; if (imgH < (pdfH - (m * 2))) { fY = (pdfH - imgH) / 2; } let fX = (pdfW - imgW) / 2; doc.addImage(imgData, 'PNG', fX, fY, imgW, imgH); doc.save(`Unifilar_${document.getElementById('obra').value || 'Projeto'}.pdf`); } catch (e) { console.error("Erro PDF Unifilar:", e); alert("Erro ao gerar PDF Unifilar."); }
 }
+
+// ========================================================================
+// >>>>> FUNÇÃO CORRIGIDA: generateMemorialPdf <<<<<
+// Corrigido os nomes das funções (addS, addL, addT) e a definição de reportData
+// ========================================================================
 export function generateMemorialPdf(calculationResults, currentUserProfile) {
     if (!calculationResults) { alert("Execute o cálculo primeiro."); return; }
     
     const { feederResult, circuitResults } = calculationResults;
     if (!feederResult || !circuitResults || circuitResults.length === 0) { alert("Dados insuficientes para gerar Memorial."); return;}
     
-     const { jsPDF } = window.jspdf; const doc = new jsPDF('p', 'mm', 'a4'); let y = 20; const lM = 15; const vM = 75;
-    const addT = (t) => { doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.text(t, 105, y, { align: 'center' }); y += 12; }; const addS = (t) => { if (y > 260) { doc.addPage(); y = 20; } doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.text(t, lM, y); y += 8; }; const addL = (l, v) => { if (y > 270) { doc.addPage(); y = 20; } doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.text(l, lM, y); doc.setFont('helvetica', 'normal'); doc.text(String(v || '-'), vM, y); y += 6; };
+    const { jsPDF } = window.jspdf; 
+    const doc = new jsPDF('p', 'mm', 'a4'); 
+    let yPos = 20; // Renomeado para yPos para evitar conflito
+    const lM = 15; 
+    const vM = 75;
+
+    // Definições das funções auxiliares (como no arquivo original)
+    const addT = (t) => { doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.text(t, 105, yPos, { align: 'center' }); yPos += 12; }; 
+    const addS = (t) => { if (yPos > 260) { doc.addPage(); yPos = 20; } doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.text(t, lM, yPos); yPos += 8; }; 
+    const addL = (l, v) => { if (yPos > 270) { doc.addPage(); yPos = 20; } doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.text(l, lM, yPos); doc.setFont('helvetica', 'normal'); doc.text(String(v || '-'), vM, yPos); yPos += 6; };
     
+    // **CORREÇÃO 1: Definir reportData**
+    // Os dados do cliente/obra estão dentro do resultado do alimentador
+    const reportData = feederResult.dados;
+
     addT("RELATÓRIO DE PROJETO ELÉTRICO"); 
-   addSection("DADOS DO CLIENTE");
-    addLineItem("Cliente:", reportData.cliente);
-    addLineItem(`Documento (${reportData.tipoDocumento}):`, reportData.documento);
-    addLineItem("Celular:", reportData.celular);
-    addLineItem("Telefone:", reportData.telefone);
-    addLineItem("E-mail:", reportData.email);
-    addLineItem("Endereço do Cliente:", reportData.enderecoCliente);
+    
+    // **CORREÇÃO 2: Usar addS e addL (em vez de addSection/addLineItem)**
+    addS("DADOS DO CLIENTE");
+    addL("Cliente:", reportData.cliente);
+    addL(`Documento (${reportData.tipoDocumento}):`, reportData.documento);
+    addL("Celular:", reportData.celular);
+    addL("Telefone:", reportData.telefone);
+    addL("E-mail:", reportData.email);
+    addL("Endereço do Cliente:", reportData.enderecoCliente);
     yPos += 5;
-    addSection("DADOS DA OBRA");
-    addLineItem("Código da Obra:", reportData.projectCode);
-    addLineItem("Nome da Obra:", reportData.obra);
-    addLineItem("Cidade da Obra:", reportData.cidadeObra);
-    addLineItem("Endereço da Obra:", reportData.enderecoObra);
-    addLineItem("Área da Obra (m²):", reportData.areaObra);
-    addLineItem("Unid. Residenciais:", reportData.unidadesResidenciais);
-    addLineItem("Unid. Comerciais:", reportData.unidadesComerciais);
-    addLineItem("Observações:", reportData.observacoes);
+    addS("DADOS DA OBRA");
+    addL("Código da Obra:", reportData.projectCode);
+    addL("Nome da Obra:", reportData.obra);
+    addL("Cidade da Obra:", reportData.cidadeObra);
+    addL("Endereço da Obra:", reportData.enderecoObra);
+    addL("Área da Obra (m²):", reportData.areaObra);
+    addL("Unid. Residenciais:", reportData.unidadesResidenciais);
+    addL("Unid. Comerciais:", reportData.unidadesComerciais);
+    addL("Observações:", reportData.observacoes);
     yPos += 5;
-    addSection("INFORMAÇÕES DO RESPONSÁVEL TÉCNICO");
-    addLineItem("Nome:", document.getElementById('respTecnico').value);
-    addLineItem("Título:", document.getElementById('titulo').value);
-    addLineItem("CREA:", document.getElementById('crea').value);
+    addS("INFORMAÇÕES DO RESPONSÁVEL TÉCNICO");
+    addL("Nome:", document.getElementById('respTecnico').value);
+    addL("Título:", document.getElementById('titulo').value);
+    addL("CREA:", document.getElementById('crea').value);
     yPos += 5;
-    addSection("INFORMAÇÕES DO RELATÓRIO");
+    addS("INFORMAÇÕES DO RELATÓRIO");
     const dataFormatada = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-    addLineItem("Gerado em:", dataFormatada);
-    addLineItem("Gerado por:", currentUserProfile?.nome || 'N/A');
+    addL("Gerado em:", dataFormatada);
+    addL("Gerado por:", currentUserProfile?.nome || 'N/A');
     yPos += 5;
-    addSection("RESUMO DA ALIMENTAÇÃO GERAL");
+    addS("RESUMO DA ALIMENTAÇÃO GERAL");
+    
+    // (O restante da função já usava 'doc.autoTable' e estava correto)
     const feederBreakerType = feederResult.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
     const feederBreakerText = `${feederBreakerType} ${feederResult.calculos.disjuntorRecomendado.nome}`;
     const feederHead = [['Tensão/Fases', 'Disjuntor Geral', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
     const feederBody = [[ `${feederResult.dados.tensaoV}V - ${feederResult.dados.fases}`, feederBreakerText, feederResult.dados.requerDR ? 'Sim' : 'Nao', getDpsText(feederResult.dados.dpsInfo), `${feederResult.calculos.bitolaRecomendadaMm2} mm² (${feederResult.dados.tipoIsolacao})`, feederResult.calculos.dutoRecomendado ]];
     doc.autoTable({ startY: yPos, head: feederHead, body: feederBody, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
     yPos = doc.lastAutoTable.finalY + 10;
+    
     if (circuitResults.length > 0) {
-        addSection("RESUMO DOS CIRCUITOS");
+        addS("RESUMO DOS CIRCUITOS"); // **CORREÇÃO 2 (continuação)**
         const head = [['Ckt', 'Nome', 'Disjuntor', 'DR', 'DPS', 'Cabo (Isolação)', 'Eletroduto']];
         const body = circuitResults.map((r, index) => {
             const circuitBreakerType = r.dados.tipoDisjuntor.includes('Caixa Moldada') ? 'MCCB' : 'DIN';
@@ -725,7 +718,9 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
         });
         doc.autoTable({ startY: yPos, head: head, body: body, theme: 'grid', headStyles: { fillColor: [44, 62, 80] }, styles: { fontSize: 8 } });
     }
+    
     const allCalculationsForMemorial = [feederResult, ...circuitResults];
+    
     allCalculationsForMemorial.forEach((result, index) => {
         doc.addPage();
         yPos = 20;
@@ -733,38 +728,40 @@ export function generateMemorialPdf(calculationResults, currentUserProfile) {
         const potenciaDemandadaVA = dados.fatorPotencia > 0 ? (calculos.potenciaDemandada / dados.fatorPotencia).toFixed(2) : "0.00";
         const correnteCorrigidaTexto = isFinite(calculos.correnteCorrigidaA) ? `${calculos.correnteCorrigidaA.toFixed(2)} A` : "Incalculável";
         const title = dados.id === 'Geral' ? `MEMORIAL DE CÁLCULO - ALIMENTADOR GERAL` : `MEMORIAL DE CÁLCULO - CIRCUITO ${index}: ${dados.nomeCircuito}`;
-        addTitle(title);
-        addSection("-- PARÂMETROS DE ENTRADA --");
-        if (dados.id !== 'Geral') { addLineItem("Tipo de Circuito:", dados.tipoCircuito); }
-        addLineItem("Potência Instalada:", `${calculos.potenciaInstalada.toFixed(2)} W`);
-        addLineItem("Fator de Demanda:", `${dados.fatorDemanda}%`);
-        addLineItem("Potência Demandada:", `${potenciaDemandadaVA} VA`);
-        addLineItem("Fator de Potência:", dados.fatorPotencia);
-        addLineItem("Sistema de Fases:", dados.fases);
-        addLineItem("Tipo de Ligação:", dados.tipoLigacao);
-        addLineItem("Tensão (V):", `${dados.tensaoV} V`);
-        addLineItem("Comprimento:", `${dados.comprimentoM} m`);
-        addLineItem("Limite Queda de Tensão:", `${dados.limiteQuedaTensao}%`);
+        
+        // **CORREÇÃO 3: Usar addT, addS, addL dentro do loop**
+        addT(title); // Era addTitle
+        addS("-- PARÂMETROS DE ENTRADA --"); // Era addSection
+        if (dados.id !== 'Geral') { addL("Tipo de Circuito:", dados.tipoCircuito); } // Era addLineItem
+        addL("Potência Instalada:", `${calculos.potenciaInstalada.toFixed(2)} W`);
+        addL("Fator de Demanda:", `${dados.fatorDemanda}%`);
+        addL("Potência Demandada:", `${potenciaDemandadaVA} VA`);
+        addL("Fator de Potência:", dados.fatorPotencia);
+        addL("Sistema de Fases:", dados.fases);
+        addL("Tipo de Ligação:", dados.tipoLigacao);
+        addL("Tensão (V):", `${dados.tensaoV} V`);
+        addL("Comprimento:", `${dados.comprimentoM} m`);
+        addL("Limite Queda de Tensão:", `${dados.limiteQuedaTensao}%`);
         yPos += 5;
-        addSection("-- ESPECIFICAÇÕES DE INSTALAÇÃO E CORREÇÕES --");
-        addLineItem("Material / Isolação:", `${dados.materialCabo} / ${dados.tipoIsolacao}`);
-        addLineItem("Método de Instalação:", dados.metodoInstalacao);
-        addLineItem("Temperatura Ambiente:", `${dados.temperaturaAmbienteC}°C`);
-        if (dados.id !== 'Geral') { addLineItem("Circuitos Agrupados:", dados.numCircuitosAgrupados); if (dados.resistividadeSolo > 0) { addLineItem("Resist. do Solo (C.m/W):", dados.resistividadeSolo); } } 
-        else { if (dados.resistividadeSolo > 0) { addLineItem("Resist. do Solo (C.m/W):", dados.resistividadeSolo); } }
+        addS("-- ESPECIFICAÇÕES DE INSTALAÇÃO E CORREÇÕES --");
+        addL("Material / Isolação:", `${dados.materialCabo} / ${dados.tipoIsolacao}`);
+        addL("Método de Instalação:", dados.metodoInstalacao);
+        addL("Temperatura Ambiente:", `${dados.temperaturaAmbienteC}°C`);
+        if (dados.id !== 'Geral') { addL("Circuitos Agrupados:", dados.numCircuitosAgrupados); if (dados.resistividadeSolo > 0) { addL("Resist. do Solo (C.m/W):", dados.resistividadeSolo); } } 
+        else { if (dados.resistividadeSolo > 0) { addL("Resist. do Solo (C.m/W):", dados.resistividadeSolo); } }
         yPos += 5;
-        addSection("-- RESULTADOS DE CÁLCULO E DIMENSIONAMENTO --");
-        addLineItem("Corrente de Projeto:", `${calculos.correnteInstalada.toFixed(2)} A`);
-        addLineItem("Corrente Demandada (Ib):", `${calculos.correnteDemandada.toFixed(2)} A`);
-        addLineItem("Corrente Corrigida (I'):", correnteCorrigidaTexto);
-        addLineItem("Bitola Recomendada:", `${calculos.bitolaRecomendadaMm2} mm²`);
-        addLineItem("Queda de Tensão (DV):", `${calculos.quedaTensaoCalculada.toFixed(2)}%`);
-        addLineItem("Corrente Máx. Cabo (Iz):", `${calculos.correnteMaximaCabo.toFixed(2)} A`);
+        addS("-- RESULTADOS DE CÁLCULO E DIMENSIONAMENTO --");
+        addL("Corrente de Projeto:", `${calculos.correnteInstalada.toFixed(2)} A`);
+        addL("Corrente Demandada (Ib):", `${calculos.correnteDemandada.toFixed(2)} A`);
+        addL("Corrente Corrigida (I'):", correnteCorrigidaTexto);
+        addL("Bitola Recomendada:", `${calculos.bitolaRecomendadaMm2} mm²`);
+        addL("Queda de Tensão (DV):", `${calculos.quedaTensaoCalculada.toFixed(2)}%`);
+        addL("Corrente Máx. Cabo (Iz):", `${calculos.correnteMaximaCabo.toFixed(2)} A`);
         yPos += 5;
-        addSection("-- PROTEÇÕES RECOMENDADAS --");
-        addLineItem("Disjuntor:", `${dados.tipoDisjuntor}: ${calculos.disjuntorRecomendado.nome} (Icc: ${calculos.disjuntorRecomendado.icc} kA)`);
-        addLineItem("Proteção DR:", dados.requerDR ? `Sim (${calculos.disjuntorRecomendado.nome.replace('A','')}A / 30mA)` : 'Não');
-        addLineItem("Proteção DPS:", getDpsText(dados.dpsInfo));
+        addS("-- PROTEÇÕES RECOMENDADAS --");
+        addL("Disjuntor:", `${dados.tipoDisjuntor}: ${calculos.disjuntorRecomendado.nome} (Icc: ${calculos.disjuntorRecomendado.icc} kA)`);
+        addL("Proteção DR:", dados.requerDR ? `Sim (${calculos.disjuntorRecomendado.nome.replace('A','')}A / 30mA)` : 'Não');
+        addL("Proteção DPS:", getDpsText(dados.dpsInfo));
     });
 
     doc.save(`Memorial_${document.getElementById('obra').value || 'Projeto'}.pdf`);
