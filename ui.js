@@ -1,4 +1,4 @@
-// Arquivo: ui.js (COMPLETO E CORRIGIDO - Refatorado PDF Tabela/Retângulo)
+// Arquivo: ui.js (COMPLETO E CORRIGIDO - Otimização Carregamento Projeto com DocumentFragment)
 
 console.log("--- ui.js: Iniciando carregamento ---");
 
@@ -210,62 +210,77 @@ function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
         </div>
     </div>`;
 }
-export function addQdcBlock(id = null, name = null, parentId = 'feeder') {
+
+// ========================================================================
+// >>>>> FUNÇÃO ATUALIZADA (Recebe container opcional) <<<<<
+// ========================================================================
+export function addQdcBlock(id = null, name = null, parentId = 'feeder', container = null) { // Adiciona parâmetro container
     const isNewQdc = !id;
 
-    // <<<<< FIX: Determine next ID based on current max, or use provided ID >>>>>
     let internalId;
     if (id) {
-        internalId = id; // Usa o ID fornecido (string ou number)
-        // Garante que qdcCount (usado para NOVOS QDCs) seja maior que o maior ID carregado
-        const numericId = parseInt(String(id), 10); // Converte para string primeiro
+        internalId = id;
+        const numericId = parseInt(String(id), 10);
         if (!isNaN(numericId)) {
             qdcCount = Math.max(qdcCount, numericId);
         }
     } else {
-        qdcCount++; // Incrementa o contador APENAS para QDCs realmente novos
-        internalId = qdcCount; // O novo ID é o contador incrementado
+        qdcCount++;
+        internalId = qdcCount;
     }
-    // <<<<< END FIX >>>>>
 
     const qdcName = name || `QDC ${internalId}`;
-    // Ajusta o log para mostrar o internalId que será usado
     console.log(`Adicionando QDC com internalId: ${internalId} (Novo: ${isNewQdc}, qdcCount agora: ${qdcCount})`);
 
     const newQdcDiv = document.createElement('div');
-    // Usa internalId para gerar o HTML
     newQdcDiv.innerHTML = getQdcHTML(internalId, qdcName, parentId);
     const qdcElement = newQdcDiv.firstElementChild;
-    if(!qdcElement) { console.error("Falha ao criar elemento QDC."); return; }
+    if(!qdcElement) { console.error("Falha ao criar elemento QDC."); return null; } // Retorna null em falha
 
-    const qdcContainer = document.getElementById('qdc-container');
-    if(qdcContainer) qdcContainer.appendChild(qdcElement);
-    else { console.error("Container principal de QDCs não encontrado."); return;}
+    // <<<<< ALTERAÇÃO: Usa container fornecido ou busca o padrão >>>>>
+    const targetContainer = container instanceof DocumentFragment ? container : document.getElementById('qdc-container');
+    if(targetContainer) {
+        targetContainer.appendChild(qdcElement); // Adiciona ao fragmento ou ao DOM
+    } else {
+        console.error("Container principal de QDCs não encontrado.");
+        return null; // Retorna null em falha
+    }
+    // <<<<< FIM DA ALTERAÇÃO >>>>>
 
-    updateQdcParentDropdowns();
-    // Passa internalId para inicializar listeners
-    initializeQdcListeners(internalId);
+    // Não atualiza dropdowns/listeners se estiver adicionando a um fragmento
+    if (!(container instanceof DocumentFragment)) {
+        updateQdcParentDropdowns();
+        initializeQdcListeners(internalId);
+    }
 
-    // Colapsa se for novo QDC (exceto o primeiro) ou se for carregado e não for o primeiro
-     if ((isNewQdc && qdcCount > 1) || (!isNewQdc && qdcElement.previousElementSibling)) {
+     // Colapsa se for novo QDC (exceto o primeiro) ou se for carregado e não for o primeiro
+     // Ajuste: verifica previousElementSibling apenas se NÃO estiver em fragmento
+     if ((isNewQdc && qdcCount > 1) || (!isNewQdc && !(container instanceof DocumentFragment) && qdcElement.previousElementSibling)) {
          if (!qdcElement.classList.contains('collapsed')) {
             qdcElement.classList.add('collapsed');
          }
     }
 
-    // Adiciona circuito inicial se for QDC novo (criado pelo usuário)
-    if (isNewQdc) {
-       addCircuit(internalId); // Usa internalId
+
+    // Adiciona circuito inicial se for QDC novo (criado pelo usuário via botão)
+    // E NÃO estiver adicionando a um fragmento (será feito depois no populateForm)
+    if (isNewQdc && !(container instanceof DocumentFragment)) {
+       addCircuit(internalId);
     }
 
-    const parentSelect = qdcElement.querySelector('.qdc-parent-select');
-    if(parentSelect) {
-        parentSelect.addEventListener('change', updateFeederPowerDisplay);
+    // Não adiciona listener de change/updatePower aqui se for fragmento
+    if (!(container instanceof DocumentFragment)) {
+        const parentSelect = qdcElement.querySelector('.qdc-parent-select');
+        if(parentSelect) {
+            parentSelect.addEventListener('change', updateFeederPowerDisplay);
+        }
+        updateFeederPowerDisplay();
     }
 
-    updateFeederPowerDisplay();
-    return internalId; // Retorna o ID que foi usado (seja do BD ou novo)
+    return internalId; // Retorna o ID que foi usado
 }
+
+
 export function removeQdc(qdcId) {
     if (!qdcId) return;
     const qdcElement = document.getElementById(`qdc-${qdcId}`);
@@ -320,44 +335,50 @@ export function updateQdcParentDropdowns() {
 }
 
 // --- LÓGICA DE CIRCUITO ---
-export function addCircuit(qdcId, savedCircuitData = null) {
-    console.log(`addCircuit called for QDC ID: ${qdcId}`); // DEBUG
+// ========================================================================
+// >>>>> FUNÇÃO ATUALIZADA (Recebe container opcional) <<<<<
+// ========================================================================
+export function addCircuit(qdcId, savedCircuitData = null, circuitContainer = null) { // Adiciona parâmetro circuitContainer
+    console.log(`addCircuit called for QDC ID: ${qdcId}`);
     const isNewCircuit = !savedCircuitData;
 
-    // <<<<< ALTERAÇÃO: Lógica de ID do Circuito >>>>>
     let internalId;
     if (savedCircuitData && savedCircuitData.id) {
         internalId = parseInt(savedCircuitData.id, 10);
-        // Garante que circuitCount seja maior que o maior ID carregado
         circuitCount = Math.max(circuitCount, internalId);
     } else {
-        circuitCount++; // Incrementa SÓ para circuitos novos
+        circuitCount++;
         internalId = circuitCount;
     }
-    // <<<<< FIM DA ALTERAÇÃO >>>>>
 
-    console.log(`Circuit internalId: ${internalId} (New: ${isNewCircuit}, circuitCount now: ${circuitCount})`); // DEBUG
+    console.log(`Circuit internalId: ${internalId} (New: ${isNewCircuit}, circuitCount now: ${circuitCount})`);
 
     const newCircuitDiv = document.createElement('div');
-    newCircuitDiv.innerHTML = getCircuitHTML(internalId); // Usa HTML com o ID correto
+    newCircuitDiv.innerHTML = getCircuitHTML(internalId);
     const circuitElement = newCircuitDiv.firstElementChild;
     if(!circuitElement) { console.error("Falha ao criar elemento Circuito."); return; }
 
-    // Colapsa apenas se for NOVO circuito (não ao carregar)
-    if (isNewCircuit) {
-       // Só colapsa se já existir outro circuito NESTE QDC
+    // Colapsa apenas se for NOVO circuito (não ao carregar) e não estiver em fragmento
+    if (isNewCircuit && !(circuitContainer instanceof DocumentFragment)) {
        const existingCircuits = document.querySelectorAll(`#circuits-for-qdc-${qdcId} .circuit-block`);
         if (existingCircuits.length > 0) {
             circuitElement.classList.add('collapsed');
         }
     }
 
+    // <<<<< ALTERAÇÃO: Usa container fornecido ou busca o padrão >>>>>
+    const targetContainer = circuitContainer instanceof DocumentFragment ? circuitContainer : document.getElementById(`circuits-for-qdc-${qdcId}`);
+    console.log(`Target container for circuit ${internalId}:`, targetContainer);
+    if (targetContainer) {
+        targetContainer.appendChild(circuitElement); // Adiciona ao fragmento ou ao DOM
+    } else {
+        console.error(`Circuit container for QDC ${qdcId} not found! Cannot add circuit ${internalId}.`);
+        return;
+    }
+    // <<<<< FIM DA ALTERAÇÃO >>>>>
 
-    const circuitContainer = document.getElementById(`circuits-for-qdc-${qdcId}`);
-    console.log(`Target container for circuit ${internalId}:`, circuitContainer); // DEBUG
-    if (circuitContainer) {
-        circuitContainer.appendChild(circuitElement);
-        // Listeners para recalcular cargas
+    // Adiciona listeners APENAS se não estiver adicionando a um fragmento
+    if (!(circuitContainer instanceof DocumentFragment)) {
         const powerInput = circuitElement.querySelector(`#potenciaW-${internalId}`);
         const demandInput = circuitElement.querySelector(`#fatorDemanda-${internalId}`);
         const btuSelect = circuitElement.querySelector(`#potenciaBTU-${internalId}`);
@@ -366,9 +387,6 @@ export function addCircuit(qdcId, savedCircuitData = null) {
         if(demandInput) demandInput.addEventListener('input', updateFeederPowerDisplay);
         if(btuSelect) btuSelect.addEventListener('change', () => handlePowerUnitChange(internalId, 'btu'));
         if(cvSelect) cvSelect.addEventListener('change', () => handlePowerUnitChange(internalId, 'cv'));
-    } else {
-        console.error(`Circuit container for QDC ${qdcId} not found! Cannot add circuit ${internalId}.`);
-        return; // Impede a continuação se o container não for encontrado
     }
 
     // Preenche dados se existirem
@@ -402,12 +420,11 @@ export function addCircuit(qdcId, savedCircuitData = null) {
          if(nameInput && nameLabel) nameLabel.textContent = nameInput.value || `Circuito ${internalId}`;
     }
 
-    // Inicializa dropdowns dependentes e específicos
+    // Inicializa dropdowns e popula dados dinâmicos (pode ser feito mesmo em fragmento)
     atualizarLigacoes(internalId);
     handleInsulationChange(internalId);
     handleCircuitTypeChange(internalId); // Esconde/mostra BTU/CV
 
-    // Popula dropdowns de BTU/CV/Solo
     const potenciaBTUSelect = document.getElementById(`potenciaBTU-${internalId}`);
     const potenciaCVSelect = document.getElementById(`potenciaCV-${internalId}`);
     const resistividadeSolo = document.getElementById(`resistividadeSolo-${internalId}`);
@@ -417,31 +434,31 @@ export function addCircuit(qdcId, savedCircuitData = null) {
         populateSoilResistivityDropdown(resistividadeSolo, uiData.fatores_k2);
     }
 
-    // Restaura valores de dropdowns APÓS população e inicialização
-     if (savedCircuitData) {
-         setTimeout(() => {
-            // Garante que os valores de BTU/CV/Solo sejam setados após a população
-            // Usa a chave original do savedCircuitData
-            if (savedCircuitData[`potenciaBTU-${internalId}`]) {
-                potenciaBTUSelect.value = savedCircuitData[`potenciaBTU-${internalId}`];
-            }
-            if (savedCircuitData[`potenciaCV-${internalId}`]) {
-                potenciaCVSelect.value = savedCircuitData[`potenciaCV-${internalId}`];
-            }
-            if (savedCircuitData[`resistividadeSolo-${internalId}`]) {
-                resistividadeSolo.value = savedCircuitData[`resistividadeSolo-${internalId}`];
-            }
-            // Dispara change para garantir que W seja recalculado se BTU/CV foi setado
+    // Restaura valores específicos APÓS população (pode ser feito mesmo em fragmento)
+    if (savedCircuitData) {
+        // Usa setTimeout APENAS se NÃO estiver em fragmento (para garantir DOM pronto)
+        const restoreValues = () => {
+            if (savedCircuitData[`potenciaBTU-${internalId}`]) potenciaBTUSelect.value = savedCircuitData[`potenciaBTU-${internalId}`];
+            if (savedCircuitData[`potenciaCV-${internalId}`]) potenciaCVSelect.value = savedCircuitData[`potenciaCV-${internalId}`];
+            if (savedCircuitData[`resistividadeSolo-${internalId}`]) resistividadeSolo.value = savedCircuitData[`resistividadeSolo-${internalId}`];
+            // Dispara change para recalcular W se necessário (importante fazer DEPOIS de setar valor)
             if (potenciaBTUSelect.value) potenciaBTUSelect.dispatchEvent(new Event('change'));
             if (potenciaCVSelect.value) potenciaCVSelect.dispatchEvent(new Event('change'));
+            // Atualiza display SÓ se não estiver em fragmento
+            if (!(circuitContainer instanceof DocumentFragment)) updateFeederPowerDisplay();
+        };
 
-            updateFeederPowerDisplay(); // Atualiza display após carregar
-         }, 50); // Aumenta um pouco o delay para garantir renderização completa
-     }
-     else {
-        updateFeederPowerDisplay(); // Atualiza display se for circuito novo
-     }
+        if (!(circuitContainer instanceof DocumentFragment)) {
+            setTimeout(restoreValues, 50);
+        } else {
+            restoreValues(); // Executa imediatamente se for fragmento
+        }
+    } else {
+        // Atualiza display SÓ se não estiver em fragmento
+        if (!(circuitContainer instanceof DocumentFragment)) updateFeederPowerDisplay();
+    }
 }
+
 export function removeCircuit(circuitId) {
     if (!circuitId) return;
     const circuitElement = document.getElementById(`circuit-${circuitId}`);
@@ -667,7 +684,12 @@ export function populateProjectList(projects) {
         if(projects.some(p => p.id == currentValue)) { select.value = currentValue; }
     } else { console.warn("Nenhum projeto encontrado ou dados inválidos para popular lista."); }
 }
+
+// ========================================================================
+// >>>>> FUNÇÃO ATUALIZADA (Usa DocumentFragment) <<<<<
+// ========================================================================
 export function populateFormWithProjectData(project) {
+    console.time("populateForm"); // Mede o tempo de execução
     if (!project) return;
 
     // 1. Reseta o formulário SEM adicionar QDC padrão
@@ -705,8 +727,10 @@ export function populateFormWithProjectData(project) {
         document.getElementById('feederTipoIsolacao')?.dispatchEvent(new Event('change'));
     }
 
-    // 5. Recria QDCs e Circuitos
-    if (project.qdcs_data && Array.isArray(project.qdcs_data)) {
+    // 5. Recria QDCs e Circuitos usando DocumentFragment
+    const qdcContainerTarget = document.getElementById('qdc-container');
+    if (project.qdcs_data && Array.isArray(project.qdcs_data) && qdcContainerTarget) {
+        const fragment = document.createDocumentFragment(); // Cria o fragmento
 
         // Ordena QDCs para garantir que os pais sejam criados antes dos filhos
         const qdcMap = new Map();
@@ -735,53 +759,121 @@ export function populateFormWithProjectData(project) {
 
         console.log("QDCs ordenados para renderização:", sortedQdcs.map(q => q.id));
 
+        // Cria QDCs e Circuitos DENTRO do fragmento
         sortedQdcs.forEach(qdc => {
-            // Passa o ID original (pode ser string) para addQdcBlock
-            const renderedQdcId = addQdcBlock(String(qdc.id), qdc.name, qdc.parentId);
+            // Chama addQdcBlock passando o fragmento como container
+            const renderedQdcId = addQdcBlock(String(qdc.id), qdc.name, qdc.parentId, fragment); // Passa fragment
 
-            // Popula config do QDC
+            // Encontra o elemento QDC DENTRO do fragmento para popular config e adicionar circuitos
+            const qdcElementInFragment = fragment.querySelector(`#qdc-${renderedQdcId}`);
+            if (!qdcElementInFragment) {
+                console.error(`Elemento QDC ${renderedQdcId} não encontrado no fragmento.`);
+                return; // Pula este QDC se não for encontrado
+            }
+
+
+            // Popula config do QDC (lê do qdc.config, escreve no elemento DENTRO do fragmento)
             if (qdc.config) {
                 Object.keys(qdc.config).forEach(key => {
-                    // key aqui é como 'qdcFases-1'
-                    const el = document.getElementById(key);
+                    const el = qdcElementInFragment.querySelector(`#${key}`); // Busca DENTRO do elemento QDC no fragmento
                     if (el) {
                         if (el.type === 'checkbox') el.checked = qdc.config[key];
                         else el.value = qdc.config[key];
                     }
                 });
-                // Re-dispara eventos usando o ID renderizado
-                document.getElementById(`qdcFases-${renderedQdcId}`)?.dispatchEvent(new Event('change'));
-                document.getElementById(`qdcTipoIsolacao-${renderedQdcId}`)?.dispatchEvent(new Event('change'));
+                // Dispara eventos DEPOIS que o fragmento for adicionado ao DOM
             }
 
-            // Adiciona circuitos
+            // Adiciona circuitos AO FRAGMENTO (dentro do container de circuitos do QDC no fragmento)
             if (qdc.circuits && Array.isArray(qdc.circuits)) {
-                qdc.circuits.forEach(circuit => {
-                    // Passa o ID do QDC renderizado e os dados do circuito
-                    addCircuit(renderedQdcId, circuit);
-                });
+                  const circuitContainerInFragment = qdcElementInFragment.querySelector(`#circuits-for-qdc-${renderedQdcId}`);
+                  if (circuitContainerInFragment) {
+                      qdc.circuits.forEach(circuit => {
+                          // Chama addCircuit passando o container DENTRO do fragmento
+                          addCircuit(renderedQdcId, circuit, circuitContainerInFragment);
+                      });
+                  } else {
+                       console.error(`Container de circuitos para QDC ${renderedQdcId} não encontrado no fragmento.`);
+                  }
             }
         });
-    }
 
-    // Garante que o dropdown de pais (que foi populado em addQdcBlock)
-    // tenha os valores corretos selecionados (pois agora todos os QDCs existem)
-    setTimeout(() => {
-        if (project.qdcs_data) {
-             project.qdcs_data.forEach(qdc => {
-                const parentSelect = document.getElementById(`qdcParent-${qdc.id}`);
-                if (parentSelect) {
-                    parentSelect.value = qdc.parentId;
-                     // Atualiza o data attribute para refletir o estado carregado
-                    parentSelect.dataset.initialParent = qdc.parentId;
-                } else {
-                    console.warn(`Select de Parent não encontrado para QDC ${qdc.id} após load.`);
-                }
+        // <<<<< ALTERAÇÃO: Adiciona o fragmento inteiro ao DOM DE UMA SÓ VEZ >>>>>
+        qdcContainerTarget.appendChild(fragment);
+        // <<<<< FIM DA ALTERAÇÃO >>>>>
+
+        // AGORA, após adicionar ao DOM, inicializa listeners e dispara eventos
+        sortedQdcs.forEach(qdc => {
+            const renderedQdcId = String(qdc.id); // O ID original é o ID renderizado
+            initializeQdcListeners(renderedQdcId); // Adiciona listeners agora que está no DOM
+             // Dispara eventos de change para Fases e Isolação
+             document.getElementById(`qdcFases-${renderedQdcId}`)?.dispatchEvent(new Event('change'));
+             document.getElementById(`qdcTipoIsolacao-${renderedQdcId}`)?.dispatchEvent(new Event('change'));
+
+             // Adiciona listener de change para o parentSelect
+             const parentSelect = document.getElementById(`qdcParent-${renderedQdcId}`);
+             if(parentSelect) {
+                 parentSelect.addEventListener('change', updateFeederPowerDisplay);
+             }
+
+             // Restaura valores de BTU/CV/Solo e dispara change nos circuitos AGORA
+             if (qdc.circuits) {
+                 qdc.circuits.forEach(circuit => {
+                     const circuitId = circuit.id;
+                     const btuSelect = document.getElementById(`potenciaBTU-${circuitId}`);
+                     const cvSelect = document.getElementById(`potenciaCV-${circuitId}`);
+                     const soloSelect = document.getElementById(`resistividadeSolo-${circuitId}`);
+
+                     if (btuSelect && circuit[`potenciaBTU-${circuitId}`]) {
+                         btuSelect.value = circuit[`potenciaBTU-${circuitId}`];
+                         btuSelect.dispatchEvent(new Event('change'));
+                     }
+                     if (cvSelect && circuit[`potenciaCV-${circuitId}`]) {
+                         cvSelect.value = circuit[`potenciaCV-${circuitId}`];
+                         cvSelect.dispatchEvent(new Event('change'));
+                     }
+                      if (soloSelect && circuit[`resistividadeSolo-${circuitId}`]) {
+                         soloSelect.value = circuit[`resistividadeSolo-${circuitId}`];
+                         // Não precisa disparar change para solo geralmente
+                     }
+
+                     // Adiciona listeners de power/demand aos circuitos
+                     const powerInput = document.getElementById(`potenciaW-${circuitId}`);
+                     const demandInput = document.getElementById(`fatorDemanda-${circuitId}`);
+                     if(powerInput) powerInput.addEventListener('input', updateFeederPowerDisplay);
+                     if(demandInput) demandInput.addEventListener('input', updateFeederPowerDisplay);
+                 });
+             }
+        });
+
+         // Atualiza TODOS os dropdowns de parent DEPOIS que todos QDCs estão no DOM
+         updateQdcParentDropdowns();
+         // Restaura a seleção do parent salva no BD
+         setTimeout(() => { // Delay para garantir que dropdowns foram populados
+             sortedQdcs.forEach(qdc => {
+                 const parentSelect = document.getElementById(`qdcParent-${qdc.id}`);
+                 if (parentSelect && qdc.parentId) {
+                     // Verifica se a opção ainda existe antes de setar
+                     if (Array.from(parentSelect.options).some(opt => opt.value === qdc.parentId)) {
+                         parentSelect.value = qdc.parentId;
+                          parentSelect.dataset.initialParent = qdc.parentId; // Atualiza data attribute
+                     } else {
+                         console.warn(`Parent ID ${qdc.parentId} salvo para QDC ${qdc.id} não encontrado no dropdown. Resetando para feeder.`);
+                         parentSelect.value = 'feeder';
+                          parentSelect.dataset.initialParent = 'feeder';
+                     }
+                 }
              });
-        }
-        updateFeederPowerDisplay(); // Calcula display final
-    }, 150); // Aumenta delay ligeiramente
+             updateFeederPowerDisplay(); // Calcula display final
+         }, 100); // Pequeno delay
+    } else {
+         // Se não há QDCs, apenas calcula o display (caso raro de projeto sem QDC)
+         updateFeederPowerDisplay();
+    }
+    console.timeEnd("populateForm"); // Termina medição
 }
+
+
 export function populateUsersPanel(users) {
     const list = document.getElementById('adminUserList');
     if (!list) return;
