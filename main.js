@@ -1,4 +1,4 @@
-// Arquivo: main.js (CORRIGIDO - Passando formData para generateMemorialPdf)
+// Arquivo: main.js (CORRIGIDO - Com Event Delegation e Debounce)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -309,6 +309,9 @@ async function handleCalculateAndPdf() {
 }
 
 
+// ========================================================================
+// >>>>> ALTERAÇÃO PRINCIPAL AQUI (Soluções 1, 2 e 3) <<<<<
+// ========================================================================
 function setupEventListeners() {
     // --- Listeners da versão funcional ---
     document.getElementById('loginBtn').addEventListener('click', handleLogin);
@@ -323,11 +326,61 @@ function setupEventListeners() {
     document.getElementById('loadBtn').addEventListener('click', handleLoadProject);
     document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
     document.getElementById('newBtn').addEventListener('click', () => handleNewProject(true));
+    
+    // --- DEBOUNCERS ---
+    // Debouncer para busca (já existia)
     const debouncedSearch = utils.debounce((e) => handleSearch(e.target.value), 300);
     document.getElementById('searchInput').addEventListener('input', debouncedSearch);
-    document.getElementById('addQdcBtn').addEventListener('click', () => ui.addQdcBlock()); // Listener corrigido
+    
+    // NOVO: Debouncer para o recálculo de potência (Solução 3)
+    const debouncedUpdateFeederPower = utils.debounce(ui.updateFeederPowerDisplay, 350);
+    // NOVO: Debouncer para atualizar os dropdowns de QDC (Solução 1, mas com debounce)
+    const debouncedUpdateQdcDropdowns = utils.debounce(ui.updateQdcParentDropdowns, 400);
+
+    document.getElementById('addQdcBtn').addEventListener('click', () => ui.addQdcBlock());
     document.getElementById('manageQdcsBtn').addEventListener('click', () => ui.openModal('qdcManagerModalOverlay'));
-    const appContainer = document.getElementById('appContainer'); if(appContainer) { appContainer.addEventListener('input', ui.handleMainContainerInteraction); appContainer.addEventListener('click', ui.handleMainContainerInteraction); }
+    
+    // --- EVENT DELEGATION (Solução 1, 2, 3) ---
+    // Removemos os listeners individuais de input/click do appContainer
+    // e os substituímos por uma lógica de delegação mais robusta.
+    const appContainer = document.getElementById('appContainer'); 
+    if(appContainer) { 
+        // 1. Listener para AÇÕES (Clicks e Changes)
+        // 'change' é para selects, checkboxes, e inputs de texto *após perder o foco*
+        appContainer.addEventListener('change', ui.handleMainContainerInteraction);
+        // 'click' é para botões (remover, adicionar, colapsar)
+        appContainer.addEventListener('click', ui.handleMainContainerInteraction); 
+        
+        // 2. Listener para INPUTS "AO VIVO" (com Debounce)
+        // 'input' dispara a cada tecla, mas chamamos as funções "debounced"
+        appContainer.addEventListener('input', (event) => {
+            const target = event.target;
+            
+            // Se for um campo de potência/demanda, chama o debounce de recálculo (Solução 3)
+            if (target.id.startsWith('potenciaW-') || 
+                target.id.startsWith('fatorDemanda-') ||
+                target.id.startsWith('qdcFatorDemanda-') ||
+                target.id === 'feederFatorDemanda') 
+            {
+                debouncedUpdateFeederPower();
+            }
+            
+            // Se for o nome do QDC, chama o debounce de atualização dos dropdowns (Solução 1 melhorada)
+            if (target.classList.contains('qdc-name-input')) {
+                debouncedUpdateQdcDropdowns();
+            }
+
+            // Se for o nome do Circuito, atualiza o label (isto é leve, não precisa de debounce)
+            if (target.id.startsWith('nomeCircuito-')) {
+                 const circuitId = target.closest('.circuit-block')?.dataset.id;
+                 if (circuitId) {
+                    const lbl = document.getElementById(`nomeCircuitoLabel-${circuitId}`); 
+                    if(lbl) lbl.textContent = target.value || `Circuito ${circuitId}`;
+                 }
+            }
+        });
+    }
+
     document.getElementById('calculateAndPdfBtn').addEventListener('click', handleCalculateAndPdf); // Chama a versão com Edge Function
     document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
     const projectsTableBody = document.getElementById('adminProjectsTableBody'); if(projectsTableBody) projectsTableBody.addEventListener('click', handleProjectPanelClick);

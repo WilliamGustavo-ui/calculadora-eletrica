@@ -1,4 +1,4 @@
-// Arquivo: ui.js (COMPLETO E CORRIGIDO - Otimização Carregamento Projeto com DocumentFragment)
+// Arquivo: ui.js (COMPLETO E CORRIGIDO - Com Event Delegation e sem Memory Leaks)
 
 console.log("--- ui.js: Iniciando carregamento ---");
 
@@ -119,7 +119,7 @@ export function openModal(modalId) { const modal = document.getElementById(modal
 export function closeModal(modalId) { const modal = document.getElementById(modalId); if(modal) modal.style.display = 'none'; }
 
 // --- FUNÇÃO DE ATUALIZAÇÃO HIERÁRQUICA DE CARGA VISUAL ---
-function updateFeederPowerDisplay() {
+export function updateFeederPowerDisplay() {
     // console.log("Atualizando display de carga..."); // Log opcional
     const qdcData = {}; let totalInstalledGeneral = 0;
     document.querySelectorAll('#qdc-container .qdc-block').forEach(qdcBlock => {
@@ -270,10 +270,8 @@ export function addQdcBlock(id = null, name = null, parentId = 'feeder', contain
 
     // Não adiciona listener de change/updatePower aqui se for fragmento
     if (!(container instanceof DocumentFragment)) {
-        const parentSelect = qdcElement.querySelector('.qdc-parent-select');
-        if(parentSelect) {
-            parentSelect.addEventListener('change', updateFeederPowerDisplay);
-        }
+        // <<< ALTERAÇÃO: Listener de 'change' do parentSelect foi REMOVIDO daqui (Solução 2) >>>
+        // É tratado por handleMainContainerInteraction
         updateFeederPowerDisplay();
     }
 
@@ -377,17 +375,8 @@ export function addCircuit(qdcId, savedCircuitData = null, circuitContainer = nu
     }
     // <<<<< FIM DA ALTERAÇÃO >>>>>
 
-    // Adiciona listeners APENAS se não estiver adicionando a um fragmento
-    if (!(circuitContainer instanceof DocumentFragment)) {
-        const powerInput = circuitElement.querySelector(`#potenciaW-${internalId}`);
-        const demandInput = circuitElement.querySelector(`#fatorDemanda-${internalId}`);
-        const btuSelect = circuitElement.querySelector(`#potenciaBTU-${internalId}`);
-        const cvSelect = circuitElement.querySelector(`#potenciaCV-${internalId}`);
-        if(powerInput) powerInput.addEventListener('input', updateFeederPowerDisplay);
-        if(demandInput) demandInput.addEventListener('input', updateFeederPowerDisplay);
-        if(btuSelect) btuSelect.addEventListener('change', () => handlePowerUnitChange(internalId, 'btu'));
-        if(cvSelect) cvSelect.addEventListener('change', () => handlePowerUnitChange(internalId, 'cv'));
-    }
+    // <<< ALTERAÇÃO: REMOVIDOS TODOS OS addEventListener (Solução 2) >>>
+    // A lógica de input/change será tratada por handleMainContainerInteraction
 
     // Preenche dados se existirem
     if (savedCircuitData) {
@@ -436,16 +425,16 @@ export function addCircuit(qdcId, savedCircuitData = null, circuitContainer = nu
 
     // Restaura valores específicos APÓS população (pode ser feito mesmo em fragmento)
     if (savedCircuitData) {
-        // Usa setTimeout APENAS se NÃO estiver em fragmento (para garantir DOM pronto)
         const restoreValues = () => {
             if (savedCircuitData[`potenciaBTU-${internalId}`]) potenciaBTUSelect.value = savedCircuitData[`potenciaBTU-${internalId}`];
             if (savedCircuitData[`potenciaCV-${internalId}`]) potenciaCVSelect.value = savedCircuitData[`potenciaCV-${internalId}`];
             if (savedCircuitData[`resistividadeSolo-${internalId}`]) resistividadeSolo.value = savedCircuitData[`resistividadeSolo-${internalId}`];
+            
             // Dispara change para recalcular W se necessário (importante fazer DEPOIS de setar valor)
             if (potenciaBTUSelect.value) potenciaBTUSelect.dispatchEvent(new Event('change'));
             if (potenciaCVSelect.value) potenciaCVSelect.dispatchEvent(new Event('change'));
-            // Atualiza display SÓ se não estiver em fragmento
-            if (!(circuitContainer instanceof DocumentFragment)) updateFeederPowerDisplay();
+            
+            // <<< ALTERAÇÃO: REMOVIDO updateFeederPowerDisplay (Solução 2) >>>
         };
 
         if (!(circuitContainer instanceof DocumentFragment)) {
@@ -454,8 +443,12 @@ export function addCircuit(qdcId, savedCircuitData = null, circuitContainer = nu
             restoreValues(); // Executa imediatamente se for fragmento
         }
     } else {
-        // Atualiza display SÓ se não estiver em fragmento
-        if (!(circuitContainer instanceof DocumentFragment)) updateFeederPowerDisplay();
+        // <<< ALTERAÇÃO: REMOVIDO updateFeederPowerDisplay (Solução 2) >>>
+    }
+    
+    // Atualiza o display DEPOIS de adicionar (apenas se não for fragmento)
+    if (!(circuitContainer instanceof DocumentFragment)) {
+        updateFeederPowerDisplay();
     }
 }
 
@@ -505,9 +498,9 @@ function initializeQdcListeners(id) {
     const qdcFases = document.getElementById(`qdcFases-${id}`);
     const qdcTipoIsolacao = document.getElementById(`qdcTipoIsolacao-${id}`);
 
-    if(qdcFases) qdcFases.addEventListener('change', () => atualizarQdcLigacoes(id));
-    if(qdcTipoIsolacao) qdcTipoIsolacao.addEventListener('change', () => handleQdcInsulationChange(id));
-
+    // <<< ALTERAÇÃO: REMOVIDOS addEventListener (Solução 2) >>>
+    // Apenas chamamos as funções de inicialização
+    
     // Inicialização
     atualizarQdcLigacoes(id);
     handleQdcInsulationChange(id);
@@ -564,53 +557,127 @@ function handlePowerUnitChange(id, type) {
             if(btuSelect) btuSelect.value = "";
         }
     }
-    updateFeederPowerDisplay(); // Recalcula cargas
+    // <<< ALTERAÇÃO: REMOVIDO updateFeederPowerDisplay (Solução 2) >>>
+    // Esta função agora é chamada de dentro do handleMainContainerInteraction
+    // ou pelo debouncer em main.js
 }
+
+// ========================================================================
+// >>>>> FUNÇÃO ATUALIZADA (Solução 1 e 2) <<<<<
+// Esta função agora trata TODOS os eventos de click e change
+// ========================================================================
 export function handleMainContainerInteraction(event) {
     const target = event.target;
-    // console.log("Interaction target:", target); // DEBUG
+    const eventType = event.type; // 'click' ou 'change'
 
     // --- Lógica de QDC ---
     const qdcBlock = target.closest('.qdc-block');
     if (qdcBlock) {
         const qdcId = qdcBlock.dataset.id;
-        // console.log("Found QDC Block:", qdcBlock, "with ID:", qdcId); // DEBUG
         if (!qdcId) return;
 
-        // LÓGICA DE ADICIONAR CIRCUITO (DELEGADA)
-        const addCircuitButton = target.closest('.add-circuit-to-qdc-btn');
-        if (addCircuitButton) {
-            console.log("Add circuit button clicked for QDC ID:", qdcId); // DEBUG
-            event.stopPropagation(); // Impede o colapso do QDC
-            addCircuit(qdcId); // Usa o qdcId do data-id do qdcBlock
-            return; // Encerra a interação
+        if (eventType === 'click') {
+            // ADICIONAR CIRCUITO (Botão '+ Circuito')
+            const addCircuitButton = target.closest('.add-circuit-to-qdc-btn');
+            if (addCircuitButton) {
+                event.stopPropagation(); // Impede o colapso
+                addCircuit(qdcId);
+                return;
+            }
+            // REMOVER QDC (Botão 'Remover QDC')
+            const removeQdcButton = target.closest('.remove-qdc-btn');
+            if (removeQdcButton) {
+                removeQdc(qdcId);
+                return;
+            }
+            // COLAPSAR QDC (Click no Header)
+            const qdcHeader = target.closest('.qdc-header');
+            if (qdcHeader && !target.closest('.qdc-header-right button, .qdc-header-left input, .qdc-header-center select')) {
+                qdcBlock.classList.toggle('collapsed');
+                return;
+            }
+        } 
+        else if (eventType === 'change') {
+            // MUDAR PARENT (Select 'Alimentado por:')
+            if (target.classList.contains('qdc-parent-select')) {
+                updateFeederPowerDisplay(); // Recalcula a carga
+                return;
+            }
+            // MUDAR FASES QDC
+            if (target.id === `qdcFases-${qdcId}`) {
+                atualizarQdcLigacoes(qdcId);
+                return;
+            }
+            // MUDAR ISOLAÇÃO QDC
+            if (target.id === `qdcTipoIsolacao-${qdcId}`) {
+                handleQdcInsulationChange(qdcId);
+                return;
+            }
+            // MUDAR NOME DO QDC (agora no 'change' e não 'input')
+            if (target.classList.contains('qdc-name-input')) {
+                updateQdcParentDropdowns();
+                return;
+            }
         }
-
-        const removeQdcButton = target.closest('.remove-qdc-btn'); if (removeQdcButton) { removeQdc(qdcId); return; }
-        if (target.classList.contains('qdc-name-input') && event.type === 'input') { updateQdcParentDropdowns(); return; }
-        if (target.classList.contains('qdc-parent-select') && event.type === 'change') { updateFeederPowerDisplay(); return; }
-        if (target.id === `qdcFases-${qdcId}`) { atualizarQdcLigacoes(qdcId); }
-        // Correção aqui também:
-        else if (target.id === `qdcTipoIsolacao-${qdcId}`) { handleQdcInsulationChange(qdcId); }
-        const qdcHeader = target.closest('.qdc-header'); if (qdcHeader && !target.closest('.qdc-header-right button, .qdc-header-left input, .qdc-header-center select')) { qdcBlock.classList.toggle('collapsed'); return; }
-    }
+    } // Fim da lógica de QDC
 
     // --- Lógica de Circuito ---
     const circuitBlock = target.closest('.circuit-block');
     if (circuitBlock) {
-        const circuitId = circuitBlock.dataset.id; if (!circuitId) return;
-        const circuitHeader = target.closest('.circuit-header'); if (circuitHeader && !target.closest('.remove-circuit-btn')) { circuitBlock.classList.toggle('collapsed'); }
-        if (target.id === `nomeCircuito-${circuitId}` && event.type === 'input') { const lbl = document.getElementById(`nomeCircuitoLabel-${circuitId}`); if(lbl) lbl.textContent = target.value || `Circuito ${circuitId}`; }
+        const circuitId = circuitBlock.dataset.id;
+        if (!circuitId) return;
 
-        const removeCircuitButton = target.closest('.remove-circuit-btn');
-        if (removeCircuitButton) {
-            removeCircuit(circuitId); // Chama a função restaurada
+        if (eventType === 'click') {
+            // REMOVER CIRCUITO
+            const removeCircuitButton = target.closest('.remove-circuit-btn');
+            if (removeCircuitButton) {
+                removeCircuit(circuitId);
+                return;
+            }
+            // COLAPSAR CIRCUITO
+            const circuitHeader = target.closest('.circuit-header');
+            if (circuitHeader && !target.closest('.remove-circuit-btn')) {
+                circuitBlock.classList.toggle('collapsed');
+                return;
+            }
+        } 
+        else if (eventType === 'change') {
+            // --- ESTA É A LÓGICA MOVIDA DO addCircuit (Solução 2) ---
+            
+            // MUDAR POTÊNCIA BTU
+            if (target.id === `potenciaBTU-${circuitId}`) {
+                handlePowerUnitChange(circuitId, 'btu');
+                updateFeederPowerDisplay(); // Atualiza a potência
+                return;
+            }
+            // MUDAR POTÊNCIA CV
+            if (target.id === `potenciaCV-${circuitId}`) {
+                handlePowerUnitChange(circuitId, 'cv');
+                updateFeederPowerDisplay(); // Atualiza a potência
+                return;
+            }
+            // MUDAR TIPO DE CIRCUITO
+            if (target.id === `tipoCircuito-${circuitId}`) {
+                handleCircuitTypeChange(circuitId);
+                return;
+            }
+            // MUDAR FASES CIRCUITO
+            if (target.id === `fases-${circuitId}`) {
+                atualizarLigacoes(circuitId);
+                return;
+            }
+            // MUDAR ISOLAÇÃO CIRCUITO
+            if (target.id === `tipoIsolacao-${circuitId}`) {
+                handleInsulationChange(circuitId);
+                return;
+            }
         }
-        else if (target.id === `tipoCircuito-${circuitId}`) { handleCircuitTypeChange(circuitId); }
-        else if (target.id === `fases-${circuitId}`) { atualizarLigacoes(circuitId); }
-        else if (target.id === `tipoIsolacao-${circuitId}`) { handleInsulationChange(circuitId); }
-    }
+    } // Fim da lógica de Circuito
 }
+// ========================================================================
+// >>>>> FIM DA FUNÇÃO ALTERADA <<<<<
+// ========================================================================
+
 function atualizarLigacoes(id) {
     const fasesSelect = document.getElementById(`fases-${id}`);
     const tipoLigacaoSelect = document.getElementById(`tipoLigacao-${id}`);
@@ -810,11 +877,7 @@ export function populateFormWithProjectData(project) {
              document.getElementById(`qdcFases-${renderedQdcId}`)?.dispatchEvent(new Event('change'));
              document.getElementById(`qdcTipoIsolacao-${renderedQdcId}`)?.dispatchEvent(new Event('change'));
 
-             // Adiciona listener de change para o parentSelect
-             const parentSelect = document.getElementById(`qdcParent-${renderedQdcId}`);
-             if(parentSelect) {
-                 parentSelect.addEventListener('change', updateFeederPowerDisplay);
-             }
+             // <<< ALTERAÇÃO: REMOVIDO addEventListener do parentSelect (Solução 2) >>>
 
              // Restaura valores de BTU/CV/Solo e dispara change nos circuitos AGORA
              if (qdc.circuits) {
@@ -826,22 +889,18 @@ export function populateFormWithProjectData(project) {
 
                      if (btuSelect && circuit[`potenciaBTU-${circuitId}`]) {
                          btuSelect.value = circuit[`potenciaBTU-${circuitId}`];
-                         btuSelect.dispatchEvent(new Event('change'));
+                         btuSelect.dispatchEvent(new Event('change')); // Mantido para calcular W
                      }
                      if (cvSelect && circuit[`potenciaCV-${circuitId}`]) {
                          cvSelect.value = circuit[`potenciaCV-${circuitId}`];
-                         cvSelect.dispatchEvent(new Event('change'));
+                         cvSelect.dispatchEvent(new Event('change')); // Mantido para calcular W
                      }
                       if (soloSelect && circuit[`resistividadeSolo-${circuitId}`]) {
                          soloSelect.value = circuit[`resistividadeSolo-${circuitId}`];
                          // Não precisa disparar change para solo geralmente
                      }
 
-                     // Adiciona listeners de power/demand aos circuitos
-                     const powerInput = document.getElementById(`potenciaW-${circuitId}`);
-                     const demandInput = document.getElementById(`fatorDemanda-${circuitId}`);
-                     if(powerInput) powerInput.addEventListener('input', updateFeederPowerDisplay);
-                     if(demandInput) demandInput.addEventListener('input', updateFeederPowerDisplay);
+                     // <<< ALTERAÇÃO: REMOVIDOS addEventListener de power/demand (Solução 2) >>>
                  });
              }
         });
