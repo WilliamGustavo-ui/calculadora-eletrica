@@ -400,4 +400,11 @@ function main() {
     });
 }
 
-main();
+// ========================================================================
+// >>>>> ALTERAÇÃO PRINCIPAL AQUI <<<<<
+// ========================================================================
+// Em vez de chamar main() diretamente, esperamos o DOM carregar.
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("--- main.js: DOM Content Loaded ---");
+    main(); // Agora é seguro chamar main() e setupEventListeners()
+});
