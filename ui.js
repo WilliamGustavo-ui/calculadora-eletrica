@@ -238,7 +238,7 @@ export function addQdcBlock(id = null, name = null, parentId = 'feeder', contain
     if(!qdcElement) { console.error("Falha ao criar elemento QDC."); return null; } // Retorna null em falha
 
     // <<<<< ALTERAÇÃO: Usa container fornecido ou busca o padrão >>>>>
-    const targetContainer = container instanceof DocumentFragment ? container : document.getElementById('qdc-container');
+    const targetContainer = container ? container : document.getElementById('qdc-container');
     if(targetContainer) {
         targetContainer.appendChild(qdcElement); // Adiciona ao fragmento ou ao DOM
     } else {
@@ -365,7 +365,7 @@ export function addCircuit(qdcId, savedCircuitData = null, circuitContainer = nu
     }
 
     // <<<<< ALTERAÇÃO: Usa container fornecido ou busca o padrão >>>>>
-    const targetContainer = circuitContainer instanceof DocumentFragment ? circuitContainer : document.getElementById(`circuits-for-qdc-${qdcId}`);
+    const targetContainer = circuitContainer ? circuitContainer : document.getElementById(`circuits-for-qdc-${qdcId}`);
     console.log(`Target container for circuit ${internalId}:`, targetContainer);
     if (targetContainer) {
         targetContainer.appendChild(circuitElement); // Adiciona ao fragmento ou ao DOM
