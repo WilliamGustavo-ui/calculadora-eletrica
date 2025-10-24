@@ -1,4 +1,4 @@
-// Arquivo: main.js (CORRIGIDO - Com Event Delegation e Debounce)
+// Arquivo: main.js (CORRIGIDO - Com Event Delegation e Debounce centralizado no ui.js)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -332,8 +332,9 @@ function setupEventListeners() {
     const debouncedSearch = utils.debounce((e) => handleSearch(e.target.value), 300);
     document.getElementById('searchInput').addEventListener('input', debouncedSearch);
     
-    // NOVO: Debouncer para o recálculo de potência (Solução 3)
-    const debouncedUpdateFeederPower = utils.debounce(ui.updateFeederPowerDisplay, 350);
+    // >>>>> ALTERAÇÃO: Removido o debouncer duplicado daqui
+    // const debouncedUpdateFeederPower = utils.debounce(ui.updateFeederPowerDisplay, 350);
+    
     // NOVO: Debouncer para atualizar os dropdowns de QDC (Solução 1, mas com debounce)
     const debouncedUpdateQdcDropdowns = utils.debounce(ui.updateQdcParentDropdowns, 400);
 
@@ -356,13 +357,14 @@ function setupEventListeners() {
         appContainer.addEventListener('input', (event) => {
             const target = event.target;
             
+            // >>>>> ALTERAÇÃO: Chama diretamente a função debounced do ui.js
             // Se for um campo de potência/demanda, chama o debounce de recálculo (Solução 3)
             if (target.id.startsWith('potenciaW-') || 
                 target.id.startsWith('fatorDemanda-') ||
                 target.id.startsWith('qdcFatorDemanda-') ||
                 target.id === 'feederFatorDemanda') 
             {
-                debouncedUpdateFeederPower();
+                ui.updateFeederPowerDisplay(); // <--- ALTERADO
             }
             
             // Se for o nome do QDC, chama o debounce de atualização dos dropdowns (Solução 1 melhorada)
@@ -396,7 +398,7 @@ function setupEventListeners() {
     document.getElementById('continueWithoutClientBtn').addEventListener('click', handleContinueWithoutClient);
     document.getElementById('addNewClientFromSelectModalBtn').addEventListener('click', () => { ui.closeModal('selectClientModalOverlay'); handleOpenClientManagement(); });
     // --- Máscaras ---
-    document.getElementById('regCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('regTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('editCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('editTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientCelular')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientTelefone')?.addEventListener('input', utils.mascaraTelefone); const clientDoc = document.getElementById('clientDocumentoValor'); if(clientDoc) clientDoc.addEventListener('input', (e) => { const tipo = document.getElementById('clientDocumentoTipo')?.value; if(tipo) utils.aplicarMascara(e, tipo); }); const clientDocTipo = document.getElementById('clientDocumentoTipo'); if(clientDocTipo) clientDocTipo.addEventListener('change', () => { const docVal = document.getElementById('clientDocumentoValor'); if(docVal) docVal.value = ''; });
+    document.getElementById('regCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('regTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('editCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('editTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientCelular')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientTelefone')?.addEventListener('input', utils.mascaraTelefone); const clientDoc = document.getElementById('clientDocumentoValor'); if(clientDoc) clientDoc.addEventListener('input', (e) => { const tipo = document.getElementById('clientDocumentoTipo')?.value; if(tipo) utils.aplicarMascara(e, tipo); }); const clientDocTipo = document.getElementById('clientDocumentoTipo'); if(clientDocTipo) clientDocTipo.addEventListener('change', () => { const docVal = document.getElementById('documentoValor'); if(docVal) docVal.value = ''; });
 }
 
 // --- onAuthStateChange da versão funcional ---
