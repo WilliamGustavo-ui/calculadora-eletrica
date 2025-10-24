@@ -1,10 +1,10 @@
-// Arquivo: ui.js (COMPLETO E CORRIGIDO - Com Event Delegation e Debounce GLOBAL)
+// Arquivo: ui.js (COMPLETO E CORRIGIDO - Com exibição de Demanda Própria e Total)
 
 console.log("--- ui.js: Iniciando carregamento ---");
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { Canvg } from 'https://cdn.skypack.dev/canvg';
-// >>>>> ALTERAÇÃO: Importa o debounce
+// Importa o debounce
 import { debounce } from './utils.js';
 
 let circuitCount = 0;
@@ -122,7 +122,7 @@ export function closeModal(modalId) { const modal = document.getElementById(moda
 
 // --- FUNÇÃO DE ATUALIZAÇÃO HIERÁRQUICA DE CARGA VISUAL ---
 
-// >>>>> ALTERAÇÃO: Função renomeada para _internal_ e removido 'export'
+// Função renomeada para _internal_ e removido 'export'
 function _internal_updateFeederPowerDisplay() {
     // console.log("Atualizando display de carga..."); // Log opcional
     const qdcData = {}; let totalInstalledGeneral = 0;
@@ -138,6 +138,11 @@ function _internal_updateFeederPowerDisplay() {
         const parentSelect = document.getElementById(`qdcParent-${qdcId}`); const parentId = parentSelect ? parentSelect.value : 'feeder';
         qdcData[qdcId] = { installedDirect, demandedDirect, parentId, childrenIds: [], aggregatedDemand: -1 };
         const qdcPotInstEl = document.getElementById(`qdcPotenciaInstalada-${qdcId}`); if (qdcPotInstEl) qdcPotInstEl.value = installedDirect.toFixed(2);
+        
+        // >>>>> ALTERAÇÃO AQUI (1 de 2): Popula o novo campo "Demandada (Própria)"
+        const qdcDemPropriaEl = document.getElementById(`qdcDemandaPropria-${qdcId}`); 
+        if (qdcDemPropriaEl) qdcDemPropriaEl.value = demandedDirect.toFixed(2);
+        
     });
     Object.keys(qdcData).forEach(qdcId => { const parentId = qdcData[qdcId].parentId; if (parentId !== 'feeder' && qdcData[parentId]) { qdcData[parentId].childrenIds.push(qdcId); } });
     const visited = new Set();
@@ -149,7 +154,7 @@ function _internal_updateFeederPowerDisplay() {
     // console.warn("Aviso: Exibição da carga hierárquica ATIVA. O dimensionamento real pela Edge Function ainda é PLANO.");
 }
 
-// >>>>> ALTERAÇÃO: Criada a nova função 'debounced' que será exportada e usada por todos
+// Criada a nova função 'debounced' que será exportada e usada por todos
 export const updateFeederPowerDisplay = debounce(_internal_updateFeederPowerDisplay, 350);
 
 
@@ -181,6 +186,8 @@ export function resetForm(addDefaultQdc = true, linkedClient = null) {
     if (addDefaultQdc) { addQdcBlock(); }
     else { updateFeederPowerDisplay(); } // Atualiza display se não adicionar QDC default
 }
+
+// >>>>> ALTERAÇÃO AQUI (2 de 2): Ajusta o HTML do QDC
 function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
     return `
     <div class="qdc-block" id="qdc-${id}" data-id="${id}">
@@ -190,10 +197,12 @@ function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
             <div class="qdc-header-right"> <button type="button" class="add-circuit-to-qdc-btn btn-green" data-qdc-id="${id}">+ Circuito</button> <button type="button" class="remove-qdc-btn btn-red" data-qdc-id="${id}">Remover QDC</button> <span class="toggle-arrow">▼</span> </div>
         </div>
         <div class="qdc-content">
-            <div class="form-grid" style="padding-bottom: 15px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color);">
-                <div class="form-group"> <label for="qdcPotenciaInstalada-${id}">Potência Instalada (W)</label> <input type="text" id="qdcPotenciaInstalada-${id}" value="0.00" readonly> </div>
-                <div class="form-group"> <label for="qdcPotenciaDemandada-${id}">Potência Demandada (W)</label> <input type="text" id="qdcPotenciaDemandada-${id}" value="0.00" readonly> </div>
+            <div class="form-grid-3-col" style="padding-bottom: 15px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color);">
+                <div class="form-group"> <label for="qdcPotenciaInstalada-${id}">Instalada (Própria) (W)</label> <input type="text" id="qdcPotenciaInstalada-${id}" value="0.00" readonly> </div>
+                <div class="form-group"> <label for="qdcDemandaPropria-${id}">Demandada (Própria) (W)</label> <input type="text" id="qdcDemandaPropria-${id}" value="0.00" readonly style="color: #007bff; font-weight: bold;"> </div>
+                <div class="form-group"> <label for="qdcPotenciaDemandada-${id}">Demandada (Total) (W)</label> <input type="text" id="qdcPotenciaDemandada-${id}" value="0.00" readonly style="color: #28a745; font-weight: bold;"> </div>
             </div>
+            
             <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--label-color);">Configuração do Alimentador deste QDC</h4>
             <div class="form-grid qdc-config-grid">
                  <div class="form-group"> <label for="qdcFatorDemanda-${id}">Fator Demanda (%)</label> <input type="number" id="qdcFatorDemanda-${id}" value="100" step="1"> </div>
@@ -281,7 +290,7 @@ export function addQdcBlock(id = null, name = null, parentId = 'feeder', contain
         // <<< ALTERAÇÃO: Listener de 'change' do parentSelect foi REMOVIDO daqui (Solução 2) >>>
         // É tratado por handleMainContainerInteraction
         
-        // >>>>> ALTERAÇÃO: Esta chamada agora usa a versão debounced
+        // Esta chamada agora usa a versão debounced
         updateFeederPowerDisplay();
     }
 
@@ -305,7 +314,7 @@ export function removeQdc(qdcId) {
             qdcElement.remove();
             updateQdcParentDropdowns(); // Atualiza lista de pais
             
-            // >>>>> ALTERAÇÃO: Esta chamada agora usa a versão debounced
+            // Esta chamada agora usa a versão debounced
             updateFeederPowerDisplay(); // Recalcula cargas
         }
     }
@@ -460,7 +469,7 @@ export function addCircuit(qdcId, savedCircuitData = null, circuitContainer = nu
     
     // Atualiza o display DEPOIS de adicionar (apenas se não for fragmento)
     if (!(circuitContainer instanceof DocumentFragment)) {
-        // >>>>> ALTERAÇÃO: Esta chamada agora usa a versão debounced
+        // Esta chamada agora usa a versão debounced
         updateFeederPowerDisplay();
     }
 }
@@ -472,12 +481,12 @@ export function removeCircuit(circuitId) {
         // Não precisa de confirmação para remover circuito
         circuitElement.remove();
         
-        // >>>>> ALTERAÇÃO: Esta chamada agora usa a versão debounced
+        // Esta chamada agora usa a versão debounced
         updateFeederPowerDisplay(); // Recalcula cargas
     }
 }
 function getCircuitHTML(id) {
-    return `<div class="circuit-block" id="circuit-${id}" data-id="${id}"> <div class="circuit-header"> <h3 class="circuit-header-left">Circuito <span class="circuit-number"></span></h3> <h3 class="circuit-header-center" id="nomeCircuitoLabel-${id}">Circuito ${id}</h3> <div class="circuit-header-right"> <button type="button" class="remove-circuit-btn btn-red" data-circuit-id="${id}">Remover</button> <span class="toggle-arrow">▼</span> </div> </div> <div class="circuit-content"> <div class="form-grid"> <div class="form-group"> <label for="nomeCircuito-${id}">Nome do Circuito</label> <input type="text" id="nomeCircuito-${id}" value="Circuito ${id}"> </div> <div class="full-width potencia-group"> <div class="form-group"> <label for="tipoCircuito-${id}">Tipo de Circuito</label> <select id="tipoCircuito-${id}"> <option value="iluminacao">Iluminação</option> <option value="tug" selected>TUG</option> <option value="tue">TUE</option> <option value="aquecimento">Aquecimento</option> <option value="motores">Motores</option> <option value="ar_condicionado">Ar Condicionado</option> </select> </div> <div class="form-group hidden" id="potenciaBTU_group-${id}"> <label for="potenciaBTU-${id}">Potência (BTU/h)</label> <select id="potenciaBTU-${id}"></select> </div> <div class="form-group hidden" id="potenciaCV_group-${id}"> <label for="potenciaCV-${id}">Potência (CV)</label> <select id="potenciaCV-${id}"></select> </div> <div class="form-group"> <label for="potenciaW-${id}">Potência (W)</label> <input type="number" id="potenciaW-${id}" value="2500"> </div> </div> <div class="form-group"> <label for="fatorDemanda-${id}">Fator Demanda (%)</label> <input type="number" id="fatorDemanda-${id}" value="100" step="1"> </div> <div class="form-group"> <label for="fases-${id}">Fases</label> <select id="fases-${id}"> <option value="Monofasico" selected>Monofásico</option> <option value="Bifasico">Bifásico</option> <option value="Trifasico">Trifásico</option> </select> </div> <div class="form-group"> <label for="tipoLigacao-${id}">Ligação</label> <select id="tipoLigacao-${id}"></select> </div> <div class="form-group"> <label for="tensaoV-${id}">Tensão (V)</label> <select id="tensaoV-${id}"><option value="12">12</option><option value="24">24</option><option value="36">36</option><option value="127">127</option><option value="220" selected>220</option><option value="380">380</option><option value="440">440</option><option value="760">760</option></select> </div> <div class="form-group"> <label for="fatorPotencia-${id}">Fator Potência</label> <input type="number" id="fatorPotencia-${id}" step="0.01" value="0.92"> </div> <div class="form-group"> <label for="comprimentoM-${id}">Comprimento (m)</label> <input type="number" id="comprimentoM-${id}" value="20"> </div> <div class="form-group"> <label for="tipoIsolacao-${id}">Isolação</label> <select id="tipoIsolacao-${id}"><option value="PVC" selected>PVC 70°C</option><option value="EPR">EPR 90°C</option><option value="XLPE">XLPE 90°C</option></select> </div> <div class="form-group"> <label for="materialCabo-${id}">Condutor</label> <select id="materialCabo-${id}"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Alumínio</option></select> </div> <div class="form-group"> <label for="metodoInstalacao-${id}">Instalação</label> <select id="metodoInstalacao-${id}"><option value="A1">A1</option><option value="A2">A2</option><option value_."B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select> </div> <div class="form-group"> <label for="temperaturaAmbienteC-${id}">Temp. Ambiente</label> <select id="temperaturaAmbienteC-${id}"></select> </div> <div class="form-group"> <label for="resistividadeSolo-${id}">Resist. Solo</label> <select id="resistividadeSolo-${id}"></select> </div> <div class="form-group"> <label for="numCircuitosAgrupados-${id}">Ckt Agrupados</label> <select id="numCircuitosAgrupados-${id}"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select> </div> <div class="form-group"> <label for="limiteQuedaTensao-${id}">Limite DV (%)</label> <input type="number" id="limiteQuedaTensao-${id}" step="0.1" value="4.0"> </div> <div class="form-group"> <label for="tipoDisjuntor-${id}">Disjuntor</label> <select id="tipoDisjuntor-${id}"><option value="Minidisjuntor (DIN)">DIN</option><option value="Caixa Moldada (MCCB)">MCCB</option></select> </div> <div class="form-group"> <label for="dpsClasse-${id}">Classe DPS</label> <select id="dpsClasse-${id}"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select> </div> <div class="checkbox-group"> <input type="checkbox" id="requerDR-${id}"><label for="requerDR-${id}">Requer DR</label> </div> </div> </div> </div>`;
+    return `<div class="circuit-block" id="circuit-${id}" data-id="${id}"> <div class="circuit-header"> <h3 class="circuit-header-left">Circuito <span class="circuit-number"></span></h3> <h3 class="circuit-header-center" id="nomeCircuitoLabel-${id}">Circuito ${id}</h3> <div class="circuit-header-right"> <button type="button" class="remove-circuit-btn btn-red" data-circuit-id="${id}">Remover</button> <span class="toggle-arrow">▼</span> </div> </div> <div class="circuit-content"> <div class="form-grid"> <div class="form-group"> <label for="nomeCircuito-${id}">Nome do Circuito</label> <input type="text" id="nomeCircuito-${id}" value="Circuito ${id}"> </div> <div class="full-width potencia-group"> <div class="form-group"> <label for="tipoCircuito-${id}">Tipo de Circuito</label> <select id="tipoCircuito-${id}"> <option value="iluminacao">Iluminação</option> <option value="tug" selected>TUG</option> <option value="tue">TUE</option> <option value="aquecimento">Aquecimento</option> <option value="motores">Motores</option> <option value="ar_condicionado">Ar Condicionado</option> </select> </div> <div class="form-group hidden" id="potenciaBTU_group-${id}"> <label for="potenciaBTU-${id}">Potência (BTU/h)</label> <select id="potenciaBTU-${id}"></select> </div> <div class="form-group hidden" id="potenciaCV_group-${id}"> <label for="potenciaCV-${id}">Potência (CV)</label> <select id="potenciaCV-${id}"></select> </div> <div class="form-group"> <label for="potenciaW-${id}">Potência (W)</label> <input type="number" id="potenciaW-${id}" value="2500"> </div> </div> <div class="form-group"> <label for="fatorDemanda-${id}">Fator Demanda (%)</label> <input type="number" id="fatorDemanda-${id}" value="100" step="1"> </div> <div class="form-group"> <label for="fases-${id}">Fases</label> <select id="fases-${id}"> <option value="Monofasico" selected>Monofásico</option> <option value="Bifasico">Bifásico</option> <option value="Trifasico">Trifásico</option> </select> </div> <div class="form-group"> <label for="tipoLigacao-${id}">Ligação</label> <select id="tipoLigacao-${id}"></select> </div> <div class="form-group"> <label for="tensaoV-${id}">Tensão (V)</label> <select id="tensaoV-${id}"><option value="12">12</option><option value="24">24</option><option value="36">36</option><option value="127">127</option><option value="220" selected>220</option><option value="380">380</option><option value="440">440</option><option value="760">760</option></select> </div> <div class="form-group"> <label for="fatorPotencia-${id}">Fator Potência</label> <input type="number" id="fatorPotencia-${id}" step="0.01" value="0.92"> </div> <div class="form-group"> <label for="comprimentoM-${id}">Comprimento (m)</label> <input type="number" id="comprimentoM-${id}" value="20"> </div> <div class="form-group"> <label for="tipoIsolacao-${id}">Isolação</label> <select id="tipoIsolacao-${id}"><option value="PVC" selected>PVC 70°C</option><option value="EPR">EPR 90°C</option><option value="XLPE">XLPE 90°C</option></select> </div> <div class="form-group"> <label for="materialCabo-${id}">Condutor</label> <select id="materialCabo-${id}"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Alumínio</option></select> </div> <div class="form-group"> <label for="metodoInstalacao-${id}">Instalação</label> <select id="metodoInstalacao-${id}"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value."D">D</option></select> </div> <div class="form-group"> <label for="temperaturaAmbienteC-${id}">Temp. Ambiente</label> <select id="temperaturaAmbienteC-${id}"></select> </div> <div class="form-group"> <label for="resistividadeSolo-${id}">Resist. Solo</label> <select id="resistividadeSolo-${id}"></select> </div> <div class="form-group"> <label for="numCircuitosAgrupados-${id}">Ckt Agrupados</label> <select id="numCircuitosAgrupados-${id}"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select> </div> <div class="form-group"> <label for="limiteQuedaTensao-${id}">Limite DV (%)</label> <input type="number" id="limiteQuedaTensao-${id}" step="0.1" value="4.0"> </div> <div class="form-group"> <label for="tipoDisjuntor-${id}">Disjuntor</label> <select id="tipoDisjuntor-${id}"><option value="Minidisjuntor (DIN)">DIN</option><option value="Caixa Moldada (MCCB)">MCCB</option></select> </div> <div class="form-group"> <label for="dpsClasse-${id}">Classe DPS</label> <select id="dpsClasse-${id}"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select> </div> <div class="checkbox-group"> <input type="checkbox" id="requerDR-${id}"><label for="requerDR-${id}">Requer DR</label> </div> </div> </div> </div>`;
 }
 function initializeFeederListeners() {
     const feederFases = document.getElementById('feederFases');
@@ -615,7 +624,7 @@ export function handleMainContainerInteraction(event) {
         else if (eventType === 'change') {
             // MUDAR PARENT (Select 'Alimentado por:')
             if (target.classList.contains('qdc-parent-select')) {
-                // >>>>> ALTERAÇÃO: Esta chamada agora usa a versão debounced
+                // Esta chamada agora usa a versão debounced
                 updateFeederPowerDisplay(); // Recalcula a carga
                 return;
             }
@@ -663,14 +672,14 @@ export function handleMainContainerInteraction(event) {
             // MUDAR POTÊNCIA BTU
             if (target.id === `potenciaBTU-${circuitId}`) {
                 handlePowerUnitChange(circuitId, 'btu');
-                // >>>>> ALTERAÇÃO: Esta chamada agora usa a versão debounced
+                // Esta chamada agora usa a versão debounced
                 updateFeederPowerDisplay(); // Atualiza a potência
                 return;
             }
             // MUDAR POTÊNCIA CV
             if (target.id === `potenciaCV-${circuitId}`) {
                 handlePowerUnitChange(circuitId, 'cv');
-                // >>>>> ALTERAÇÃO: Esta chamada agora usa a versão debounced
+                // Esta chamada agora usa a versão debounced
                 updateFeederPowerDisplay(); // Atualiza a potência
                 return;
             }
@@ -941,12 +950,12 @@ export function populateFormWithProjectData(project) {
                      }
                  }
              });
-             // >>>>> ALTERAÇÃO: Esta chamada agora usa a versão debounced
+             // Esta chamada agora usa a versão debounced
              updateFeederPowerDisplay(); // Calcula display final
          }, 100); // Pequeno delay
     } else {
          // Se não há QDCs, apenas calcula o display (caso raro de projeto sem QDC)
-         // >>>>> ALTERAÇÃO: Esta chamada agora usa a versão debounced
+         // Esta chamada agora usa a versão debounced
          updateFeederPowerDisplay();
     }
     console.timeEnd("populateForm"); // Termina medição
@@ -1588,7 +1597,7 @@ function buildUnifilarSvgString(feeder, qdcs) {
             <line x1="${qdcX + 100}" y1="${yPos}" x2="${qdcX + 100}" y2="${yPos + 50}" stroke="black" stroke-width="2"/>
             <rect x="${qdcX}" y="${yPos + 50}" width="${qdcWidth}" height="${qdcHeight}" stroke="black" stroke-width="2" fill="none" />
             <text x="${qdcX + 100}" y="${yPos + 70}" font-size="14" font-weight="bold" text-anchor="middle">${qdc.name}</text>
-            <line x1="${qdc}" y1="${yPos + 80}" x2="${qdcX + 200}" y2="${yPos + 80}" stroke="black" stroke-width="1" />
+            <line x1="${qdcX}" y1="${yPos + 80}" x2="${qdcX + 200}" y2="${yPos + 80}" stroke="black" stroke-width="1" />
             ${cktLines}
         `;
         qdcIndex++;
