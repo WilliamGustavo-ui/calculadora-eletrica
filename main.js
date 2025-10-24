@@ -277,40 +277,76 @@ async function handleAdminUserActions(event) {
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
 // ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA <<<<<
+// >>>>> FUNÇÃO ATUALIZADA (CHAMA O BACK-END PARA O PDF) <<<<<
 // ========================================================================
 async function handleCalculateAndPdf() {
     if (!uiData) { alert("Erro: Dados técnicos não carregados..."); return; }
     if (!currentUserProfile) { alert("Erro: Usuário não autenticado..."); await handleLogout(); return; }
-    const loadingOverlay = document.getElementById('loadingOverlay'); const loadingText = loadingOverlay.querySelector('p');
-    loadingText.textContent = 'Calculando no servidor...'; loadingOverlay.classList.add('visible');
+    
+    const loadingOverlay = document.getElementById('loadingOverlay'); 
+    const loadingText = loadingOverlay.querySelector('p');
+    loadingText.textContent = 'Calculando e gerando PDF no servidor...'; 
+    loadingOverlay.classList.add('visible');
     
     // 1. Pega TODOS os dados do formulário
     const formDataForFunction = getFullFormData(false);
     
     try {
-        console.log("Enviando para Edge Function 'calculate':", JSON.stringify(formDataForFunction, null, 2));
-        const { data: results, error: functionError } = await supabase.functions.invoke('calculate', { body: { formData: formDataForFunction }, });
-        if (functionError) { let errMsg = functionError.message; let errorDetails = null; try { errorDetails = await functionError.context?.json(); if (errorDetails?.error) { errMsg = errorDetails.error; } console.error("Detalhes do erro da Edge Function:", errorDetails || functionError.context?.statusText); } catch(e) { console.error("Erro ao parsear detalhes do erro:", e); console.error("Contexto original:", functionError.context); } throw new Error(`Erro na Edge Function (${functionError.context?.status || 'N/A'}): ${errMsg}`); }
-        if (!results || !results.feederResult || !results.circuitResults) { console.error("Resposta inesperada:", results); throw new Error("A função de cálculo retornou dados incompletos. Verifique os logs da Edge Function."); }
-        console.log("Resultados recebidos:", results);
-        loadingText.textContent = 'Gerando PDFs...'; await new Promise(resolve => setTimeout(resolve, 50));
+        console.log("Enviando para Edge Function 'gerar-relatorio':", formDataForFunction);
         
-        // 2. Passa os resultados (results) E os dados do formulário (formDataForFunction) para o PDF
-        await ui.generateMemorialPdf(results, currentUserProfile, formDataForFunction);
-        await ui.generateUnifilarPdf(results);
+        // >>>>> ALTERAÇÃO: Chama a nova função 'gerar-relatorio'
+        const { data: pdfBlob, error: functionError } = await supabase.functions.invoke('gerar-relatorio', { 
+            body: { formData: formDataForFunction },
+            // >>>>> ALTERAÇÃO: Informa que esperamos um 'blob' (arquivo) de volta
+            responseType: 'blob' 
+        });
+
+        if (functionError) {
+             let errMsg = functionError.message;
+             try {
+                 // Tenta ler o erro como texto (se o servidor não enviou um PDF)
+                 const errorText = await functionError.context.blob.text();
+                 const errorJson = JSON.parse(errorText);
+                 if (errorJson.error) errMsg = errorJson.error;
+                 else errMsg = errorText;
+             } catch(e) { /* falha ao ler erro, usa o padrão */ }
+            throw new Error(`Erro na Edge Function (${functionError.context?.status || 'N/A'}): ${errMsg}`);
+        }
+
+        if (!pdfBlob) {
+            throw new Error("A função de cálculo não retornou um arquivo.");
+        }
+
+        console.log("Blob de PDF recebido:", pdfBlob);
+        loadingText.textContent = 'PDF recebido, iniciando download...';
+        await new Promise(resolve => setTimeout(resolve, 50));
         
-        alert("PDFs gerados e baixados com sucesso!");
+        // 2. >>>>> ALTERAÇÃO: Lógica para forçar o download do PDF recebido
+        const nomeObra = document.getElementById('obra')?.value || 'Projeto';
+        const url = window.URL.createObjectURL(pdfBlob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `Relatorio_${nomeObra.replace(/[^a-z0-9]/gi, '_')}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        
+        alert("PDF gerado e baixado com sucesso!");
+
     } catch (error) {
-        console.error("Erro durante cálculo ou PDF:", error); alert("Ocorreu um erro: " + error.message + "\nVerifique o console.");
+        console.error("Erro durante cálculo ou PDF:", error); 
+        alert("Ocorreu um erro: " + error.message + "\nVerifique o console.");
     } finally {
-        loadingOverlay.classList.remove('visible'); loadingText.textContent = 'Calculando...';
+        loadingOverlay.classList.remove('visible'); 
+        loadingText.textContent = 'Calculando...';
     }
 }
 
 
 // ========================================================================
-// >>>>> ALTERAÇÃO PRINCIPAL AQUI (Soluções 1, 2 e 3) <<<<<
+// >>>>> FUNÇÃO ATUALIZADA (setupEventListeners) <<<<<
 // ========================================================================
 function setupEventListeners() {
     // --- Listeners da versão funcional ---
@@ -328,51 +364,35 @@ function setupEventListeners() {
     document.getElementById('newBtn').addEventListener('click', () => handleNewProject(true));
     
     // --- DEBOUNCERS ---
-    // Debouncer para busca (já existia)
     const debouncedSearch = utils.debounce((e) => handleSearch(e.target.value), 300);
     document.getElementById('searchInput').addEventListener('input', debouncedSearch);
     
-    // >>>>> ALTERAÇÃO: Removido o debouncer duplicado daqui
-    // const debouncedUpdateFeederPower = utils.debounce(ui.updateFeederPowerDisplay, 350);
-    
-    // NOVO: Debouncer para atualizar os dropdowns de QDC (Solução 1, mas com debounce)
     const debouncedUpdateQdcDropdowns = utils.debounce(ui.updateQdcParentDropdowns, 400);
 
     document.getElementById('addQdcBtn').addEventListener('click', () => ui.addQdcBlock());
     document.getElementById('manageQdcsBtn').addEventListener('click', () => ui.openModal('qdcManagerModalOverlay'));
     
     // --- EVENT DELEGATION (Solução 1, 2, 3) ---
-    // Removemos os listeners individuais de input/click do appContainer
-    // e os substituímos por uma lógica de delegação mais robusta.
     const appContainer = document.getElementById('appContainer'); 
     if(appContainer) { 
-        // 1. Listener para AÇÕES (Clicks e Changes)
-        // 'change' é para selects, checkboxes, e inputs de texto *após perder o foco*
         appContainer.addEventListener('change', ui.handleMainContainerInteraction);
-        // 'click' é para botões (remover, adicionar, colapsar)
         appContainer.addEventListener('click', ui.handleMainContainerInteraction); 
         
-        // 2. Listener para INPUTS "AO VIVO" (com Debounce)
-        // 'input' dispara a cada tecla, mas chamamos as funções "debounced"
         appContainer.addEventListener('input', (event) => {
             const target = event.target;
             
-            // >>>>> ALTERAÇÃO: Chama diretamente a função debounced do ui.js
-            // Se for um campo de potência/demanda, chama o debounce de recálculo (Solução 3)
             if (target.id.startsWith('potenciaW-') || 
                 target.id.startsWith('fatorDemanda-') ||
                 target.id.startsWith('qdcFatorDemanda-') ||
                 target.id === 'feederFatorDemanda') 
             {
-                ui.updateFeederPowerDisplay(); // <--- ALTERADO
+                ui.updateFeederPowerDisplay(); 
             }
             
-            // Se for o nome do QDC, chama o debounce de atualização dos dropdowns (Solução 1 melhorada)
             if (target.classList.contains('qdc-name-input')) {
                 debouncedUpdateQdcDropdowns();
             }
 
-            // Se for o nome do Circuito, atualiza o label (isto é leve, não precisa de debounce)
             if (target.id.startsWith('nomeCircuito-')) {
                  const circuitId = target.closest('.circuit-block')?.dataset.id;
                  if (circuitId) {
@@ -383,7 +403,9 @@ function setupEventListeners() {
         });
     }
 
-    document.getElementById('calculateAndPdfBtn').addEventListener('click', handleCalculateAndPdf); // Chama a versão com Edge Function
+    // >>>>> ALTERAÇÃO: O botão agora chama a nova função
+    document.getElementById('calculateAndPdfBtn').addEventListener('click', handleCalculateAndPdf); 
+    
     document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
     const projectsTableBody = document.getElementById('adminProjectsTableBody'); if(projectsTableBody) projectsTableBody.addEventListener('click', handleProjectPanelClick);
     document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
