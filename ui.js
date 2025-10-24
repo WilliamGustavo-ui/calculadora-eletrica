@@ -1,4 +1,4 @@
-// Arquivo: ui.js (COMPLETO E AJUSTADO - Sem Geração de PDF)
+// Arquivo: ui.js (COMPLETO E CORRIGIDO - Com verificação em restoreValues)
 
 console.log("--- ui.js: Iniciando carregamento ---");
 
@@ -446,33 +446,48 @@ export function addCircuit(qdcId, savedCircuitData = null, circuitContainer = nu
 
     // Restaura valores específicos APÓS população (pode ser feito mesmo em fragmento)
     if (savedCircuitData) {
+        // >>>>> INÍCIO DA CORREÇÃO <<<<<
         const restoreValues = () => {
-            if (savedCircuitData[`potenciaBTU-${internalId}`]) potenciaBTUSelect.value = savedCircuitData[`potenciaBTU-${internalId}`];
-            if (savedCircuitData[`potenciaCV-${internalId}`]) potenciaCVSelect.value = savedCircuitData[`potenciaCV-${internalId}`];
-            if (savedCircuitData[`resistividadeSolo-${internalId}`]) resistividadeSolo.value = savedCircuitData[`resistividadeSolo-${internalId}`];
-            
-            // Dispara change para recalcular W se necessário (importante fazer DEPOIS de setar valor)
-            if (potenciaBTUSelect.value) potenciaBTUSelect.dispatchEvent(new Event('change'));
-            if (potenciaCVSelect.value) potenciaCVSelect.dispatchEvent(new Event('change'));
-            
-            // <<< ALTERAÇÃO: REMOVIDO updateFeederPowerDisplay (Solução 2) >>>
+            // Verifica se o elemento existe ANTES de tentar setar o valor
+            if (potenciaBTUSelect && savedCircuitData[`potenciaBTU-${internalId}`]) {
+                potenciaBTUSelect.value = savedCircuitData[`potenciaBTU-${internalId}`];
+                // Dispara o evento change APENAS se o valor foi setado e não é vazio
+                if (potenciaBTUSelect.value) {
+                     potenciaBTUSelect.dispatchEvent(new Event('change'));
+                }
+            }
+            // Verifica se o elemento existe ANTES de tentar setar o valor
+            if (potenciaCVSelect && savedCircuitData[`potenciaCV-${internalId}`]) {
+                potenciaCVSelect.value = savedCircuitData[`potenciaCV-${internalId}`];
+                 // Dispara o evento change APENAS se o valor foi setado e não é vazio
+                if (potenciaCVSelect.value) {
+                    potenciaCVSelect.dispatchEvent(new Event('change'));
+                }
+            }
+            // Verifica se o elemento existe ANTES de tentar setar o valor
+            if (resistividadeSolo && savedCircuitData[`resistividadeSolo-${internalId}`]) {
+                resistividadeSolo.value = savedCircuitData[`resistividadeSolo-${internalId}`];
+                // Geralmente não precisa disparar 'change' para resistividade
+            }
         };
+        // >>>>> FIM DA CORREÇÃO <<<<<
 
+        // A lógica do setTimeout permanece a mesma
         if (!(circuitContainer instanceof DocumentFragment)) {
-            setTimeout(restoreValues, 50);
+            setTimeout(restoreValues, 50); // Adia a execução ligeiramente
         } else {
             restoreValues(); // Executa imediatamente se for fragmento
         }
     } else {
-        // <<< ALTERAÇÃO: REMOVIDO updateFeederPowerDisplay (Solução 2) >>>
+       // updateFeederPowerDisplay(); // Chamada removida anteriormente
     }
     
     // Atualiza o display DEPOIS de adicionar (apenas se não for fragmento)
     if (!(circuitContainer instanceof DocumentFragment)) {
-        // Esta chamada agora usa a versão debounced
         updateFeederPowerDisplay();
     }
-}
+} // Fim da função addCircuit
+
 
 export function removeCircuit(circuitId) {
     if (!circuitId) return;
