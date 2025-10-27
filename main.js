@@ -1,4 +1,4 @@
-// Arquivo: main.js (CORRIGIDO - Com Event Delegation, Debounce centralizado, e Teste com responseType: 'arraybuffer')
+// Arquivo: main.js (CORRIGIDO - Revertido para Download Nativo via Headers usando invoke)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -231,15 +231,20 @@ async function showAdminPanel() { /* ... (código igual anterior) ... */
 async function handleAdminUserActions(event) { /* ... (código igual anterior) ... */
     const target = event.target; const userId = target.dataset.userId; if (!userId) return;
     try {
-        if (target.classList.contains('approve-user-btn')) { await api.approveUser(userId); await showAdminPanel(); }
-        if (target.classList.contains('edit-user-btn')) { const user = await api.fetchUserById(userId); if (user) ui.populateEditUserModal(user); }
-        if (target.classList.contains('block-user-btn')) { const shouldBlock = target.dataset.isBlocked !== 'false';
+        console.log(`Ação: ${target.className}, UserID: ${userId}`); // Log para depurar
+        if (target.classList.contains('approve-user-btn')) { console.log("Tentando aprovar..."); await api.approveUser(userId); await showAdminPanel(); }
+        if (target.classList.contains('edit-user-btn')) { console.log("Tentando editar..."); const user = await api.fetchUserById(userId); if (user) ui.populateEditUserModal(user); }
+        if (target.classList.contains('block-user-btn')) {
+            // CORREÇÃO LÓGICA: Ler o estado atual do dataset
+            const isCurrentlyBlocked = target.dataset.isBlocked === 'true'; // dataset sempre retorna string
+            const shouldBlock = !isCurrentlyBlocked; // A ação é o INVERSO do estado atual
+            console.log(`Tentando ${shouldBlock ? 'bloquear' : 'desbloquear'}... Estado atual: ${isCurrentlyBlocked}`);
             if (confirm(`Tem certeza que deseja ${shouldBlock ? 'bloquear' : 'desbloquear'} este usuário?`)) {
                 await api.toggleUserBlock(userId, shouldBlock);
-                await showAdminPanel();
+                await showAdminPanel(); // Recarrega o painel para refletir a mudança
             }
         }
-        if (target.classList.contains('remove-user-btn')) { if (confirm('ATENÇÃO: Ação irreversível! Excluir este usuário permanentemente?')) { const { data, error } = await api.deleteUserFromAdmin(userId); if (error) { throw error; } alert(data?.message || 'Usuário excluído com sucesso.'); await showAdminPanel(); } }
+        if (target.classList.contains('remove-user-btn')) { console.log("Tentando remover..."); if (confirm('ATENÇÃO: Ação irreversível! Excluir este usuário permanentemente?')) { const { data, error } = await api.deleteUserFromAdmin(userId); if (error) { throw error; } alert(data?.message || 'Usuário excluído com sucesso.'); await showAdminPanel(); } }
     } catch (error) { console.error("Erro na ação administrativa:", error); alert("Ocorreu um erro: " + error.message); await showAdminPanel(); }
 }
 async function handleUpdateUser(event) { /* ... (código igual anterior) ... */
@@ -247,7 +252,7 @@ async function handleUpdateUser(event) { /* ... (código igual anterior) ... */
 }
 
 // ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA (TESTE: Força leitura com arraybuffer) <<<<<
+// >>>>> FUNÇÃO REVERTIDA (USA invoke SEM responseType) <<<<<
 // ========================================================================
 async function handleCalculateAndPdf() {
     if (!uiData) { alert("Erro: Dados técnicos não carregados..."); return; }
@@ -263,89 +268,80 @@ async function handleCalculateAndPdf() {
     const formDataForFunction = getFullFormData(false);
 
     try {
-        console.log("Enviando para Edge Function 'gerar-relatorio' via invoke (com arraybuffer):", formDataForFunction);
+        console.log("Enviando para Edge Function 'gerar-relatorio' via invoke:", formDataForFunction);
 
-        // >>>>> ALTERAÇÃO: Adiciona responseType: 'arraybuffer' <<<<<
-        // Isso força a biblioteca a ler o corpo da resposta. Não vai baixar.
-        const { data: responseData, error: functionError } = await supabase.functions.invoke('gerar-relatorio', {
-            body: { formData: formDataForFunction },
-            responseType: 'arraybuffer' // Força a leitura do corpo como ArrayBuffer
+        // >>>>> ALTERAÇÃO: Chama invoke SEM responseType: 'blob' <<<<<
+        // A biblioteca Supabase/gotrue-js deve respeitar os headers Content-Disposition
+        const { data, error: functionError } = await supabase.functions.invoke('gerar-relatorio', {
+            body: { formData: formDataForFunction }
+            // REMOVIDO: responseType: 'blob' ou 'arraybuffer'
         });
 
         // Verifica erro na chamada da função
         if (functionError) {
+             // Tenta extrair uma mensagem mais útil do erro, se possível
              let errMsg = functionError.message;
-              // Tenta ler erro do context (pode não vir como arraybuffer em caso de erro)
-             if (functionError.context && functionError.context.blob && typeof functionError.context.blob === 'function') { // Checa se tem blob
+             // Verifica se 'context' existe e tem 'json' como método (caso o erro seja um JSON)
+             if (functionError.context && typeof functionError.context.json === 'function') {
                  try {
-                     // Precisamos esperar o blob ser lido
-                     const errorBlob = functionError.context.blob();
+                     const errorJson = await functionError.context.json(); // Espera a Promise resolver
+                     if (errorJson.error) errMsg = errorJson.error;
+                 } catch(e) { console.warn("Erro ao tentar ler corpo do erro como JSON:", e); /* Ignora se não for JSON */ }
+             // Verifica se 'context' existe e tem 'blob' como método (caso erro seja Blob)
+             } else if (functionError.context && functionError.context.blob && typeof functionError.context.blob === 'function') {
+                  try {
+                     const errorBlob = functionError.context.blob(); // Obtem o Blob
                      if (errorBlob instanceof Blob) {
-                        const errorText = await errorBlob.text();
-                        const errorJson = JSON.parse(errorText);
-                        if (errorJson.error) errMsg = errorJson.error;
-                        else errMsg = errorText; // Usa texto se não for JSON
+                        const errorText = await errorBlob.text(); // Espera ler o Blob
+                         try { // Tenta parsear como JSON
+                            const errorJson = JSON.parse(errorText);
+                            if (errorJson.error) errMsg = errorJson.error;
+                            else errMsg = errorText; // Usa texto se não for JSON
+                         } catch(jsonError){
+                            errMsg = errorText; // Usa texto se falhar o parse
+                         }
                      }
-                 } catch(e) { console.warn("Erro ao tentar ler corpo do erro:", e) /* Ignora erro na leitura/parse */ }
-             } else if (functionError.context && functionError.context.status) {
+                 } catch(e) { console.warn("Erro ao tentar ler corpo do erro como Blob/Texto:", e); /* Ignora */ }
+             }
+             // Adiciona status se disponível
+             else if (functionError.context && functionError.context.status) {
                   errMsg = `Erro ${functionError.context.status}: ${errMsg}`;
              }
             throw new Error(`Erro na Edge Function: ${errMsg}`);
         }
 
-        // Se chegou aqui sem erro, a função retornou 2xx e lemos o corpo.
-        console.log("Chamada para 'gerar-relatorio' bem-sucedida.");
-        if (responseData instanceof ArrayBuffer) {
-             console.log(`Corpo da resposta lido como ArrayBuffer. Tamanho: ${(responseData.byteLength / 1024 / 1024).toFixed(2)} MB`);
-             // O download NÃO ocorrerá automaticamente aqui.
-             alert("TESTE: Resposta recebida como ArrayBuffer com sucesso! O site não travou neste ponto, mas o download não foi iniciado (esperado para este teste).");
+        // Se chegou aqui sem erro, a função retornou 2xx.
+        // Como não especificamos responseType, a biblioteca não tentará ler o corpo.
+        // O navegador JÁ DEVE TER iniciado o download devido aos headers.
+        console.log("Chamada para 'gerar-relatorio' bem-sucedida. O navegador deve iniciar o download.");
+        loadingText.textContent = 'PDF gerado, download iniciado...';
 
-            // --- TENTATIVA DE DOWNLOAD MANUAL A PARTIR DO ARRAYBUFFER ---
-            // Se a leitura do ArrayBuffer funcionou, talvez o download manual funcione
-            try {
-                console.log("Tentando iniciar download manual a partir do ArrayBuffer...");
-                const blob = new Blob([responseData], { type: 'application/pdf' });
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                const nomeObra = document.getElementById('obra')?.value || 'Projeto';
-                a.download = `Relatorio_${nomeObra.replace(/[^a-z0-9]/gi, '_')}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                a.remove();
-                console.log("Download manual iniciado com sucesso!");
-                // alert("PDF gerado! Verifique seus downloads."); // Já tem o alert de teste
-            } catch (downloadError) {
-                console.error("Erro ao tentar o download manual:", downloadError);
-                alert("Erro ao tentar iniciar o download manualmente após receber os dados. Verifique o console.");
-            }
-            // --- FIM DA TENTATIVA DE DOWNLOAD MANUAL ---
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Espera um pouco
 
-        } else {
-             console.warn("Resposta recebida, mas não é um ArrayBuffer:", responseData);
-             alert("TESTE: Resposta recebida, mas formato inesperado (não ArrayBuffer). Verifique o console.");
-        }
+        // Não podemos verificar o 'data' aqui porque não pedimos blob/json
+        // Apenas assumimos que o download começou.
+
+        // alert("PDF gerado! Verifique seus downloads."); // Removido para evitar interrupção
 
     } catch (error) {
         console.error("Erro durante chamada da função:", error);
+        // Tenta dar uma mensagem mais específica para erros comuns
         if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
              alert("Erro de rede ao contatar o servidor. Verifique sua conexão ou tente novamente mais tarde.");
         } else if (error.message.includes('permission denied')) {
              alert("Erro de permissão. Pode ser necessário fazer login novamente.");
         } else {
-             alert("Ocorreu um erro: " + error.message + "\nVerifique o console.");
+             alert("Ocorreu um erro ao gerar o PDF: " + error.message + "\nVerifique o console.");
         }
     } finally {
-        console.log("Executando finally block..."); // Log para ver se chega aqui
+        console.log("Executando finally block (download nativo)..."); // Log para ver se chega aqui
         loadingOverlay.classList.remove('visible');
         loadingText.textContent = 'Calculando...';
     }
 }
 
 
-// --- setupEventListeners (Sem alterações) ---
+// --- setupEventListeners (Com correção para Botão Bloquear/Desbloquear) ---
 function setupEventListeners() {
     document.getElementById('loginBtn').addEventListener('click', handleLogin);
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
@@ -403,7 +399,13 @@ function setupEventListeners() {
     document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
     const projectsTableBody = document.getElementById('adminProjectsTableBody'); if(projectsTableBody) projectsTableBody.addEventListener('click', handleProjectPanelClick);
     document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
-    const adminUserList = document.getElementById('adminUserList'); if(adminUserList) adminUserList.addEventListener('click', handleAdminUserActions);
+
+    // >>>>> CORREÇÃO: Listener para o PAINEL DE ADMIN (UL) em vez de botões individuais <<<<<
+    const adminUserList = document.getElementById('adminUserList');
+    if(adminUserList) {
+        adminUserList.addEventListener('click', handleAdminUserActions); // Usa delegação de evento
+    }
+
     const editUserForm = document.getElementById('editUserForm'); if(editUserForm) editUserForm.addEventListener('submit', handleUpdateUser);
     document.getElementById('manageClientsBtn').addEventListener('click', handleOpenClientManagement);
     const clientForm = document.getElementById('clientForm'); if(clientForm) clientForm.addEventListener('submit', handleClientFormSubmit);
