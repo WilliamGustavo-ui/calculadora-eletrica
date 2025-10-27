@@ -1,4 +1,4 @@
-// Arquivo: main.js (CORRIGIDO - Com Event Delegation, Debounce centralizado, PDF em Nova Aba com Atraso e Log de Tamanho)
+// Arquivo: main.js (CORRIGIDO - Com Event Delegation, Debounce centralizado, e Link Manual para PDF)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -247,7 +247,7 @@ async function handleUpdateUser(event) { /* ... (código igual anterior) ... */
 }
 
 // ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA (Com Log de Tamanho e Atraso) <<<<<
+// >>>>> FUNÇÃO ATUALIZADA (CRIA LINK VISÍVEL PARA CLIQUE MANUAL) <<<<<
 // ========================================================================
 async function handleCalculateAndPdf() {
     if (!uiData) { alert("Erro: Dados técnicos não carregados..."); return; }
@@ -255,16 +255,17 @@ async function handleCalculateAndPdf() {
 
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = loadingOverlay.querySelector('p');
+    // Limpa link antigo, se existir
+    document.getElementById('pdfLinkContainer')?.remove();
+
     loadingText.textContent = 'Calculando e gerando PDF no servidor...';
     loadingOverlay.classList.add('visible');
 
-    // 1. Pega TODOS os dados do formulário
     const formDataForFunction = getFullFormData(false);
 
     try {
         console.log("Enviando para Edge Function 'gerar-relatorio':", formDataForFunction);
 
-        // Chama a função 'gerar-relatorio'
         const { data: pdfBlob, error: functionError } = await supabase.functions.invoke('gerar-relatorio', {
             body: { formData: formDataForFunction },
             responseType: 'blob'
@@ -284,34 +285,64 @@ async function handleCalculateAndPdf() {
             throw new Error("A função de cálculo não retornou um arquivo.");
         }
 
-
         console.log("Blob de PDF recebido:", pdfBlob);
-        // >>>>> ADICIONADO: Log do tamanho do Blob <<<<<
         console.log(`>>> TAMANHO DO BLOB: ${(pdfBlob.size / 1024 / 1024).toFixed(2)} MB`);
-        loadingText.textContent = 'PDF recebido, tentando abrir...';
+        loadingText.textContent = 'PDF recebido, criando link...';
         await new Promise(resolve => setTimeout(resolve, 50));
 
+        // 2. >>>>> ALTERAÇÃO: Cria um link visível <<<<<
         console.log("Criando URL do Blob...");
         const url = window.URL.createObjectURL(pdfBlob);
         console.log("URL Criada:", url);
 
-        // >>>>> ADICIONADO: Atraso antes de window.open <<<<<
-        console.log("Aguardando um momento antes de abrir a aba...");
-        await new Promise(resolve => setTimeout(resolve, 100)); // Atraso de 100ms
+        const nomeObra = document.getElementById('obra')?.value || 'Projeto';
+        const linkContainer = document.createElement('div');
+        linkContainer.id = 'pdfLinkContainer'; // Para fácil remoção posterior
+        linkContainer.style.marginTop = '15px';
+        linkContainer.style.textAlign = 'center';
 
-        console.log("Tentando abrir URL em nova aba...");
-        const newWindow = window.open(url, '_blank');
+        const a = document.createElement('a');
+        a.href = url;
+        a.textContent = "Clique aqui para ver/baixar o PDF";
+        a.target = "_blank"; // Sugere abrir em nova aba
+        a.download = `Relatorio_${nomeObra.replace(/[^a-z0-9]/gi, '_')}.pdf`; // Sugere nome para download
+        a.style.display = 'inline-block';
+        a.style.padding = '10px 15px';
+        a.style.backgroundColor = 'var(--btn-green)';
+        a.style.color = 'white';
+        a.style.textDecoration = 'none';
+        a.style.borderRadius = '5px';
+        a.style.fontWeight = 'bold';
 
-        if (newWindow) {
-            console.log("Nova aba/janela aberta.");
-            alert("PDF gerado! Verifique a nova aba ou janela.");
+        // Adiciona listener para revogar a URL APÓS o clique
+        a.addEventListener('click', () => {
+             console.log("Link clicado. A URL será revogada em 60 segundos.");
+             setTimeout(() => {
+                 console.log("Revogando URL do Blob (após clique e delay):", url);
+                 try {
+                     window.URL.revokeObjectURL(url);
+                 } catch (e) {
+                     console.warn("Falha ao revogar URL do Blob (talvez já revogada ou inválida):", e);
+                 }
+             }, 60000); // Revoga após 1 minuto
+        });
+
+
+        linkContainer.appendChild(a);
+
+        // Adiciona o link abaixo do botão "Gerar PDF"
+        const buttonContainer = document.querySelector('.button-container');
+        if (buttonContainer) {
+            // Insere DEPOIS do container de botões
+            buttonContainer.parentNode.insertBefore(linkContainer, buttonContainer.nextSibling);
         } else {
-            console.error("Falha ao abrir nova aba/janela. O navegador pode ter bloqueado pop-ups.");
-            alert("Não foi possível abrir o PDF em uma nova aba. Verifique se o navegador bloqueou pop-ups.");
-             console.log("Revogando URL do Blob (fallback)...");
-             window.URL.revokeObjectURL(url);
-             console.log("URL Revogada (fallback).");
+            // Fallback: adiciona no final do container principal
+            document.getElementById('appContainer').appendChild(linkContainer);
         }
+
+        console.log("Link para PDF criado. Aguardando clique do usuário.");
+        // alert("PDF gerado! Clique no link abaixo do botão 'Gerar PDF' para abri-lo.");
+
 
     } catch (error) {
         console.error("Erro durante cálculo ou PDF:", error);
@@ -322,7 +353,8 @@ async function handleCalculateAndPdf() {
     }
 }
 
-// --- setupEventListeners (Sem alterações, já inclui a delegação) ---
+
+// --- setupEventListeners (Sem alterações) ---
 function setupEventListeners() {
     document.getElementById('loginBtn').addEventListener('click', handleLogin);
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
