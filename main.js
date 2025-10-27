@@ -1,4 +1,4 @@
-// Arquivo: main.js (CORRIGIDO - Com Event Delegation e Debounce centralizado no ui.js)
+// Arquivo: main.js (CORRIGIDO - Com Event Delegation, Debounce centralizado, e PDF em Nova Aba)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -32,30 +32,20 @@ async function handleNewProject(showModal = true) {
         if (showModal) {
             allClients = await api.fetchClients();
             ui.populateSelectClientModal(allClients);
-            ui.openModal('selectClientModalOverlay'); // <-- ESTA LINHA FOI ADICIONADA
+            ui.openModal('selectClientModalOverlay');
         } else {
             ui.resetForm();
         }
     } catch(e){ alert('Erro ao buscar clientes para nova obra.')}
 }
 
-// ========================================================================
-// >>>>> FUNÇÕES ADICIONADAS PARA CORRIGIR O ERRO DE REFERÊNCIA <<<<<
-// ========================================================================
-
-/**
- * Chamada quando o usuário seleciona um cliente no modal e confirma.
- * Vincula o cliente ao projeto atual ou a um novo projeto.
- */
+// --- Funções Adicionadas para Correção de Referência ---
 function handleConfirmClientSelection(isChange = false) {
     const selectedClientId = document.getElementById('clientSelectForNewProject').value;
     const client = allClients.find(c => c.id == selectedClientId);
-
-    // Se não for uma "mudança", é uma "nova obra", então resetamos o formulário
     if (!isChange) {
-        ui.resetForm(true); // Reseta o formulário mantendo um QDC
+        ui.resetForm(true);
     }
-
     if (client) {
         document.getElementById('clientLinkDisplay').textContent = `Cliente: ${client.nome} (${client.client_code || 'S/C'})`;
         document.getElementById('currentClientId').value = client.id;
@@ -63,36 +53,28 @@ function handleConfirmClientSelection(isChange = false) {
         document.getElementById('clientLinkDisplay').textContent = 'Cliente: Nenhum';
         document.getElementById('currentClientId').value = '';
     }
-    
     ui.closeModal('selectClientModalOverlay');
 }
-
-/**
- * Chamada quando o usuário clica em "Continuar Sem Cliente" no modal de nova obra.
- */
 function handleContinueWithoutClient() {
-    handleNewProject(false); // Chama a lógica de nova obra sem mostrar o modal (apenas reseta)
+    handleNewProject(false);
     ui.closeModal('selectClientModalOverlay');
 }
 
 // --- Funções de Projeto (Salvar, Carregar, Excluir) ---
-
-// --- getFullFormData (Formatado para Edge Function E Salvar) ---
 function getFullFormData(forSave = false) {
-    // --- Dados Principais, Cliente, Técnico (sem alterações) ---
+    // --- Dados Principais, Cliente, Técnico ---
     const mainData = { obra: document.getElementById('obra').value, cidadeObra: document.getElementById('cidadeObra').value, enderecoObra: document.getElementById('enderecoObra').value, areaObra: document.getElementById('areaObra').value, unidadesResidenciais: document.getElementById('unidadesResidenciais').value, unidadesComerciais: document.getElementById('unidadesComerciais').value, observacoes: document.getElementById('observacoes').value, projectCode: document.getElementById('project_code').value };
     const currentClientId = document.getElementById('currentClientId').value;
     const client = allClients.find(c => c.id == currentClientId);
     const clientProfile = client ? { cliente: client.nome, tipoDocumento: client.documento_tipo, documento: client.documento_valor, celular: client.celular, telefone: client.telefone, email: client.email, enderecoCliente: client.endereco } : {};
     const techData = { respTecnico: document.getElementById('respTecnico').value, titulo: document.getElementById('titulo').value, crea: document.getElementById('crea').value };
 
-    // --- Dados Alimentador Geral (sem alterações na coleta para 'feederDataForCalc') ---
+    // --- Dados Alimentador Geral ---
     const feederData = {}; // Para salvar no BD
     const feederDataForCalc = { id: 'feeder', nomeCircuito: "Alimentador Geral" }; // Para Edge Function
     document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(el => {
         const value = el.type === 'checkbox' ? el.checked : el.value;
-        feederData[el.id] = value; // Para salvar
-        // Para cálculo
+        feederData[el.id] = value;
         const key = el.id.replace('feeder', '').charAt(0).toLowerCase() + el.id.replace('feeder', '').slice(1);
         let calcValue = value;
         if (el.type === 'number' || ['fatorDemanda', 'fatorPotencia', 'comprimentoM', 'limiteQuedaTensao'].includes(key)) { calcValue = parseFloat(value) || 0; }
@@ -103,21 +85,18 @@ function getFullFormData(forSave = false) {
     });
 
     // --- Dados QDCs e Circuitos ---
-    const qdcsDataForSave = []; // Array completo para salvar no BD
-    const qdcsDataForCalc = []; // Array simplificado para Edge Function (config do alimentador)
-    const allCircuitsForCalc = []; // Array de circuitos para Edge Function
+    const qdcsDataForSave = [];
+    const qdcsDataForCalc = [];
+    const allCircuitsForCalc = [];
 
     document.querySelectorAll('#qdc-container .qdc-block').forEach(qdcBlock => {
         const qdcId = qdcBlock.dataset.id;
-        const qdcConfigDataForSave = {}; // Config para salvar
-        const qdcConfigDataForCalc = {}; // Config para cálculo
+        const qdcConfigDataForSave = {};
+        const qdcConfigDataForCalc = {};
 
-        // Coleta config do alimentador do QDC
         qdcBlock.querySelectorAll('.qdc-config-grid input, .qdc-config-grid select').forEach(el => {
             const value = el.type === 'checkbox' ? el.checked : el.value;
-            qdcConfigDataForSave[el.id] = value; // Salva com ID original (ex: qdcFases-1)
-
-            // Mapeia para cálculo (ex: qdcFases-1 -> fases)
+            qdcConfigDataForSave[el.id] = value;
             const key = el.id.replace(`qdc`, '').replace(`-${qdcId}`, '').replace(/^[A-Z]/, l => l.toLowerCase());
              let calcValue = value;
              if (el.type === 'number' || ['fatorDemanda', 'fatorPotencia', 'comprimentoM', 'limiteQuedaTensao'].includes(key)) { calcValue = parseFloat(value) || 0; }
@@ -125,7 +104,6 @@ function getFullFormData(forSave = false) {
              else if (key === 'resistividadeSolo') { calcValue = parseFloat(value) || 0; }
              else if (el.type === 'checkbox') { calcValue = el.checked; }
              qdcConfigDataForCalc[key] = calcValue;
-
         });
 
         const qdcInfo = {
@@ -134,21 +112,17 @@ function getFullFormData(forSave = false) {
              parentId: document.getElementById(`qdcParent-${qdcId}`)?.value || 'feeder'
         };
 
-        // Adiciona ao array para cálculo
         qdcsDataForCalc.push({ ...qdcInfo, config: qdcConfigDataForCalc });
 
-        // Coleta circuitos para salvar e para cálculo
         const circuitsForSave = [];
         qdcBlock.querySelectorAll('.circuit-block').forEach(circuitBlock => {
             const circuitId = circuitBlock.dataset.id;
-            const circuitDataForSave = { id: circuitId }; // Para salvar
-            const circuitDataForCalc = { qdcId: qdcId, id: circuitId }; // Para cálculo
+            const circuitDataForSave = { id: circuitId };
+            const circuitDataForCalc = { qdcId: qdcId, id: circuitId };
 
             circuitBlock.querySelectorAll('input, select').forEach(el => {
                  const value = el.type === 'checkbox' ? el.checked : el.value;
-                 circuitDataForSave[el.id] = value; // Salva com ID original (ex: nomeCircuito-1)
-
-                 // Mapeia para cálculo (ex: nomeCircuito-1 -> nomeCircuito)
+                 circuitDataForSave[el.id] = value;
                  const key = el.id.replace(`-${circuitId}`, '');
                  let calcValue = value;
                  if (el.type === 'number' || ['potenciaW', 'fatorDemanda', 'fatorPotencia', 'comprimentoM', 'limiteQuedaTensao'].includes(key)) { calcValue = parseFloat(value) || 0; }
@@ -161,38 +135,33 @@ function getFullFormData(forSave = false) {
             allCircuitsForCalc.push(circuitDataForCalc);
         });
 
-        // Adiciona ao array para salvar
         qdcsDataForSave.push({ ...qdcInfo, config: qdcConfigDataForSave, circuits: circuitsForSave });
     });
 
     // --- Retorno ---
     if (forSave) {
-        // Retorna estrutura completa para salvar no banco de dados
         return {
             project_name: mainData.obra,
             project_code: mainData.projectCode || null,
             client_id: currentClientId || null,
             main_data: mainData,
             tech_data: techData,
-            feeder_data: feederData, // Dados do alimentador geral com IDs originais
-            qdcs_data: qdcsDataForSave, // Dados dos QDCs e Circuitos com IDs originais
+            feeder_data: feederData,
+            qdcs_data: qdcsDataForSave,
             owner_id: currentUserProfile?.id
         };
     } else {
-        // Retorna estrutura simplificada para a Edge Function
         return {
             mainData,
-            feederData: feederDataForCalc, // Dados do alimentador geral mapeados
-            qdcsData: qdcsDataForCalc,     // <<< Dados dos QDCs (config) mapeados
-            circuitsData: allCircuitsForCalc, // Dados dos circuitos mapeados
+            feederData: feederDataForCalc,
+            qdcsData: qdcsDataForCalc,
+            circuitsData: allCircuitsForCalc,
             clientProfile,
             techData
         };
     }
 }
-
-
-async function handleSaveProject() {
+async function handleSaveProject() { /* ... (código igual anterior) ... */
     if (!currentUserProfile) { alert("Você precisa estar logado."); return; }
     const nomeObra = document.getElementById('obra').value.trim();
     if (!nomeObra) { alert("Insira um 'Nome da Obra'."); return; }
@@ -215,8 +184,7 @@ async function handleSaveProject() {
         loadingOverlay.classList.remove('visible'); loadingText.textContent = 'Calculando...';
     }
 }
-
-async function handleLoadProject() {
+async function handleLoadProject() { /* ... (código igual anterior) ... */
     const projectId = document.getElementById('savedProjectsSelect').value;
     if (!projectId) { alert("Por favor, selecione uma obra para carregar."); return; }
     const loadingOverlay = document.getElementById('loadingOverlay'); loadingOverlay.classList.add('visible');
@@ -231,80 +199,80 @@ async function handleLoadProject() {
          console.error('Erro ao carregar obra:', error); alert("Erro ao carregar a obra: " + error.message);
     } finally { loadingOverlay.classList.remove('visible'); }
 }
-
-async function handleDeleteProject() { const projectId = document.getElementById('savedProjectsSelect').value; const projectNameOption = document.getElementById('savedProjectsSelect').options[document.getElementById('savedProjectsSelect').selectedIndex]; const projectName = projectNameOption ? projectNameOption.text : "Selecionada"; if (!projectId) { alert("Selecione uma obra para excluir."); return; } if (!confirm(`Tem certeza que deseja excluir permanentemente a obra "${projectName}"? Esta ação não pode ser desfeita.`)) return; const { error } = await api.deleteProject(projectId); if (error) { console.error('Erro ao excluir obra:', error); alert('Erro ao excluir obra: ' + error.message); } else { alert(`Obra "${projectName}" excluída com sucesso.`); ui.resetForm(); await handleSearch(); } }
-
-async function handleSearch(term = '') {
+async function handleDeleteProject() { /* ... (código igual anterior) ... */
+    const projectId = document.getElementById('savedProjectsSelect').value; const projectNameOption = document.getElementById('savedProjectsSelect').options[document.getElementById('savedProjectsSelect').selectedIndex]; const projectName = projectNameOption ? projectNameOption.text : "Selecionada"; if (!projectId) { alert("Selecione uma obra para excluir."); return; } if (!confirm(`Tem certeza que deseja excluir permanentemente a obra "${projectName}"? Esta ação não pode ser desfeita.`)) return; const { error } = await api.deleteProject(projectId); if (error) { console.error('Erro ao excluir obra:', error); alert('Erro ao excluir obra: ' + error.message); } else { alert(`Obra "${projectName}" excluída com sucesso.`); ui.resetForm(); await handleSearch(); }
+}
+async function handleSearch(term = '') { /* ... (código igual anterior) ... */
     if (!currentUserProfile) return;
     try {
         const projects = await api.fetchProjects(term);
-        console.log("Projetos buscados:", projects); // <--- LOG ADICIONADO AQUI
-        ui.populateProjectList(projects); // Chama a função para preencher o dropdown
+        console.log("Projetos buscados:", projects);
+        ui.populateProjectList(projects);
     } catch(error){
         console.error("Erro ao buscar projetos:", error);
-        // Evita alert para não interromper fluxo, mas loga o erro
     }
 }
-
-async function showManageProjectsPanel() { try { const projects = await api.fetchProjects(''); allClients = await api.fetchClients(); const allUsers = await api.fetchAllUsers(); ui.populateProjectsPanel(projects, allClients, allUsers, currentUserProfile); ui.openModal('manageProjectsModalOverlay'); } catch(error){ console.error("Erro ao abrir gerenciador de obras:", error); alert("Erro ao carregar dados para o gerenciador de obras."); } }
-async function handleProjectPanelClick(event) { const target = event.target; const projectId = target.dataset.projectId; if(!projectId) return; if (target.classList.contains('transfer-client-btn')) { const select = target.closest('.action-group')?.querySelector('.transfer-client-select'); if(!select) return; const newClientId = select.value || null; const { error } = await api.transferProjectClient(projectId, newClientId); if (error) { alert('Erro ao transferir cliente: ' + error.message); } else { alert('Cliente da obra atualizado!'); await showManageProjectsPanel(); } } if (target.classList.contains('transfer-owner-btn')) { const select = target.closest('.action-group')?.querySelector('.transfer-owner-select'); if(!select) return; const newOwnerId = select.value; if (newOwnerId && confirm('Tem certeza que deseja transferir a propriedade desta obra para outro usuário?')) { const { error } = await api.transferProjectOwner(projectId, newOwnerId); if (error) { alert('Erro ao transferir propriedade: ' + error.message); } else { alert('Propriedade da obra transferida com sucesso!'); await showManageProjectsPanel(); } } } }
-
-async function showAdminPanel() { 
-    try { 
-        const users = await api.fetchAllUsers(); 
-        ui.populateUsersPanel(users); 
-        ui.openModal('adminPanelModalOverlay'); // <-- CORRIGIDO
-    } catch(error){ 
-        console.error("Erro ao buscar usuários:", error); 
-        alert("Não foi possível carregar a lista de usuários."); 
-    } 
+async function showManageProjectsPanel() { /* ... (código igual anterior) ... */
+    try { const projects = await api.fetchProjects(''); allClients = await api.fetchClients(); const allUsers = await api.fetchAllUsers(); ui.populateProjectsPanel(projects, allClients, allUsers, currentUserProfile); ui.openModal('manageProjectsModalOverlay'); } catch(error){ console.error("Erro ao abrir gerenciador de obras:", error); alert("Erro ao carregar dados para o gerenciador de obras."); }
 }
-
-async function handleAdminUserActions(event) {
+async function handleProjectPanelClick(event) { /* ... (código igual anterior) ... */
+    const target = event.target; const projectId = target.dataset.projectId; if(!projectId) return; if (target.classList.contains('transfer-client-btn')) { const select = target.closest('.action-group')?.querySelector('.transfer-client-select'); if(!select) return; const newClientId = select.value || null; const { error } = await api.transferProjectClient(projectId, newClientId); if (error) { alert('Erro ao transferir cliente: ' + error.message); } else { alert('Cliente da obra atualizado!'); await showManageProjectsPanel(); } } if (target.classList.contains('transfer-owner-btn')) { const select = target.closest('.action-group')?.querySelector('.transfer-owner-select'); if(!select) return; const newOwnerId = select.value; if (newOwnerId && confirm('Tem certeza que deseja transferir a propriedade desta obra para outro usuário?')) { const { error } = await api.transferProjectOwner(projectId, newOwnerId); if (error) { alert('Erro ao transferir propriedade: ' + error.message); } else { alert('Propriedade da obra transferida com sucesso!'); await showManageProjectsPanel(); } } }
+}
+async function showAdminPanel() { /* ... (código igual anterior) ... */
+    try {
+        const users = await api.fetchAllUsers();
+        ui.populateUsersPanel(users);
+        ui.openModal('adminPanelModalOverlay');
+    } catch(error){
+        console.error("Erro ao buscar usuários:", error);
+        alert("Não foi possível carregar a lista de usuários.");
+    }
+}
+async function handleAdminUserActions(event) { /* ... (código igual anterior) ... */
     const target = event.target; const userId = target.dataset.userId; if (!userId) return;
     try {
         if (target.classList.contains('approve-user-btn')) { await api.approveUser(userId); await showAdminPanel(); }
         if (target.classList.contains('edit-user-btn')) { const user = await api.fetchUserById(userId); if (user) ui.populateEditUserModal(user); }
-        if (target.classList.contains('block-user-btn')) { const shouldBlock = target.dataset.isBlocked !== 'false'; // Inverte a lógica para bloquear
-            if (confirm(`Tem certeza que deseja ${shouldBlock ? 'bloquear' : 'desbloquear'} este usuário?`)) { 
-                await api.toggleUserBlock(userId, shouldBlock); 
-                await showAdminPanel(); 
-            } 
+        if (target.classList.contains('block-user-btn')) { const shouldBlock = target.dataset.isBlocked !== 'false';
+            if (confirm(`Tem certeza que deseja ${shouldBlock ? 'bloquear' : 'desbloquear'} este usuário?`)) {
+                await api.toggleUserBlock(userId, shouldBlock);
+                await showAdminPanel();
+            }
         }
         if (target.classList.contains('remove-user-btn')) { if (confirm('ATENÇÃO: Ação irreversível! Excluir este usuário permanentemente?')) { const { data, error } = await api.deleteUserFromAdmin(userId); if (error) { throw error; } alert(data?.message || 'Usuário excluído com sucesso.'); await showAdminPanel(); } }
     } catch (error) { console.error("Erro na ação administrativa:", error); alert("Ocorreu um erro: " + error.message); await showAdminPanel(); }
 }
-async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
+async function handleUpdateUser(event) { /* ... (código igual anterior) ... */
+    event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); }
+}
 
 // ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA (CHAMA O BACK-END PARA O PDF) <<<<<
+// >>>>> FUNÇÃO ATUALIZADA (TENTA ABRIR PDF EM NOVA ABA) <<<<<
 // ========================================================================
 async function handleCalculateAndPdf() {
     if (!uiData) { alert("Erro: Dados técnicos não carregados..."); return; }
     if (!currentUserProfile) { alert("Erro: Usuário não autenticado..."); await handleLogout(); return; }
-    
-    const loadingOverlay = document.getElementById('loadingOverlay'); 
+
+    const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = loadingOverlay.querySelector('p');
-    loadingText.textContent = 'Calculando e gerando PDF no servidor...'; 
+    loadingText.textContent = 'Calculando e gerando PDF no servidor...';
     loadingOverlay.classList.add('visible');
-    
+
     // 1. Pega TODOS os dados do formulário
     const formDataForFunction = getFullFormData(false);
-    
+
     try {
         console.log("Enviando para Edge Function 'gerar-relatorio':", formDataForFunction);
-        
-        // >>>>> ALTERAÇÃO: Chama a nova função 'gerar-relatorio'
-        const { data: pdfBlob, error: functionError } = await supabase.functions.invoke('gerar-relatorio', { 
+
+        // Chama a função 'gerar-relatorio'
+        const { data: pdfBlob, error: functionError } = await supabase.functions.invoke('gerar-relatorio', {
             body: { formData: formDataForFunction },
-            // >>>>> ALTERAÇÃO: Informa que esperamos um 'blob' (arquivo) de volta
-            responseType: 'blob' 
+            responseType: 'blob' // Espera um 'blob' (arquivo) de volta
         });
 
         if (functionError) {
              let errMsg = functionError.message;
              try {
-                 // Tenta ler o erro como texto (se o servidor não enviou um PDF)
                  const errorText = await functionError.context.blob.text();
                  const errorJson = JSON.parse(errorText);
                  if (errorJson.error) errMsg = errorJson.error;
@@ -312,18 +280,37 @@ async function handleCalculateAndPdf() {
              } catch(e) { /* falha ao ler erro, usa o padrão */ }
             throw new Error(`Erro na Edge Function (${functionError.context?.status || 'N/A'}): ${errMsg}`);
         }
-
         if (!pdfBlob) {
             throw new Error("A função de cálculo não retornou um arquivo.");
         }
 
+
         console.log("Blob de PDF recebido:", pdfBlob);
-        loadingText.textContent = 'PDF recebido, iniciando download...';
+        loadingText.textContent = 'PDF recebido, tentando abrir...';
         await new Promise(resolve => setTimeout(resolve, 50));
-        
-        // 2. >>>>> ALTERAÇÃO: Lógica para forçar o download do PDF recebido
-        const nomeObra = document.getElementById('obra')?.value || 'Projeto';
+
+        // 2. >>>>> ALTERAÇÃO PRINCIPAL: Tenta abrir em nova aba <<<<<
+        console.log("Criando URL do Blob...");
         const url = window.URL.createObjectURL(pdfBlob);
+        console.log("URL Criada:", url);
+
+        console.log("Tentando abrir URL em nova aba...");
+        const newWindow = window.open(url, '_blank'); // Abre em nova aba/janela
+
+        if (newWindow) {
+            console.log("Nova aba/janela aberta.");
+            alert("PDF gerado! Verifique a nova aba ou janela.");
+            // Não revogamos URL imediatamente
+        } else {
+            console.error("Falha ao abrir nova aba/janela. O navegador pode ter bloqueado pop-ups.");
+            alert("Não foi possível abrir o PDF em uma nova aba. Verifique se o navegador bloqueou pop-ups.");
+             console.log("Revogando URL do Blob (fallback)...");
+             window.URL.revokeObjectURL(url); // Limpa a URL se a aba não abriu
+             console.log("URL Revogada (fallback).");
+        }
+
+        /* >>>>> CÓDIGO DE DOWNLOAD REMOVIDO/COMENTADO <<<<<
+        const nomeObra = document.getElementById('obra')?.value || 'Projeto';
         const a = document.createElement('a');
         a.style.display = 'none';
         a.href = url;
@@ -332,24 +319,20 @@ async function handleCalculateAndPdf() {
         a.click();
         window.URL.revokeObjectURL(url);
         a.remove();
-        
         alert("PDF gerado e baixado com sucesso!");
+        */
 
     } catch (error) {
-        console.error("Erro durante cálculo ou PDF:", error); 
+        console.error("Erro durante cálculo ou PDF:", error);
         alert("Ocorreu um erro: " + error.message + "\nVerifique o console.");
     } finally {
-        loadingOverlay.classList.remove('visible'); 
+        loadingOverlay.classList.remove('visible');
         loadingText.textContent = 'Calculando...';
     }
 }
 
-
-// ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA (setupEventListeners) <<<<<
-// ========================================================================
+// --- setupEventListeners (Sem alterações, já inclui a delegação) ---
 function setupEventListeners() {
-    // --- Listeners da versão funcional ---
     document.getElementById('loginBtn').addEventListener('click', handleLogin);
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
     document.getElementById('registerBtn').addEventListener('click', () => ui.openModal('registerModalOverlay'));
@@ -362,33 +345,31 @@ function setupEventListeners() {
     document.getElementById('loadBtn').addEventListener('click', handleLoadProject);
     document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
     document.getElementById('newBtn').addEventListener('click', () => handleNewProject(true));
-    
-    // --- DEBOUNCERS ---
+
     const debouncedSearch = utils.debounce((e) => handleSearch(e.target.value), 300);
     document.getElementById('searchInput').addEventListener('input', debouncedSearch);
-    
+
     const debouncedUpdateQdcDropdowns = utils.debounce(ui.updateQdcParentDropdowns, 400);
 
     document.getElementById('addQdcBtn').addEventListener('click', () => ui.addQdcBlock());
     document.getElementById('manageQdcsBtn').addEventListener('click', () => ui.openModal('qdcManagerModalOverlay'));
-    
-    // --- EVENT DELEGATION (Solução 1, 2, 3) ---
-    const appContainer = document.getElementById('appContainer'); 
-    if(appContainer) { 
+
+    const appContainer = document.getElementById('appContainer');
+    if(appContainer) {
         appContainer.addEventListener('change', ui.handleMainContainerInteraction);
-        appContainer.addEventListener('click', ui.handleMainContainerInteraction); 
-        
+        appContainer.addEventListener('click', ui.handleMainContainerInteraction);
+
         appContainer.addEventListener('input', (event) => {
             const target = event.target;
-            
-            if (target.id.startsWith('potenciaW-') || 
+
+            if (target.id.startsWith('potenciaW-') ||
                 target.id.startsWith('fatorDemanda-') ||
                 target.id.startsWith('qdcFatorDemanda-') ||
-                target.id === 'feederFatorDemanda') 
+                target.id === 'feederFatorDemanda')
             {
-                ui.updateFeederPowerDisplay(); 
+                ui.updateFeederPowerDisplay();
             }
-            
+
             if (target.classList.contains('qdc-name-input')) {
                 debouncedUpdateQdcDropdowns();
             }
@@ -396,16 +377,15 @@ function setupEventListeners() {
             if (target.id.startsWith('nomeCircuito-')) {
                  const circuitId = target.closest('.circuit-block')?.dataset.id;
                  if (circuitId) {
-                    const lbl = document.getElementById(`nomeCircuitoLabel-${circuitId}`); 
+                    const lbl = document.getElementById(`nomeCircuitoLabel-${circuitId}`);
                     if(lbl) lbl.textContent = target.value || `Circuito ${circuitId}`;
                  }
             }
         });
     }
 
-    // >>>>> ALTERAÇÃO: O botão agora chama a nova função
-    document.getElementById('calculateAndPdfBtn').addEventListener('click', handleCalculateAndPdf); 
-    
+    document.getElementById('calculateAndPdfBtn').addEventListener('click', handleCalculateAndPdf);
+
     document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
     const projectsTableBody = document.getElementById('adminProjectsTableBody'); if(projectsTableBody) projectsTableBody.addEventListener('click', handleProjectPanelClick);
     document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
@@ -419,11 +399,12 @@ function setupEventListeners() {
     document.getElementById('changeClientBtn').addEventListener('click', async () => { try { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients, true);} catch(e){ alert("Erro ao carregar clientes.")} });
     document.getElementById('continueWithoutClientBtn').addEventListener('click', handleContinueWithoutClient);
     document.getElementById('addNewClientFromSelectModalBtn').addEventListener('click', () => { ui.closeModal('selectClientModalOverlay'); handleOpenClientManagement(); });
+
     // --- Máscaras ---
     document.getElementById('regCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('regTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('editCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('editTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientCelular')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientTelefone')?.addEventListener('input', utils.mascaraTelefone); const clientDoc = document.getElementById('clientDocumentoValor'); if(clientDoc) clientDoc.addEventListener('input', (e) => { const tipo = document.getElementById('clientDocumentoTipo')?.value; if(tipo) utils.aplicarMascara(e, tipo); }); const clientDocTipo = document.getElementById('clientDocumentoTipo'); if(clientDocTipo) clientDocTipo.addEventListener('change', () => { const docVal = document.getElementById('documentoValor'); if(docVal) docVal.value = ''; });
 }
 
-// --- onAuthStateChange da versão funcional ---
+// --- onAuthStateChange (Sem alterações) ---
 function main() {
     setupEventListeners();
 
@@ -435,7 +416,6 @@ function main() {
                 const userProfile = await auth.getSession();
                 if (userProfile && userProfile.is_approved && !userProfile.is_blocked) {
                     currentUserProfile = userProfile;
-                    // Carrega dados técnicos ANTES de mostrar App
                     if (!uiData) {
                         console.log("Carregando dados técnicos...");
                         uiData = await api.fetchUiData();
@@ -448,19 +428,19 @@ function main() {
                             ui.showLoginView(); currentUserProfile = null; await auth.signOutUser(); return;
                         }
                     }
-                    ui.showAppView(currentUserProfile); // Mostra App
+                    ui.showAppView(currentUserProfile);
                     try { allClients = await api.fetchClients(); } catch (e) { console.error("Erro ao carregar clientes:", e); }
 
                     if (hash.includes('type=recovery') && event === 'SIGNED_IN') {
                         console.log("Recuperação de senha detectada."); ui.showResetPasswordView();
                     } else if (!hash.includes('type=recovery')) {
                         ui.resetForm();
-                        await handleSearch(); // Chama handleSearch AQUI após reset
+                        await handleSearch();
                     }
 
                 } else if (userProfile && !userProfile.is_approved) {
                     alert("Seu cadastro ainda não foi aprovado."); await auth.signOutUser();
-                } else if (userProfile && userProfile.is_blocked) { // Correção: userProfile.is_blocked
+                } else if (userProfile && userProfile.is_blocked) {
                     alert("Seu usuário está bloqueado."); await auth.signOutUser();
                 } else {
                     console.warn("Sessão encontrada, mas perfil inválido/não encontrado."); await auth.signOutUser();
@@ -477,11 +457,8 @@ function main() {
     });
 }
 
-// ========================================================================
-// >>>>> ALTERAÇÃO PRINCIPAL AQUI <<<<<
-// ========================================================================
-// Em vez de chamar main() diretamente, esperamos o DOM carregar.
+// --- Ponto de Entrada ---
 document.addEventListener('DOMContentLoaded', () => {
     console.log("--- main.js: DOM Content Loaded ---");
-    main(); // Agora é seguro chamar main() e setupEventListeners()
+    main();
 });
