@@ -1,4 +1,4 @@
-// Arquivo: main.js (CORRIGIDO - Com Event Delegation, Debounce centralizado, e Download Nativo via Headers usando invoke)
+// Arquivo: main.js (CORRIGIDO - Com Event Delegation, Debounce centralizado, e Teste com responseType: 'arraybuffer')
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -247,7 +247,7 @@ async function handleUpdateUser(event) { /* ... (código igual anterior) ... */
 }
 
 // ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA (USA invoke SEM responseType) <<<<<
+// >>>>> FUNÇÃO ATUALIZADA (TESTE: Força leitura com arraybuffer) <<<<<
 // ========================================================================
 async function handleCalculateAndPdf() {
     if (!uiData) { alert("Erro: Dados técnicos não carregados..."); return; }
@@ -263,54 +263,82 @@ async function handleCalculateAndPdf() {
     const formDataForFunction = getFullFormData(false);
 
     try {
-        console.log("Enviando para Edge Function 'gerar-relatorio' via invoke:", formDataForFunction);
+        console.log("Enviando para Edge Function 'gerar-relatorio' via invoke (com arraybuffer):", formDataForFunction);
 
-        // >>>>> ALTERAÇÃO: Chama invoke SEM responseType: 'blob' <<<<<
-        // A biblioteca Supabase/gotrue-js deve respeitar os headers Content-Disposition
-        const { data, error: functionError } = await supabase.functions.invoke('gerar-relatorio', {
-            body: { formData: formDataForFunction }
-            // REMOVIDO: responseType: 'blob'
+        // >>>>> ALTERAÇÃO: Adiciona responseType: 'arraybuffer' <<<<<
+        // Isso força a biblioteca a ler o corpo da resposta. Não vai baixar.
+        const { data: responseData, error: functionError } = await supabase.functions.invoke('gerar-relatorio', {
+            body: { formData: formDataForFunction },
+            responseType: 'arraybuffer' // Força a leitura do corpo como ArrayBuffer
         });
 
         // Verifica erro na chamada da função
         if (functionError) {
-             // Tenta extrair uma mensagem mais útil do erro, se possível
              let errMsg = functionError.message;
-             if (functionError.context && typeof functionError.context.json === 'function') {
+              // Tenta ler erro do context (pode não vir como arraybuffer em caso de erro)
+             if (functionError.context && functionError.context.blob && typeof functionError.context.blob === 'function') { // Checa se tem blob
                  try {
-                     const errorJson = await functionError.context.json();
-                     if (errorJson.error) errMsg = errorJson.error;
-                 } catch(e) { /* Ignora se não for JSON */ }
+                     // Precisamos esperar o blob ser lido
+                     const errorBlob = functionError.context.blob();
+                     if (errorBlob instanceof Blob) {
+                        const errorText = await errorBlob.text();
+                        const errorJson = JSON.parse(errorText);
+                        if (errorJson.error) errMsg = errorJson.error;
+                        else errMsg = errorText; // Usa texto se não for JSON
+                     }
+                 } catch(e) { console.warn("Erro ao tentar ler corpo do erro:", e) /* Ignora erro na leitura/parse */ }
              } else if (functionError.context && functionError.context.status) {
-                 errMsg = `Erro ${functionError.context.status}: ${errMsg}`;
+                  errMsg = `Erro ${functionError.context.status}: ${errMsg}`;
              }
             throw new Error(`Erro na Edge Function: ${errMsg}`);
         }
 
-        // Se chegou aqui sem erro, a função retornou 2xx.
-        // Como não especificamos responseType, a biblioteca não tentará ler o corpo.
-        // O navegador JÁ DEVE TER iniciado o download devido aos headers.
-        console.log("Chamada para 'gerar-relatorio' bem-sucedida. O navegador deve iniciar o download.");
-        loadingText.textContent = 'PDF gerado, download iniciado...';
+        // Se chegou aqui sem erro, a função retornou 2xx e lemos o corpo.
+        console.log("Chamada para 'gerar-relatorio' bem-sucedida.");
+        if (responseData instanceof ArrayBuffer) {
+             console.log(`Corpo da resposta lido como ArrayBuffer. Tamanho: ${(responseData.byteLength / 1024 / 1024).toFixed(2)} MB`);
+             // O download NÃO ocorrerá automaticamente aqui.
+             alert("TESTE: Resposta recebida como ArrayBuffer com sucesso! O site não travou neste ponto, mas o download não foi iniciado (esperado para este teste).");
 
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Espera um pouco
+            // --- TENTATIVA DE DOWNLOAD MANUAL A PARTIR DO ARRAYBUFFER ---
+            // Se a leitura do ArrayBuffer funcionou, talvez o download manual funcione
+            try {
+                console.log("Tentando iniciar download manual a partir do ArrayBuffer...");
+                const blob = new Blob([responseData], { type: 'application/pdf' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                const nomeObra = document.getElementById('obra')?.value || 'Projeto';
+                a.download = `Relatorio_${nomeObra.replace(/[^a-z0-9]/gi, '_')}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+                console.log("Download manual iniciado com sucesso!");
+                // alert("PDF gerado! Verifique seus downloads."); // Já tem o alert de teste
+            } catch (downloadError) {
+                console.error("Erro ao tentar o download manual:", downloadError);
+                alert("Erro ao tentar iniciar o download manualmente após receber os dados. Verifique o console.");
+            }
+            // --- FIM DA TENTATIVA DE DOWNLOAD MANUAL ---
 
-        // Não podemos verificar o 'data' aqui porque não pedimos blob/json
-        // Apenas assumimos que o download começou.
-
-        // alert("PDF gerado! Verifique seus downloads."); // Opcional
+        } else {
+             console.warn("Resposta recebida, mas não é um ArrayBuffer:", responseData);
+             alert("TESTE: Resposta recebida, mas formato inesperado (não ArrayBuffer). Verifique o console.");
+        }
 
     } catch (error) {
         console.error("Erro durante chamada da função:", error);
-        // Tenta dar uma mensagem mais específica para erros comuns
         if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
              alert("Erro de rede ao contatar o servidor. Verifique sua conexão ou tente novamente mais tarde.");
         } else if (error.message.includes('permission denied')) {
              alert("Erro de permissão. Pode ser necessário fazer login novamente.");
         } else {
-             alert("Ocorreu um erro ao gerar o PDF: " + error.message + "\nVerifique o console.");
+             alert("Ocorreu um erro: " + error.message + "\nVerifique o console.");
         }
     } finally {
+        console.log("Executando finally block..."); // Log para ver se chega aqui
         loadingOverlay.classList.remove('visible');
         loadingText.textContent = 'Calculando...';
     }
