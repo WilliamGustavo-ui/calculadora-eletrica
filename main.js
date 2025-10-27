@@ -1,4 +1,4 @@
-// Arquivo: main.js (CORRIGIDO - Com Event Delegation, Debounce centralizado, e Download Nativo via Headers)
+// Arquivo: main.js (CORRIGIDO - Com Event Delegation, Debounce centralizado, e Download Nativo via Headers usando invoke)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -247,7 +247,7 @@ async function handleUpdateUser(event) { /* ... (código igual anterior) ... */
 }
 
 // ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA (DELEGA DOWNLOAD AO NAVEGADOR VIA HEADERS) <<<<<
+// >>>>> FUNÇÃO ATUALIZADA (USA invoke SEM responseType) <<<<<
 // ========================================================================
 async function handleCalculateAndPdf() {
     if (!uiData) { alert("Erro: Dados técnicos não carregados..."); return; }
@@ -263,73 +263,53 @@ async function handleCalculateAndPdf() {
     const formDataForFunction = getFullFormData(false);
 
     try {
-        console.log("Enviando para Edge Function 'gerar-relatorio':", formDataForFunction);
+        console.log("Enviando para Edge Function 'gerar-relatorio' via invoke:", formDataForFunction);
 
-        // >>>>> ALTERAÇÃO PRINCIPAL: Chama a função SEM responseType: 'blob' <<<<<
-        // Usamos a API fetch diretamente para ter mais controle sobre a resposta
-        // e permitir que o navegador lide com o 'Content-Disposition'
-
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !sessionData.session) {
-             throw new Error('Não foi possível obter a sessão do usuário para autenticar a chamada.');
-        }
-        const token = sessionData.session.access_token;
-
-        // Monta a URL da sua Edge Function (ajuste se o nome for diferente)
-        const functionUrl = `${supabase.functionsUrl}/gerar-relatorio`; // Garanta que supabase.functionsUrl está correto
-
-        const response = await fetch(functionUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-                // Adiciona a chave de API anônima se necessário para CORS ou identificação
-                'apikey': supabase.supabaseKey // Garanta que supabase.supabaseKey está correto
-            },
-            body: JSON.stringify({ formData: formDataForFunction })
+        // >>>>> ALTERAÇÃO: Chama invoke SEM responseType: 'blob' <<<<<
+        // A biblioteca Supabase/gotrue-js deve respeitar os headers Content-Disposition
+        const { data, error: functionError } = await supabase.functions.invoke('gerar-relatorio', {
+            body: { formData: formDataForFunction }
+            // REMOVIDO: responseType: 'blob'
         });
 
-        console.log("Resposta recebida do servidor. Status:", response.status);
-
-        // Verifica se a resposta foi bem-sucedida (status 2xx)
-        if (response.ok) {
-            // Verifica se o tipo de conteúdo é PDF (esperado)
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/pdf')) {
-                console.log("Resposta OK e é um PDF. O navegador deve iniciar o download.");
-                loadingText.textContent = 'PDF gerado, download iniciado...';
-                // Neste ponto, o navegador já deve ter iniciado o download
-                // devido ao header 'Content-Disposition: attachment' enviado pela função.
-                // Precisamos esperar um pouco antes de esconder o loading.
-                await new Promise(resolve => setTimeout(resolve, 1500)); // Espera 1.5s
-                // alert("PDF gerado! Verifique seus downloads."); // Opcional, talvez remova para não interromper
-            } else {
-                 // Se a resposta foi OK mas não é PDF, algo estranho aconteceu
-                 const responseText = await response.text(); // Lê a resposta como texto
-                 console.error("Resposta OK, mas não é PDF:", responseText);
-                 throw new Error(`O servidor retornou uma resposta inesperada em vez do PDF. Resposta: ${responseText.substring(0, 200)}...`); // Mostra parte da resposta
-            }
-        } else {
-            // Se a resposta não foi OK (erro 4xx, 5xx), tenta ler a mensagem de erro
-            let errorPayload = { error: `Erro ${response.status}: ${response.statusText}` };
-            try {
-                // Tenta parsear como JSON (formato de erro padrão das Edge Functions)
-                errorPayload = await response.json();
-            } catch (e) {
-                // Se não for JSON, lê como texto
-                try {
-                   errorPayload.error = await response.text() || errorPayload.error;
-                } catch(readError){
-                    console.error("Erro adicional ao tentar ler corpo da resposta de erro:", readError);
-                }
-            }
-            console.error("Erro na resposta da Edge Function:", errorPayload);
-            throw new Error(errorPayload.error || `Erro desconhecido na Edge Function (${response.status})`);
+        // Verifica erro na chamada da função
+        if (functionError) {
+             // Tenta extrair uma mensagem mais útil do erro, se possível
+             let errMsg = functionError.message;
+             if (functionError.context && typeof functionError.context.json === 'function') {
+                 try {
+                     const errorJson = await functionError.context.json();
+                     if (errorJson.error) errMsg = errorJson.error;
+                 } catch(e) { /* Ignora se não for JSON */ }
+             } else if (functionError.context && functionError.context.status) {
+                 errMsg = `Erro ${functionError.context.status}: ${errMsg}`;
+             }
+            throw new Error(`Erro na Edge Function: ${errMsg}`);
         }
 
+        // Se chegou aqui sem erro, a função retornou 2xx.
+        // Como não especificamos responseType, a biblioteca não tentará ler o corpo.
+        // O navegador JÁ DEVE TER iniciado o download devido aos headers.
+        console.log("Chamada para 'gerar-relatorio' bem-sucedida. O navegador deve iniciar o download.");
+        loadingText.textContent = 'PDF gerado, download iniciado...';
+
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Espera um pouco
+
+        // Não podemos verificar o 'data' aqui porque não pedimos blob/json
+        // Apenas assumimos que o download começou.
+
+        // alert("PDF gerado! Verifique seus downloads."); // Opcional
+
     } catch (error) {
-        console.error("Erro durante chamada da função ou processamento:", error);
-        alert("Ocorreu um erro: " + error.message + "\nVerifique o console.");
+        console.error("Erro durante chamada da função:", error);
+        // Tenta dar uma mensagem mais específica para erros comuns
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+             alert("Erro de rede ao contatar o servidor. Verifique sua conexão ou tente novamente mais tarde.");
+        } else if (error.message.includes('permission denied')) {
+             alert("Erro de permissão. Pode ser necessário fazer login novamente.");
+        } else {
+             alert("Ocorreu um erro ao gerar o PDF: " + error.message + "\nVerifique o console.");
+        }
     } finally {
         loadingOverlay.classList.remove('visible');
         loadingText.textContent = 'Calculando...';
