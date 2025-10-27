@@ -1,4 +1,4 @@
-// Arquivo: main.js (CORRIGIDO - Com Event Delegation, Debounce centralizado, e Link Manual com Data URL para PDF)
+// Arquivo: main.js (CORRIGIDO - Com Event Delegation, Debounce centralizado, e Log de Data URL para PDF)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -247,7 +247,7 @@ async function handleUpdateUser(event) { /* ... (código igual anterior) ... */
 }
 
 // ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA (USA DATA URL EM VEZ DE BLOB URL) <<<<<
+// >>>>> FUNÇÃO ATUALIZADA (LOGA DATA URL COMPLETA PARA TESTE MANUAL) <<<<<
 // ========================================================================
 async function handleCalculateAndPdf() {
     if (!uiData) { alert("Erro: Dados técnicos não carregados..."); return; }
@@ -289,56 +289,23 @@ async function handleCalculateAndPdf() {
         loadingText.textContent = 'PDF recebido, convertendo para Data URL...';
         await new Promise(resolve => setTimeout(resolve, 50));
 
-        // 2. >>>>> ALTERAÇÃO: Converte Blob para Data URL (Base64) <<<<<
+        // 2. >>>>> ALTERAÇÃO: Converte Blob para Data URL (Base64) e LOGA <<<<<
         console.log("Convertendo Blob para Base64...");
         const reader = new FileReader();
         reader.readAsDataURL(pdfBlob);
         reader.onloadend = () => {
-            const base64data = reader.result; // Contém 'data:application/pdf;base64,....'
+            const base64data = reader.result;
             console.log("Data URL criada (primeiros 100 chars):", base64data.substring(0, 100) + "...");
 
-            const nomeObra = document.getElementById('obra')?.value || 'Projeto';
-            const linkContainer = document.createElement('div');
-            linkContainer.id = 'pdfLinkContainer';
-            linkContainer.style.marginTop = '15px';
-            linkContainer.style.textAlign = 'center';
+            // >>>>> LOG DA URL COMPLETA PARA TESTE <<<<<
+            console.log("-----------------------------------------");
+            console.log(">>> DATA URL COMPLETA ABAIXO <<<");
+            console.log(base64data);
+            console.log("-----------------------------------------");
+            console.log("^^^ COPIE A URL ACIMA E COLE EM UMA NOVA ABA ^^^");
 
-            const a = document.createElement('a');
-            a.href = base64data; // Usa a Data URL diretamente
-            a.textContent = "Clique aqui para ver/baixar o PDF";
-            a.target = "_blank"; // Sugere abrir em nova aba
-            a.download = `Relatorio_${nomeObra.replace(/[^a-z0-9]/gi, '_')}.pdf`; // Nome para download
-            a.style.display = 'inline-block';
-            a.style.padding = '10px 15px';
-            a.style.backgroundColor = 'var(--btn-green)';
-            a.style.color = 'white';
-            a.style.textDecoration = 'none';
-            a.style.borderRadius = '5px';
-            a.style.fontWeight = 'bold';
-
-            // Não precisamos mais de revokeObjectURL com Data URL
-            a.addEventListener('click', () => {
-                 console.log("Link (Data URL) clicado.");
-                 // Remove o link após um tempo para limpar a UI
-                 setTimeout(() => {
-                    linkContainer.remove();
-                 }, 5000); // Remove após 5 segundos
-            });
-
-            linkContainer.appendChild(a);
-
-            const buttonContainer = document.querySelector('.button-container');
-            if (buttonContainer) {
-                // Insere DEPOIS do container de botões
-                buttonContainer.parentNode.insertBefore(linkContainer, buttonContainer.nextSibling);
-            } else {
-                // Fallback: adiciona no final do container principal
-                document.getElementById('appContainer').appendChild(linkContainer);
-            }
-
-            console.log("Link (Data URL) para PDF criado. Aguardando clique do usuário.");
-            // alert("PDF gerado! Clique no link abaixo do botão 'Gerar PDF' para abri-lo."); // Removido alert
-            loadingOverlay.classList.remove('visible'); // Esconde loading aqui
+            alert("Data URL gerada! Copie a URL completa do console (F12) e cole em uma nova aba para testar.");
+            loadingOverlay.classList.remove('visible'); // Esconde loading
         };
         reader.onerror = (error) => {
              console.error("Erro ao ler Blob como Data URL:", error);
@@ -350,9 +317,9 @@ async function handleCalculateAndPdf() {
     } catch (error) {
         console.error("Erro durante cálculo ou PDF:", error);
         alert("Ocorreu um erro: " + error.message + "\nVerifique o console.");
-         loadingOverlay.classList.remove('visible'); // Garante que loading some em caso de erro
+         loadingOverlay.classList.remove('visible');
     }
-    // Removido o finally daqui porque a conversão para Data URL é assíncrona
+    // Removido o finally daqui
 }
 
 // --- setupEventListeners (Sem alterações) ---
