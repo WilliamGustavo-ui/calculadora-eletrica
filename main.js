@@ -1,4 +1,4 @@
-// Arquivo: main.js (CORRIGIDO - Com Event Delegation, Debounce centralizado, e Log de Data URL para PDF)
+// Arquivo: main.js (CORRIGIDO - Com Event Delegation, Debounce centralizado, e Download Nativo via Headers)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -247,7 +247,7 @@ async function handleUpdateUser(event) { /* ... (código igual anterior) ... */
 }
 
 // ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA (LOGA DATA URL COMPLETA PARA TESTE MANUAL) <<<<<
+// >>>>> FUNÇÃO ATUALIZADA (DELEGA DOWNLOAD AO NAVEGADOR VIA HEADERS) <<<<<
 // ========================================================================
 async function handleCalculateAndPdf() {
     if (!uiData) { alert("Erro: Dados técnicos não carregados..."); return; }
@@ -265,62 +265,77 @@ async function handleCalculateAndPdf() {
     try {
         console.log("Enviando para Edge Function 'gerar-relatorio':", formDataForFunction);
 
-        const { data: pdfBlob, error: functionError } = await supabase.functions.invoke('gerar-relatorio', {
-            body: { formData: formDataForFunction },
-            responseType: 'blob'
+        // >>>>> ALTERAÇÃO PRINCIPAL: Chama a função SEM responseType: 'blob' <<<<<
+        // Usamos a API fetch diretamente para ter mais controle sobre a resposta
+        // e permitir que o navegador lide com o 'Content-Disposition'
+
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !sessionData.session) {
+             throw new Error('Não foi possível obter a sessão do usuário para autenticar a chamada.');
+        }
+        const token = sessionData.session.access_token;
+
+        // Monta a URL da sua Edge Function (ajuste se o nome for diferente)
+        const functionUrl = `${supabase.functionsUrl}/gerar-relatorio`; // Garanta que supabase.functionsUrl está correto
+
+        const response = await fetch(functionUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                // Adiciona a chave de API anônima se necessário para CORS ou identificação
+                'apikey': supabase.supabaseKey // Garanta que supabase.supabaseKey está correto
+            },
+            body: JSON.stringify({ formData: formDataForFunction })
         });
 
-        if (functionError) {
-             let errMsg = functionError.message;
-             try {
-                 const errorText = await functionError.context.blob.text();
-                 const errorJson = JSON.parse(errorText);
-                 if (errorJson.error) errMsg = errorJson.error;
-                 else errMsg = errorText;
-             } catch(e) { /* falha ao ler erro, usa o padrão */ }
-            throw new Error(`Erro na Edge Function (${functionError.context?.status || 'N/A'}): ${errMsg}`);
+        console.log("Resposta recebida do servidor. Status:", response.status);
+
+        // Verifica se a resposta foi bem-sucedida (status 2xx)
+        if (response.ok) {
+            // Verifica se o tipo de conteúdo é PDF (esperado)
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/pdf')) {
+                console.log("Resposta OK e é um PDF. O navegador deve iniciar o download.");
+                loadingText.textContent = 'PDF gerado, download iniciado...';
+                // Neste ponto, o navegador já deve ter iniciado o download
+                // devido ao header 'Content-Disposition: attachment' enviado pela função.
+                // Precisamos esperar um pouco antes de esconder o loading.
+                await new Promise(resolve => setTimeout(resolve, 1500)); // Espera 1.5s
+                // alert("PDF gerado! Verifique seus downloads."); // Opcional, talvez remova para não interromper
+            } else {
+                 // Se a resposta foi OK mas não é PDF, algo estranho aconteceu
+                 const responseText = await response.text(); // Lê a resposta como texto
+                 console.error("Resposta OK, mas não é PDF:", responseText);
+                 throw new Error(`O servidor retornou uma resposta inesperada em vez do PDF. Resposta: ${responseText.substring(0, 200)}...`); // Mostra parte da resposta
+            }
+        } else {
+            // Se a resposta não foi OK (erro 4xx, 5xx), tenta ler a mensagem de erro
+            let errorPayload = { error: `Erro ${response.status}: ${response.statusText}` };
+            try {
+                // Tenta parsear como JSON (formato de erro padrão das Edge Functions)
+                errorPayload = await response.json();
+            } catch (e) {
+                // Se não for JSON, lê como texto
+                try {
+                   errorPayload.error = await response.text() || errorPayload.error;
+                } catch(readError){
+                    console.error("Erro adicional ao tentar ler corpo da resposta de erro:", readError);
+                }
+            }
+            console.error("Erro na resposta da Edge Function:", errorPayload);
+            throw new Error(errorPayload.error || `Erro desconhecido na Edge Function (${response.status})`);
         }
-        if (!pdfBlob) {
-            throw new Error("A função de cálculo não retornou um arquivo.");
-        }
-
-        console.log("Blob de PDF recebido:", pdfBlob);
-        console.log(`>>> TAMANHO DO BLOB: ${(pdfBlob.size / 1024 / 1024).toFixed(2)} MB`);
-        loadingText.textContent = 'PDF recebido, convertendo para Data URL...';
-        await new Promise(resolve => setTimeout(resolve, 50));
-
-        // 2. >>>>> ALTERAÇÃO: Converte Blob para Data URL (Base64) e LOGA <<<<<
-        console.log("Convertendo Blob para Base64...");
-        const reader = new FileReader();
-        reader.readAsDataURL(pdfBlob);
-        reader.onloadend = () => {
-            const base64data = reader.result;
-            console.log("Data URL criada (primeiros 100 chars):", base64data.substring(0, 100) + "...");
-
-            // >>>>> LOG DA URL COMPLETA PARA TESTE <<<<<
-            console.log("-----------------------------------------");
-            console.log(">>> DATA URL COMPLETA ABAIXO <<<");
-            console.log(base64data);
-            console.log("-----------------------------------------");
-            console.log("^^^ COPIE A URL ACIMA E COLE EM UMA NOVA ABA ^^^");
-
-            alert("Data URL gerada! Copie a URL completa do console (F12) e cole em uma nova aba para testar.");
-            loadingOverlay.classList.remove('visible'); // Esconde loading
-        };
-        reader.onerror = (error) => {
-             console.error("Erro ao ler Blob como Data URL:", error);
-             alert("Erro ao converter o PDF recebido. Verifique o console.");
-             loadingOverlay.classList.remove('visible');
-        };
-
 
     } catch (error) {
-        console.error("Erro durante cálculo ou PDF:", error);
+        console.error("Erro durante chamada da função ou processamento:", error);
         alert("Ocorreu um erro: " + error.message + "\nVerifique o console.");
-         loadingOverlay.classList.remove('visible');
+    } finally {
+        loadingOverlay.classList.remove('visible');
+        loadingText.textContent = 'Calculando...';
     }
-    // Removido o finally daqui
 }
+
 
 // --- setupEventListeners (Sem alterações) ---
 function setupEventListeners() {
