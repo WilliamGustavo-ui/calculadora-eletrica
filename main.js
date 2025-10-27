@@ -1,4 +1,4 @@
-// Arquivo: main.js (CORRIGIDO - Com Event Delegation, Debounce centralizado, e PDF em Nova Aba)
+// Arquivo: main.js (CORRIGIDO - Com Event Delegation, Debounce centralizado, PDF em Nova Aba com Atraso e Log de Tamanho)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -247,7 +247,7 @@ async function handleUpdateUser(event) { /* ... (código igual anterior) ... */
 }
 
 // ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA (TENTA ABRIR PDF EM NOVA ABA) <<<<<
+// >>>>> FUNÇÃO ATUALIZADA (Com Log de Tamanho e Atraso) <<<<<
 // ========================================================================
 async function handleCalculateAndPdf() {
     if (!uiData) { alert("Erro: Dados técnicos não carregados..."); return; }
@@ -267,7 +267,7 @@ async function handleCalculateAndPdf() {
         // Chama a função 'gerar-relatorio'
         const { data: pdfBlob, error: functionError } = await supabase.functions.invoke('gerar-relatorio', {
             body: { formData: formDataForFunction },
-            responseType: 'blob' // Espera um 'blob' (arquivo) de volta
+            responseType: 'blob'
         });
 
         if (functionError) {
@@ -286,41 +286,32 @@ async function handleCalculateAndPdf() {
 
 
         console.log("Blob de PDF recebido:", pdfBlob);
+        // >>>>> ADICIONADO: Log do tamanho do Blob <<<<<
+        console.log(`>>> TAMANHO DO BLOB: ${(pdfBlob.size / 1024 / 1024).toFixed(2)} MB`);
         loadingText.textContent = 'PDF recebido, tentando abrir...';
         await new Promise(resolve => setTimeout(resolve, 50));
 
-        // 2. >>>>> ALTERAÇÃO PRINCIPAL: Tenta abrir em nova aba <<<<<
         console.log("Criando URL do Blob...");
         const url = window.URL.createObjectURL(pdfBlob);
         console.log("URL Criada:", url);
 
+        // >>>>> ADICIONADO: Atraso antes de window.open <<<<<
+        console.log("Aguardando um momento antes de abrir a aba...");
+        await new Promise(resolve => setTimeout(resolve, 100)); // Atraso de 100ms
+
         console.log("Tentando abrir URL em nova aba...");
-        const newWindow = window.open(url, '_blank'); // Abre em nova aba/janela
+        const newWindow = window.open(url, '_blank');
 
         if (newWindow) {
             console.log("Nova aba/janela aberta.");
             alert("PDF gerado! Verifique a nova aba ou janela.");
-            // Não revogamos URL imediatamente
         } else {
             console.error("Falha ao abrir nova aba/janela. O navegador pode ter bloqueado pop-ups.");
             alert("Não foi possível abrir o PDF em uma nova aba. Verifique se o navegador bloqueou pop-ups.");
              console.log("Revogando URL do Blob (fallback)...");
-             window.URL.revokeObjectURL(url); // Limpa a URL se a aba não abriu
+             window.URL.revokeObjectURL(url);
              console.log("URL Revogada (fallback).");
         }
-
-        /* >>>>> CÓDIGO DE DOWNLOAD REMOVIDO/COMENTADO <<<<<
-        const nomeObra = document.getElementById('obra')?.value || 'Projeto';
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = `Relatorio_${nomeObra.replace(/[^a-z0-9]/gi, '_')}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        a.remove();
-        alert("PDF gerado e baixado com sucesso!");
-        */
 
     } catch (error) {
         console.error("Erro durante cálculo ou PDF:", error);
