@@ -1,4 +1,4 @@
-// Arquivo: ui.js (v2 - Com QDCs Suspensos e Lazy Loading de Circuitos, Logs Reduzidos)
+// Arquivo: ui.js (v3 - Lazy Loading Otimizado, Botão Exibir/Ocultar, Correção Soma UI)
 
 console.log("--- ui.js: Iniciando carregamento ---"); // Log Mantido
 
@@ -16,8 +16,6 @@ export function setLoadedProjectData(projectData) {
     loadedProjectData = projectData;
     console.log("[UI] Dados do projeto armazenados para lazy loading."); // Log Mantido
 }
-
-// console.log("--- ui.js: Antes de definir exports ---"); // Log Removido
 
 export function setupDynamicData(data) {
     // console.log("--- ui.js: setupDynamicData executado ---"); // Log Removido
@@ -70,56 +68,143 @@ function populateSoilResistivityDropdown(selectElement, soilData) {
 }
 
 // --- FUNÇÕES DE VISIBILIDADE E MODAIS ---
-// console.log("--- ui.js: Definindo showLoginView ---"); // Log Removido
 export function showLoginView() { /* console.log("showLoginView chamada"); */ const l = document.getElementById('loginContainer'); if(l) l.style.display = 'block'; const a = document.getElementById('appContainer'); if(a) a.style.display = 'none'; const r = document.getElementById('resetPasswordContainer'); if(r) r.style.display = 'none'; }
-// console.log("--- ui.js: Definindo showAppView ---"); // Log Removido
 export function showAppView(userProfile) { /* console.log("showAppView chamada"); */ const l = document.getElementById('loginContainer'); if(l) l.style.display = 'none'; const a = document.getElementById('appContainer'); if(a) a.style.display = 'block'; const r = document.getElementById('resetPasswordContainer'); if(r) r.style.display = 'none'; const isAdmin = userProfile?.is_admin || false; const adminBtn = document.getElementById('adminPanelBtn'); if(adminBtn) adminBtn.style.display = isAdmin ? 'block' : 'none'; const clientBtn = document.getElementById('manageClientsBtn'); if(clientBtn) clientBtn.style.display = 'block'; const projBtn = document.getElementById('manageProjectsBtn'); if(projBtn) projBtn.style.display = 'block'; }
-// console.log("--- ui.js: Definindo showResetPasswordView ---"); // Log Removido
 export function showResetPasswordView() { /* console.log("showResetPasswordView chamada"); */ const l = document.getElementById('loginContainer'); if(l) l.style.display = 'none'; const a = document.getElementById('appContainer'); if(a) a.style.display = 'none'; const r = document.getElementById('resetPasswordContainer'); if(r) r.style.display = 'block'; }
 export function openModal(modalId) { const modal = document.getElementById(modalId); if(modal) modal.style.display = 'flex'; else console.error(`Modal com ID '${modalId}' não encontrado.`); }
 export function closeModal(modalId) { const modal = document.getElementById(modalId); if(modal) modal.style.display = 'none'; }
 
 // --- FUNÇÃO DE ATUALIZAÇÃO HIERÁRQUICA DE CARGA VISUAL ---
 function _internal_updateFeederPowerDisplay() {
-    // console.log("Recalculando potências..."); // Log Removido
-    const qdcData = {}; let totalInstalledGeneral = 0;
-    document.querySelectorAll('#qdc-container .qdc-block').forEach(qdcBlock => { const qdcId = qdcBlock.dataset.id; if (!qdcId) return; let installedDirect = 0; let demandedDirect = 0;
-        // Só soma circuitos que JÁ FORAM CARREGADOS no DOM
-        qdcBlock.querySelectorAll('.circuit-block').forEach(circuitBlock => { const id = circuitBlock.dataset.id; if (!id) return; const potenciaWInput = circuitBlock.querySelector(`#potenciaW-${id}`); const fatorDemandaInput = circuitBlock.querySelector(`#fatorDemanda-${id}`); if (potenciaWInput && fatorDemandaInput) { const potenciaW = parseFloat(potenciaWInput.value) || 0; const fatorDemanda = (parseFloat(fatorDemandaInput.value) || 100) / 100.0; installedDirect += potenciaW; demandedDirect += (potenciaW * fatorDemanda); } });
-        totalInstalledGeneral += installedDirect; const parentSelect = qdcBlock.querySelector(`#qdcParent-${qdcId}`); const parentId = parentSelect ? parentSelect.value : 'feeder'; qdcData[qdcId] = { installedDirect, demandedDirect, parentId, childrenIds: [], aggregatedDemand: -1 }; const qdcPotInstEl = qdcBlock.querySelector(`#qdcPotenciaInstalada-${qdcId}`); if (qdcPotInstEl) qdcPotInstEl.value = installedDirect.toFixed(2); const qdcDemPropriaEl = qdcBlock.querySelector(`#qdcDemandaPropria-${qdcId}`); if (qdcDemPropriaEl) qdcDemPropriaEl.value = demandedDirect.toFixed(2); });
-    
-    // Calcula Agregação Hierárquica (baseado na lógica anterior)
-    Object.keys(qdcData).forEach(qdcId => { const parentId = qdcData[qdcId].parentId; if (parentId !== 'feeder' && qdcData[parentId]) { qdcData[parentId].childrenIds.push(qdcId); } });
-    const visited = new Set();
-    function calculateAggregatedDemand(qdcId) { if (!qdcData[qdcId]) return 0; if (qdcData[qdcId].aggregatedDemand !== -1) return qdcData[qdcId].aggregatedDemand; if (visited.has(qdcId)) { console.error(`Loop detectado ${qdcId}`); return qdcData[qdcId].demandedDirect; } visited.add(qdcId); let aggregatedDemand = qdcData[qdcId].demandedDirect; qdcData[qdcId].childrenIds.forEach(childId => { aggregatedDemand += calculateAggregatedDemand(childId); }); visited.delete(qdcId); qdcData[qdcId].aggregatedDemand = aggregatedDemand; return aggregatedDemand; }
-    
-    let totalDemandAggregatedGeneral = 0;
-    // Popula "Demandada Total (Agregada)" e calcula soma para o Geral
+    const qdcData = {};
+    let totalInstalledGeneral = 0; // Soma das P.Inst. *diretas* de todos circuitos visíveis
+
+    // 1. Coleta dados diretos (visíveis) e constrói mapa de parentesco
+    document.querySelectorAll('#qdc-container .qdc-block').forEach(qdcBlock => {
+        const qdcId = qdcBlock.dataset.id;
+        if (!qdcId) return;
+
+        let installedDirect = 0;
+        let demandedDirect = 0;
+
+        // Só soma circuitos que JÁ FORAM CARREGADOS no DOM (visíveis)
+        qdcBlock.querySelectorAll('.circuit-block').forEach(circuitBlock => {
+            const id = circuitBlock.dataset.id;
+            if (!id) return;
+            const potenciaWInput = circuitBlock.querySelector(`#potenciaW-${id}`);
+            const fatorDemandaInput = circuitBlock.querySelector(`#fatorDemanda-${id}`);
+            if (potenciaWInput && fatorDemandaInput) {
+                const potenciaW = parseFloat(potenciaWInput.value) || 0;
+                const fatorDemanda = (parseFloat(fatorDemandaInput.value) || 100) / 100.0;
+                installedDirect += potenciaW;
+                demandedDirect += (potenciaW * fatorDemanda);
+            }
+        });
+
+        // P.Inst. Geral = Soma das P.Inst. de todos os circuitos visíveis em todos os QDCs
+        totalInstalledGeneral += installedDirect;
+
+        const parentSelect = qdcBlock.querySelector(`#qdcParent-${qdcId}`);
+        const parentId = parentSelect ? parentSelect.value : 'feeder'; // ex: 'feeder' ou 'qdc-1'
+
+        qdcData[qdcId] = {
+            installedDirect: installedDirect, // P.Inst. só dos circuitos filhos diretos visíveis
+            demandedDirect: demandedDirect,   // P.Dem. só dos circuitos filhos diretos visíveis
+            parentId: parentId,
+            childrenIds: [],
+            aggregatedInstalled: -1, // P.Inst. Agregada (inclui filhos)
+            aggregatedDemand: -1     // P.Dem. Agregada (inclui filhos)
+        };
+
+        // Atualiza campos de exibição "Visíveis"
+        const qdcPotInstEl = qdcBlock.querySelector(`#qdcPotenciaInstalada-${qdcId}`);
+        if (qdcPotInstEl) qdcPotInstEl.value = installedDirect.toFixed(2);
+        const qdcDemPropriaEl = qdcBlock.querySelector(`#qdcDemandaPropria-${qdcId}`);
+        if (qdcDemPropriaEl) qdcDemPropriaEl.value = demandedDirect.toFixed(2);
+    });
+
+    // 2. Constrói a árvore
     Object.keys(qdcData).forEach(qdcId => {
-        visited.clear();
-        const aggregatedDemand = calculateAggregatedDemand(qdcId);
-        const qdcPotDemEl = document.getElementById(`qdcPotenciaDemandada-${qdcId}`);
-        if (qdcPotDemEl) qdcPotDemEl.value = aggregatedDemand.toFixed(2);
-        
-        // Soma para o Alimentador Geral APENAS se for filho direto do 'feeder'
-        if (qdcData[qdcId].parentId === 'feeder') {
-            totalDemandAggregatedGeneral += aggregatedDemand; // Soma a demanda *agregada*
+        const parentId = qdcData[qdcId].parentId; // ex: 'qdc-1'
+        if (parentId !== 'feeder') {
+            const parentKey = parentId.replace('qdc-', ''); // '1'
+            if (qdcData[parentKey]) {
+                qdcData[parentKey].childrenIds.push(qdcId);
+            }
         }
     });
 
-    // Atualiza campos do Alimentador Geral
-    const feederPotInstaladaEl = document.getElementById('feederPotenciaInstalada');
-    const feederSomaPotDemandadaEl = document.getElementById('feederSomaPotenciaDemandada'); // Este é o campo "Soma da Demanda dos QDCs"
-    const feederFatorDemandaInput = document.getElementById('feederFatorDemanda');
-    const feederPotDemandadaFinalEl = document.getElementById('feederPotenciaDemandada'); // Este é o campo "Demanda Total Calculada"
+    // 3. Funções Recursivas para calcular agregação
+    const visitedDemand = new Set();
+    function calculateAggregatedDemand(qdcId) {
+        if (!qdcData[qdcId]) return 0;
+        if (qdcData[qdcId].aggregatedDemand !== -1) return qdcData[qdcId].aggregatedDemand;
+        if (visitedDemand.has(qdcId)) { console.error(`Loop de demanda detectado em ${qdcId}`); return qdcData[qdcId].demandedDirect; }
+        visitedDemand.add(qdcId);
 
-    // "Potência Total Instalada" (Geral) = Soma das P.Inst. de todos circuitos visíveis
-    if (feederPotInstaladaEl) feederPotInstaladaEl.value = totalInstalledGeneral.toFixed(2);
-    // "Soma da Demanda dos QDCs" (Geral) = Soma da P.Dem. *Agregada* dos QDCs raiz
+        // P.Dem. Agregada = P.Dem. Direta + SOMA(P.Dem. Agregadas dos Filhos)
+        let aggregatedDemand = qdcData[qdcId].demandedDirect;
+        qdcData[qdcId].childrenIds.forEach(childId => {
+            aggregatedDemand += calculateAggregatedDemand(childId);
+        });
+        
+        visitedDemand.delete(qdcId);
+        qdcData[qdcId].aggregatedDemand = aggregatedDemand;
+        return aggregatedDemand;
+    }
+
+    const visitedInstalled = new Set();
+    function calculateAggregatedInstalled(qdcId) {
+        if (!qdcData[qdcId]) return 0;
+        if (qdcData[qdcId].aggregatedInstalled !== -1) return qdcData[qdcId].aggregatedInstalled;
+        if (visitedInstalled.has(qdcId)) { console.error(`Loop de instalada detectado em ${qdcId}`); return qdcData[qdcId].installedDirect; }
+        visitedInstalled.add(qdcId);
+
+        // P.Inst. Agregada = P.Inst. Direta + SOMA(P.Inst. Agregadas dos Filhos)
+        let aggregatedInstalled = qdcData[qdcId].installedDirect;
+        qdcData[qdcId].childrenIds.forEach(childId => {
+            aggregatedInstalled += calculateAggregatedInstalled(childId);
+        });
+
+        visitedInstalled.delete(qdcId);
+        qdcData[qdcId].aggregatedInstalled = aggregatedInstalled;
+        return aggregatedInstalled;
+    }
+
+    // 4. Calcula e preenche campos agregados
+    let totalDemandAggregatedGeneral = 0;
+    let totalInstalledAggregatedGeneral = 0;
+
+    Object.keys(qdcData).forEach(qdcId => {
+        visitedDemand.clear();
+        visitedInstalled.clear();
+        
+        const aggregatedDemand = calculateAggregatedDemand(qdcId);
+        const aggregatedInstalled = calculateAggregatedInstalled(qdcId); // Calcula P. Inst. Agregada
+
+        const qdcPotDemEl = document.getElementById(`qdcPotenciaDemandada-${qdcId}`);
+        if (qdcPotDemEl) qdcPotDemEl.value = aggregatedDemand.toFixed(2); // Exibe P. Dem. Agregada
+
+        // Soma para o Alimentador Geral APENAS se for filho direto do 'feeder'
+        if (qdcData[qdcId].parentId === 'feeder') {
+            totalDemandAggregatedGeneral += aggregatedDemand;
+            totalInstalledAggregatedGeneral += aggregatedInstalled; // Soma P. Inst. Agregada
+        }
+    });
+
+    // 5. Atualiza campos do Alimentador Geral
+    const feederPotInstaladaEl = document.getElementById('feederPotenciaInstalada');
+    const feederSomaPotDemandadaEl = document.getElementById('feederSomaPotenciaDemandada');
+    const feederFatorDemandaInput = document.getElementById('feederFatorDemanda');
+    const feederPotDemandadaFinalEl = document.getElementById('feederPotenciaDemandada');
+
+    // P. Inst. Geral = Soma das P.Inst. *Agregadas* dos QDCs raiz
+    if (feederPotInstaladaEl) feederPotInstaladaEl.value = totalInstalledAggregatedGeneral.toFixed(2);
+    // P. Dem. "Soma" = Soma das P.Dem. *Agregadas* dos QDCs raiz
     if (feederSomaPotDemandadaEl) feederSomaPotDemandadaEl.value = totalDemandAggregatedGeneral.toFixed(2);
     
     const feederFatorDemanda = (parseFloat(feederFatorDemandaInput?.value) || 100) / 100.0;
-    // "Demanda Total Calculada" (Geral) = (Soma da P.Dem. Agregada dos QDCs raiz) * FD Geral
+    // Demanda Final = (Soma P.Dem. Agregadas QDCs raiz) * FD Geral
     const finalDemandGeral = totalDemandAggregatedGeneral * feederFatorDemanda;
     if (feederPotDemandadaFinalEl) feederPotDemandadaFinalEl.value = finalDemandGeral.toFixed(2);
 }
@@ -133,7 +218,7 @@ export function resetForm(addDefaultQdc = true, linkedClient = null) {
     const techForm = document.getElementById('tech-form'); if(techForm) techForm.reset();
     const feederForm = document.getElementById('feeder-form'); if(feederForm) feederForm.reset();
     const currentProjId = document.getElementById('currentProjectId'); if(currentProjId) currentProjId.value = '';
-    const qdcContainer = document.getElementById('qdc-container'); if(qdcContainer) qdcContainer.innerHTML = ''; // Limpa QDCs
+    const qdcContainer = document.getElementById('qdc-container'); if(qdcContainer) qdcContainer.innerHTML = '';
     const searchInput = document.getElementById('searchInput'); if(searchInput) searchInput.value = '';
     const clientLinkDisplay = document.getElementById('clientLinkDisplay');
     const currentClientIdInput = document.getElementById('currentClientId');
@@ -144,13 +229,13 @@ export function resetForm(addDefaultQdc = true, linkedClient = null) {
         clientLinkDisplay.textContent = 'Cliente: Nenhum';
         currentClientIdInput.value = '';
     }
-    initializeFeederListeners(); // Reinicializa listeners do alimentador
-    qdcCount = 0; // Reseta contagem de QDCs
-    circuitCount = 0; // Reseta contagem de circuitos
+    initializeFeederListeners();
+    qdcCount = 0;
+    circuitCount = 0;
     if (addDefaultQdc) {
-        addQdcBlock(); // Adiciona um QDC inicial
+        addQdcBlock();
     } else {
-        updateFeederPowerDisplay(); // Atualiza display se nenhum QDC for adicionado
+        updateFeederPowerDisplay();
     }
 }
 
@@ -207,7 +292,6 @@ function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
     </div>`;
 }
 
-// >>>>> addQdcBlock não adiciona circuito automaticamente se não for novo <<<<<
 export function addQdcBlock(id = null, name = null, parentId = 'feeder', container = null) {
     const isNewQdc = !id;
     let internalId;
@@ -278,7 +362,6 @@ export const updateQdcParentDropdowns = debounce(_internal_updateQdcParentDropdo
 
 // --- LÓGICA DE CIRCUITO (addCircuit agora não tem mais logs excessivos) ---
 export function addCircuit(qdcId, savedCircuitData = null, circuitContainer = null) {
-    // console.log(`addCircuit for QDC ${qdcId}`); // Log Reduzido
     const isNewCircuit = !savedCircuitData;
     let internalId;
     if (savedCircuitData && savedCircuitData.id) {
@@ -289,7 +372,6 @@ export function addCircuit(qdcId, savedCircuitData = null, circuitContainer = nu
         circuitCount++;
         internalId = circuitCount;
     }
-    // console.log(`Circuit ID: ${internalId} (New: ${isNewCircuit})`); // Log Reduzido
 
     const newCircuitDiv = document.createElement('div');
     newCircuitDiv.innerHTML = getCircuitHTML(internalId);
