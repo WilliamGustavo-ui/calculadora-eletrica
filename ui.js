@@ -1,6 +1,6 @@
-// Arquivo: ui.js (v3 - Lazy Loading Otimizado, Botão Exibir/Ocultar, Correção Soma UI)
+// Arquivo: ui.js (v3 - Lazy Loading Otimizado, Correção Botão Ocultar, Correção Soma UI)
 
-console.log("--- ui.js: Iniciando carregamento ---"); // Log Mantido
+console.log("--- ui.js: Iniciando carregamento ---");
 
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { debounce } from './utils.js';
@@ -14,14 +14,11 @@ export let loadedProjectData = null; // Armazena dados do projeto carregado para
 // Função para definir os dados do projeto carregado (chamada por main.js)
 export function setLoadedProjectData(projectData) {
     loadedProjectData = projectData;
-    console.log("[UI] Dados do projeto armazenados para lazy loading."); // Log Mantido
+    // console.log("[UI] Dados do projeto armazenados para lazy loading."); // Log Reduzido
 }
 
 export function setupDynamicData(data) {
-    // console.log("--- ui.js: setupDynamicData executado ---"); // Log Removido
     uiData = data;
-    // console.log("Dados recebidos em setupDynamicData:", uiData ? 'OK' : 'FALHA'); // Log Removido
-
     // Processamento K1 PVC
     if (uiData?.fatores_k1 && Array.isArray(uiData.fatores_k1)) {
         tempOptions.pvc = uiData.fatores_k1.filter(f => f && typeof f.fator === 'number' && f.fator > 0 && typeof f.temperatura_c === 'number').map(f => f.temperatura_c).sort((a, b) => a - b);
@@ -35,7 +32,6 @@ export function setupDynamicData(data) {
     } else { tempOptions.epr = []; console.warn("Dados de fatores_k1_epr não encontrados ou inválidos."); }
     if (tempOptions.epr.length === 0) tempOptions.epr = tempOptions.pvc.length > 0 ? [...tempOptions.pvc] : [30];
     tempOptions.epr = [...new Set(tempOptions.epr)].sort((a,b) => a - b);
-     // console.log("Opções de Temperatura Carregadas:", tempOptions); // Log Removido
 }
 
 function populateTemperatureDropdown(selectElement, temperatures) {
@@ -68,14 +64,15 @@ function populateSoilResistivityDropdown(selectElement, soilData) {
 }
 
 // --- FUNÇÕES DE VISIBILIDADE E MODAIS ---
-export function showLoginView() { /* console.log("showLoginView chamada"); */ const l = document.getElementById('loginContainer'); if(l) l.style.display = 'block'; const a = document.getElementById('appContainer'); if(a) a.style.display = 'none'; const r = document.getElementById('resetPasswordContainer'); if(r) r.style.display = 'none'; }
-export function showAppView(userProfile) { /* console.log("showAppView chamada"); */ const l = document.getElementById('loginContainer'); if(l) l.style.display = 'none'; const a = document.getElementById('appContainer'); if(a) a.style.display = 'block'; const r = document.getElementById('resetPasswordContainer'); if(r) r.style.display = 'none'; const isAdmin = userProfile?.is_admin || false; const adminBtn = document.getElementById('adminPanelBtn'); if(adminBtn) adminBtn.style.display = isAdmin ? 'block' : 'none'; const clientBtn = document.getElementById('manageClientsBtn'); if(clientBtn) clientBtn.style.display = 'block'; const projBtn = document.getElementById('manageProjectsBtn'); if(projBtn) projBtn.style.display = 'block'; }
-export function showResetPasswordView() { /* console.log("showResetPasswordView chamada"); */ const l = document.getElementById('loginContainer'); if(l) l.style.display = 'none'; const a = document.getElementById('appContainer'); if(a) a.style.display = 'none'; const r = document.getElementById('resetPasswordContainer'); if(r) r.style.display = 'block'; }
+export function showLoginView() { const l = document.getElementById('loginContainer'); if(l) l.style.display = 'block'; const a = document.getElementById('appContainer'); if(a) a.style.display = 'none'; const r = document.getElementById('resetPasswordContainer'); if(r) r.style.display = 'none'; }
+export function showAppView(userProfile) { const l = document.getElementById('loginContainer'); if(l) l.style.display = 'none'; const a = document.getElementById('appContainer'); if(a) a.style.display = 'block'; const r = document.getElementById('resetPasswordContainer'); if(r) r.style.display = 'none'; const isAdmin = userProfile?.is_admin || false; const adminBtn = document.getElementById('adminPanelBtn'); if(adminBtn) adminBtn.style.display = isAdmin ? 'block' : 'none'; const clientBtn = document.getElementById('manageClientsBtn'); if(clientBtn) clientBtn.style.display = 'block'; const projBtn = document.getElementById('manageProjectsBtn'); if(projBtn) projBtn.style.display = 'block'; }
+export function showResetPasswordView() { const l = document.getElementById('loginContainer'); if(l) l.style.display = 'none'; const a = document.getElementById('appContainer'); if(a) a.style.display = 'none'; const r = document.getElementById('resetPasswordContainer'); if(r) r.style.display = 'block'; }
 export function openModal(modalId) { const modal = document.getElementById(modalId); if(modal) modal.style.display = 'flex'; else console.error(`Modal com ID '${modalId}' não encontrado.`); }
 export function closeModal(modalId) { const modal = document.getElementById(modalId); if(modal) modal.style.display = 'none'; }
 
 // --- FUNÇÃO DE ATUALIZAÇÃO HIERÁRQUICA DE CARGA VISUAL ---
 function _internal_updateFeederPowerDisplay() {
+    // console.log("Recalculando potências..."); // Log Removido
     const qdcData = {};
     let totalInstalledGeneral = 0; // Soma das P.Inst. *diretas* de todos circuitos visíveis
 
@@ -102,8 +99,9 @@ function _internal_updateFeederPowerDisplay() {
         });
 
         // P.Inst. Geral = Soma das P.Inst. de todos os circuitos visíveis em todos os QDCs
-        totalInstalledGeneral += installedDirect;
-
+        // Esta soma está INCORRETA para hierarquia. Será corrigida no passo 3.
+        // totalInstalledGeneral += installedDirect; // REMOVIDO TEMPORARIAMENTE
+        
         const parentSelect = qdcBlock.querySelector(`#qdcParent-${qdcId}`);
         const parentId = parentSelect ? parentSelect.value : 'feeder'; // ex: 'feeder' ou 'qdc-1'
 
@@ -292,6 +290,7 @@ function getQdcHTML(id, name = `QDC ${id}`, parentId = 'feeder') {
     </div>`;
 }
 
+// >>>>> addQdcBlock não adiciona circuito automaticamente se não for novo <<<<<
 export function addQdcBlock(id = null, name = null, parentId = 'feeder', container = null) {
     const isNewQdc = !id;
     let internalId;
