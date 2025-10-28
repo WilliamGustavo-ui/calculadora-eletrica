@@ -1,4 +1,4 @@
-// Arquivo: main.js (Completo - Download Data URL + Clique Simulado + Correção Admin UI)
+// Arquivo: main.js (Completo - Download Data URL + Clique Simulado + Correção Admin UI + Correção Load Project)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -10,7 +10,7 @@ let currentUserProfile = null;
 let allClients = [];
 let uiData = null;
 
-// --- handleLogin ---
+// --- handleLogin da versão funcional ---
 async function handleLogin() {
     const email = document.getElementById('emailLogin').value;
     const password = document.getElementById('password').value;
@@ -364,6 +364,9 @@ async function handleSaveProject() {
     }
 }
 
+// ========================================================================
+// >>>>> FUNÇÃO ATUALIZADA (handleLoadProject com correção) <<<<<
+// ========================================================================
 async function handleLoadProject() {
     const projectId = document.getElementById('savedProjectsSelect').value;
     if (!projectId) { alert("Por favor, selecione uma obra para carregar."); return; }
@@ -372,7 +375,8 @@ async function handleLoadProject() {
         await new Promise(resolve => setTimeout(resolve, 50)); // Pequeno delay para UI
         const project = await api.fetchProjectById(projectId);
         if (project) {
-            ui.populateFormWithProjectData(project); // Chama a função que preenche o form
+            // >>>>> CORREÇÃO AQUI: Chama a função definida neste arquivo <<<<<
+            populateFormWithProjectData(project); // Chama a função que preenche o form
             alert(`Obra "${project.project_name}" carregada com sucesso.`);
         } else { alert("Não foi possível encontrar os dados da obra selecionada."); }
     } catch (error) {
@@ -499,7 +503,7 @@ async function handleAdminUserActions(event) {
 
                 if (updateError) { throw updateError; } // Lança erro se falhar
 
-                // >>>>> CORREÇÃO: Busca dados atualizados e repopula a UI manualmente <<<<<
+                // Busca dados atualizados e repopula a UI manualmente
                 console.log(`[Admin Action] Atualização bem-sucedida. Buscando lista atualizada de usuários...`);
                 const updatedUsers = await api.fetchAllUsers(); // Busca novamente
                 if (updatedUsers) {
@@ -654,6 +658,91 @@ async function handleCalculateAndPdf() {
     // O finally foi removido daqui porque a lógica principal agora está dentro do reader.onloadend
 }
 
+// ========================================================================
+// >>>>> FUNÇÃO MOVIDA DE ui.js (populateFormWithProjectData) <<<<<
+// ========================================================================
+function populateFormWithProjectData(project) {
+    console.time("populateForm");
+    if (!project) return;
+    ui.resetForm(false, project.client); // Chama ui.resetForm corretamente
+
+    // Armazena dados para lazy loading (usando a função exportada por ui.js)
+    if (typeof ui.setLoadedProjectData === 'function') {
+        ui.setLoadedProjectData(project);
+    } else {
+        console.error("Função ui.setLoadedProjectData não encontrada! Lazy loading não funcionará.");
+    }
+
+
+    document.getElementById('currentProjectId').value = project.id;
+
+    // Preenche dados principais, técnico e alimentador geral
+    if (project.main_data) { Object.keys(project.main_data).forEach(key => { const el = document.getElementById(key); if (el) el.value = project.main_data[key]; }); }
+    document.getElementById('project_code').value = project.project_code || '';
+    if (project.tech_data) { Object.keys(project.tech_data).forEach(key => { const el = document.getElementById(key); if (el) el.value = project.tech_data[key]; }); }
+    if (project.feeder_data) { Object.keys(project.feeder_data).forEach(key => { const el = document.getElementById(key); if (el) { if (el.type === 'checkbox') el.checked = project.feeder_data[key]; else el.value = project.feeder_data[key]; } });
+        document.getElementById('feederFases')?.dispatchEvent(new Event('change'));
+        document.getElementById('feederTipoIsolacao')?.dispatchEvent(new Event('change'));
+    }
+
+    const qdcContainerTarget = document.getElementById('qdc-container');
+    if (project.qdcs_data && Array.isArray(project.qdcs_data) && qdcContainerTarget) {
+        const fragment = document.createDocumentFragment();
+        const qdcMap = new Map();
+        project.qdcs_data.forEach(qdc => qdcMap.set(String(qdc.id), qdc));
+
+        // Ordena QDCs para renderização
+        const sortedQdcs = []; const visited = new Set();
+        function visit(qdcId) { if (!qdcId || visited.has(qdcId)) return; const qdc = qdcMap.get(qdcId); if (!qdc) return; visited.add(qdcId); const parentValue = qdc.parentId; if (parentValue && parentValue !== 'feeder') { const parentId = parentValue.replace('qdc-', ''); visit(parentId); } if(!sortedQdcs.some(sq => sq.id == qdc.id)) { sortedQdcs.push(qdc); } }
+        project.qdcs_data.forEach(qdc => visit(String(qdc.id)));
+
+        // Renderiza APENAS os blocos de QDC no fragmento (sem circuitos)
+        sortedQdcs.forEach(qdc => {
+            const renderedQdcId = ui.addQdcBlock(String(qdc.id), qdc.name, qdc.parentId, fragment); // Chama ui.addQdcBlock
+            const qdcElementInFragment = fragment.querySelector(`#qdc-${renderedQdcId}`);
+            if (!qdcElementInFragment) { console.error(`Elemento QDC ${renderedQdcId} não encontrado no fragmento.`); return; }
+            // Preenche a config do QDC
+            if (qdc.config) { Object.keys(qdc.config).forEach(key => { const el = qdcElementInFragment.querySelector(`#${key}`); if (el) { if (el.type === 'checkbox') (el).checked = qdc.config[key]; else (el).value = qdc.config[key]; } }); }
+        });
+
+        // Adiciona todos os QDCs (vazios) ao DOM de uma vez
+        qdcContainerTarget.appendChild(fragment);
+
+        // Inicializa listeners e dropdowns APÓS adicionar ao DOM
+        sortedQdcs.forEach(qdc => {
+            const renderedQdcId = String(qdc.id);
+            ui.initializeQdcListeners(renderedQdcId); // Garante listeners
+            document.getElementById(`qdcFases-${renderedQdcId}`)?.dispatchEvent(new Event('change'));
+            document.getElementById(`qdcTipoIsolacao-${renderedQdcId}`)?.dispatchEvent(new Event('change'));
+        });
+
+        // Atualiza os dropdowns de parentesco APÓS todos os QDCs estarem no DOM
+        ui.updateQdcParentDropdowns(); // Chama a função exportada
+        // Restaura a seleção de parentesco salva
+        setTimeout(() => {
+             sortedQdcs.forEach(qdc => {
+                const parentSelect = document.getElementById(`qdcParent-${qdc.id}`);
+                if (parentSelect && qdc.parentId) {
+                    if (Array.from(parentSelect.options).some(opt => opt.value === qdc.parentId)) {
+                        (parentSelect).value = qdc.parentId;
+                        parentSelect.dataset.initialParent = qdc.parentId;
+                    } else {
+                        (parentSelect).value = 'feeder';
+                        parentSelect.dataset.initialParent = 'feeder';
+                    }
+                }
+             });
+             // Calcula potências iniciais (será recalculado ao expandir QDCs)
+             ui.updateFeederPowerDisplay(); // Chama a função exportada
+        }, 100);
+
+    } else {
+        // Se não há QDCs salvos, atualiza as potências
+        ui.updateFeederPowerDisplay(); // Chama a função exportada
+    }
+    console.timeEnd("populateForm");
+}
+
 
 // ========================================================================
 // >>>>> FUNÇÃO ATUALIZADA (setupEventListeners com Correção para Admin Panel) <<<<<
@@ -773,14 +862,14 @@ function setupEventListeners() {
     const clientDocTypeSelect = document.getElementById('clientDocumentoTipo');
     if(clientDocTypeSelect) {
         clientDocTypeSelect.addEventListener('change', () => {
-            const docValueInput = document.getElementById('clientDocumentoValor');
+            const docValueInput = document.getElementById('documentoValor');
             if(docValueInput) docValueInput.value = ''; // Limpa valor ao mudar tipo
         });
     }
 }
 
 
-// --- onAuthStateChange (Sem alterações) ---
+// --- onAuthStateChange ---
 function main() {
     setupEventListeners();
 
@@ -834,7 +923,8 @@ function main() {
             }
         } else if (event === 'SIGNED_OUT') {
             // Usuário deslogou
-            console.log("Usuário deslogado."); currentUserProfile = null; allClients = []; ui.showLoginView(); window.location.hash = ''; // Limpa hash
+            console.log("Usuário deslogado."); currentUserProfile = null; allClients = []; uiData = null; // Limpa uiData no logout
+            ui.showLoginView(); window.location.hash = ''; // Limpa hash
         } else if (event === 'PASSWORD_RECOVERY') {
              // Evento disparado quando o usuário clica no link de recuperação
              console.log("Evento PASSWORD_RECOVERY recebido."); ui.showResetPasswordView();
