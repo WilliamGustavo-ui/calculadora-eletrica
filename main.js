@@ -1,4 +1,4 @@
-// Arquivo: main.js (CORRIGIDO - Revertido para Download Nativo via Headers usando invoke)
+// Arquivo: main.js (CORRIGIDO - Revertido para Download Nativo via Headers usando invoke, com Logs Admin)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -228,28 +228,101 @@ async function showAdminPanel() { /* ... (código igual anterior) ... */
         alert("Não foi possível carregar a lista de usuários.");
     }
 }
-async function handleAdminUserActions(event) { /* ... (código igual anterior) ... */
-    const target = event.target; const userId = target.dataset.userId; if (!userId) return;
+
+// ========================================================================
+// >>>>> FUNÇÃO ATUALIZADA (handleAdminUserActions com Logs Detalhados e Correção Lógica) <<<<<
+// ========================================================================
+async function handleAdminUserActions(event) {
+    const target = event.target; // O elemento clicado (o botão)
+    const userId = target.dataset.userId;
+
+    // Se o clique não foi em um botão com data-user-id, ignora
+    if (!userId) return;
+
+    // Log inicial para confirmar que a função foi chamada
+    console.log(`[Admin Action] Ação detectada no painel admin. Botão:`, target);
+    console.log(`[Admin Action] User ID extraído: ${userId}`);
+
     try {
-        console.log(`Ação: ${target.className}, UserID: ${userId}`); // Log para depurar
-        if (target.classList.contains('approve-user-btn')) { console.log("Tentando aprovar..."); await api.approveUser(userId); await showAdminPanel(); }
-        if (target.classList.contains('edit-user-btn')) { console.log("Tentando editar..."); const user = await api.fetchUserById(userId); if (user) ui.populateEditUserModal(user); }
-        if (target.classList.contains('block-user-btn')) {
-            // CORREÇÃO LÓGICA: Ler o estado atual do dataset
-            const isCurrentlyBlocked = target.dataset.isBlocked === 'true'; // dataset sempre retorna string
-            const shouldBlock = !isCurrentlyBlocked; // A ação é o INVERSO do estado atual
-            console.log(`Tentando ${shouldBlock ? 'bloquear' : 'desbloquear'}... Estado atual: ${isCurrentlyBlocked}`);
-            if (confirm(`Tem certeza que deseja ${shouldBlock ? 'bloquear' : 'desbloquear'} este usuário?`)) {
-                await api.toggleUserBlock(userId, shouldBlock);
-                await showAdminPanel(); // Recarrega o painel para refletir a mudança
+        if (target.classList.contains('approve-user-btn')) {
+            console.log(`[Admin Action] Tentando aprovar usuário ${userId}...`);
+            await api.approveUser(userId);
+            console.log(`[Admin Action] Ação 'approveUser' chamada.`);
+            await showAdminPanel(); // Recarrega o painel
+        }
+        else if (target.classList.contains('edit-user-btn')) {
+            console.log(`[Admin Action] Tentando buscar usuário ${userId} para editar...`);
+            const user = await api.fetchUserById(userId);
+            if (user) {
+                 console.log(`[Admin Action] Usuário ${userId} encontrado, populando modal.`);
+                 ui.populateEditUserModal(user);
+            } else {
+                 console.warn(`[Admin Action] Usuário ${userId} não encontrado para edição.`);
+                 alert(`Usuário com ID ${userId} não encontrado.`);
             }
         }
-        if (target.classList.contains('remove-user-btn')) { console.log("Tentando remover..."); if (confirm('ATENÇÃO: Ação irreversível! Excluir este usuário permanentemente?')) { const { data, error } = await api.deleteUserFromAdmin(userId); if (error) { throw error; } alert(data?.message || 'Usuário excluído com sucesso.'); await showAdminPanel(); } }
-    } catch (error) { console.error("Erro na ação administrativa:", error); alert("Ocorreu um erro: " + error.message); await showAdminPanel(); }
+        else if (target.classList.contains('block-user-btn')) {
+            // Lê o estado ATUAL do bloqueio a partir do dataset do botão
+            const isCurrentlyBlocked = target.dataset.isBlocked === 'true'; // dataset sempre retorna string
+            // Determina a AÇÃO a ser tomada (o inverso do estado atual)
+            const shouldBlock = !isCurrentlyBlocked;
+
+            console.log(`[Admin Action] Botão Bloquear/Desbloquear clicado para User ID: ${userId}`);
+            console.log(`   - Estado Atual (data-is-blocked): ${target.dataset.isBlocked} (Interpretado como: ${isCurrentlyBlocked})`);
+            console.log(`   - Ação a ser tomada (shouldBlock): ${shouldBlock}`);
+
+            if (confirm(`Tem certeza que deseja ${shouldBlock ? 'BLOQUEAR' : 'DESBLOQUEAR'} este usuário?`)) {
+                console.log(`[Admin Action] Confirmado. Chamando api.toggleUserBlock(${userId}, ${shouldBlock})...`);
+                // Chama a função da API e espera o resultado
+                const { error: updateError } = await api.toggleUserBlock(userId, shouldBlock);
+
+                // Loga o resultado da chamada API
+                console.log(`[Admin Action] Resultado da chamada api.toggleUserBlock:`, updateError ? updateError : 'Sucesso');
+
+                if (updateError) {
+                    // Lança o erro para ser pego pelo catch geral
+                    throw updateError;
+                }
+                console.log(`[Admin Action] Atualização bem-sucedida. Recarregando painel...`);
+                await showAdminPanel(); // Recarrega o painel para refletir a mudança
+            } else {
+                 console.log(`[Admin Action] Ação cancelada pelo usuário.`);
+            }
+        }
+        else if (target.classList.contains('remove-user-btn')) {
+            console.log(`[Admin Action] Tentando remover usuário ${userId}...`);
+            if (confirm('ATENÇÃO: Ação irreversível! Excluir este usuário permanentemente?')) {
+                console.log(`[Admin Action] Confirmado. Chamando api.deleteUserFromAdmin(${userId})...`);
+                const { data, error: deleteError } = await api.deleteUserFromAdmin(userId);
+
+                 console.log(`[Admin Action] Resultado da chamada api.deleteUserFromAdmin:`, deleteError ? deleteError : data);
+
+                if (deleteError) {
+                    throw deleteError;
+                }
+                alert(data?.message || 'Usuário excluído com sucesso.');
+                console.log(`[Admin Action] Usuário excluído. Recarregando painel...`);
+                await showAdminPanel();
+            } else {
+                 console.log(`[Admin Action] Remoção cancelada pelo usuário.`);
+            }
+        } else {
+             console.log("[Admin Action] Clique detectado, mas não em um botão de ação conhecido.");
+        }
+    } catch (error) {
+        // Log detalhado do erro
+        console.error("[Admin Action] Erro durante a execução da ação:", error);
+        alert("Ocorreu um erro ao processar a ação: " + error.message + "\nVerifique o console para mais detalhes.");
+        // Tenta recarregar o painel mesmo após erro para refletir estado parcial, se houver
+        try {
+            await showAdminPanel();
+        } catch (refreshError) {
+            console.error("[Admin Action] Erro adicional ao tentar recarregar o painel após um erro:", refreshError);
+        }
+    }
 }
-async function handleUpdateUser(event) { /* ... (código igual anterior) ... */
-    event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); }
-}
+
+async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
 // ========================================================================
 // >>>>> FUNÇÃO REVERTIDA (USA invoke SEM responseType) <<<<<
@@ -270,11 +343,11 @@ async function handleCalculateAndPdf() {
     try {
         console.log("Enviando para Edge Function 'gerar-relatorio' via invoke:", formDataForFunction);
 
-        // >>>>> ALTERAÇÃO: Chama invoke SEM responseType: 'blob' <<<<<
+        // >>>>> ALTERAÇÃO: Chama invoke SEM responseType: 'blob' ou 'arraybuffer' <<<<<
         // A biblioteca Supabase/gotrue-js deve respeitar os headers Content-Disposition
         const { data, error: functionError } = await supabase.functions.invoke('gerar-relatorio', {
             body: { formData: formDataForFunction }
-            // REMOVIDO: responseType: 'blob' ou 'arraybuffer'
+            // REMOVIDO: responseType
         });
 
         // Verifica erro na chamada da função
@@ -316,7 +389,7 @@ async function handleCalculateAndPdf() {
         console.log("Chamada para 'gerar-relatorio' bem-sucedida. O navegador deve iniciar o download.");
         loadingText.textContent = 'PDF gerado, download iniciado...';
 
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Espera um pouco
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Espera um pouco para a UI
 
         // Não podemos verificar o 'data' aqui porque não pedimos blob/json
         // Apenas assumimos que o download começou.
@@ -328,8 +401,8 @@ async function handleCalculateAndPdf() {
         // Tenta dar uma mensagem mais específica para erros comuns
         if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
              alert("Erro de rede ao contatar o servidor. Verifique sua conexão ou tente novamente mais tarde.");
-        } else if (error.message.includes('permission denied')) {
-             alert("Erro de permissão. Pode ser necessário fazer login novamente.");
+        } else if (error.message.includes('permission denied') || error.message.includes('Policy')) { // Adicionado 'Policy'
+             alert("Erro de permissão ao acessar o servidor. Verifique as políticas RLS ou contate o suporte.");
         } else {
              alert("Ocorreu um erro ao gerar o PDF: " + error.message + "\nVerifique o console.");
         }
@@ -341,7 +414,9 @@ async function handleCalculateAndPdf() {
 }
 
 
-// --- setupEventListeners (Com correção para Botão Bloquear/Desbloquear) ---
+// ========================================================================
+// >>>>> FUNÇÃO ATUALIZADA (setupEventListeners com Correção para Admin Panel) <<<<<
+// ========================================================================
 function setupEventListeners() {
     document.getElementById('loginBtn').addEventListener('click', handleLogin);
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
@@ -401,9 +476,13 @@ function setupEventListeners() {
     document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
 
     // >>>>> CORREÇÃO: Listener para o PAINEL DE ADMIN (UL) em vez de botões individuais <<<<<
+    // Garante que a delegação de evento está corretamente aplicada ao container da lista
     const adminUserList = document.getElementById('adminUserList');
     if(adminUserList) {
+        console.log("Adicionando listener de clique ao adminUserList."); // Log para confirmar
         adminUserList.addEventListener('click', handleAdminUserActions); // Usa delegação de evento
+    } else {
+        console.error("Elemento adminUserList não encontrado!");
     }
 
     const editUserForm = document.getElementById('editUserForm'); if(editUserForm) editUserForm.addEventListener('submit', handleUpdateUser);
