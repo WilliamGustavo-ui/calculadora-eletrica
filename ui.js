@@ -1,4 +1,4 @@
-// Arquivo: ui.js (v3 - Lazy Loading, Botão Exibir/Ocultar, Correção Soma UI, Gerenciador QDC)
+// Arquivo: ui.js (v3 - Lazy Loading Otimizado, Correção Botão Ocultar, Correção Soma UI, Gerenciador QDC)
 
 console.log("--- ui.js: Iniciando carregamento ---");
 
@@ -67,9 +67,10 @@ function populateSoilResistivityDropdown(selectElement, soilData) {
 export function showLoginView() { const l = document.getElementById('loginContainer'); if(l) l.style.display = 'block'; const a = document.getElementById('appContainer'); if(a) a.style.display = 'none'; const r = document.getElementById('resetPasswordContainer'); if(r) r.style.display = 'none'; }
 export function showAppView(userProfile) { const l = document.getElementById('loginContainer'); if(l) l.style.display = 'none'; const a = document.getElementById('appContainer'); if(a) a.style.display = 'block'; const r = document.getElementById('resetPasswordContainer'); if(r) r.style.display = 'none'; const isAdmin = userProfile?.is_admin || false; const adminBtn = document.getElementById('adminPanelBtn'); if(adminBtn) adminBtn.style.display = isAdmin ? 'block' : 'none'; const clientBtn = document.getElementById('manageClientsBtn'); if(clientBtn) clientBtn.style.display = 'block'; const projBtn = document.getElementById('manageProjectsBtn'); if(projBtn) projBtn.style.display = 'block'; }
 export function showResetPasswordView() { const l = document.getElementById('loginContainer'); if(l) l.style.display = 'none'; const a = document.getElementById('appContainer'); if(a) a.style.display = 'none'; const r = document.getElementById('resetPasswordContainer'); if(r) r.style.display = 'block'; }
+
 export function openModal(modalId) {
     if (modalId === 'qdcManagerModalOverlay') {
-        populateQdcManagerModal(); // Popula o modal ANTES de abrir
+        populateQdcManagerModal(); // CORREÇÃO: Popula o modal ANTES de abrir
     }
     const modal = document.getElementById(modalId);
     if(modal) modal.style.display = 'flex';
@@ -78,6 +79,7 @@ export function openModal(modalId) {
 export function closeModal(modalId) { const modal = document.getElementById(modalId); if(modal) modal.style.display = 'none'; }
 
 // --- FUNÇÃO DE ATUALIZAÇÃO HIERÁRQUICA DE CARGA VISUAL ---
+// CORREÇÃO: Esta função agora calcula a soma hierárquica corretamente.
 function _internal_updateFeederPowerDisplay() {
     const qdcData = {};
     let totalInstalledGeneral = 0; // P.Inst. *total* (soma dos QDCs raiz)
@@ -135,57 +137,46 @@ function _internal_updateFeederPowerDisplay() {
     });
 
     // 3. Funções Recursivas para calcular agregação
-    // CORREÇÃO LÓGICA: A P.Instalada Agregada e P.Demandada Agregada
-    // devem ser calculadas com base nos DADOS SALVOS (loadedProjectData),
-    // não apenas nos circuitos visíveis, pois o backend fará isso.
-    // Esta função de UI deve APENAS SOMAR O QUE ESTÁ VISÍVEL.
     
-    // REESCRITA DA LÓGICA DE SOMA (Mais simples e correta para a UI)
-    
-    const visited = new Set();
-    // Função para P.Instalada Agregada (soma P.Inst. Direta + P.Inst. Agregada dos Filhos)
+    const visitedInstalled = new Set();
     function calculateAggregatedInstalled(qdcId) {
         if (!qdcData[qdcId]) return 0;
         if (qdcData[qdcId].aggregatedInstalled !== -1) return qdcData[qdcId].aggregatedInstalled;
-        if (visited.has(qdcId)) { console.error(`Loop de P.Inst. detectado em ${qdcId}`); return 0; }
-        visited.add(qdcId);
+        if (visitedInstalled.has(qdcId)) { console.error(`Loop de P.Inst. detectado em ${qdcId}`); return 0; }
+        visitedInstalled.add(qdcId);
 
-        let aggInst = qdcData[qdcId].installedDirect; // Começa com P.Inst. direta visível
+        // CORREÇÃO: P.Inst. Agregada = P.Inst. Direta + SOMA(P.Inst. Agregadas dos Filhos)
+        let aggregatedInstalled = qdcData[qdcId].installedDirect;
         qdcData[qdcId].childrenIds.forEach(childId => {
-            aggInst += calculateAggregatedInstalled(childId); // Soma P.Inst. agregada dos filhos
+            aggregatedInstalled += calculateAggregatedInstalled(childId);
         });
-        
-        qdcData[qdcId].aggregatedInstalled = aggInst;
-        visited.delete(qdcId);
-        return aggInst;
+
+        visitedInstalled.delete(qdcId);
+        qdcData[qdcId].aggregatedInstalled = aggregatedInstalled;
+        return aggregatedInstalled;
     }
     
-    visited.clear();
-    // Função para P.Demandada Agregada (soma P.Dem. Direta + P.Dem. Agregada dos Filhos)
+    const visitedDemand = new Set();
     function calculateAggregatedDemand(qdcId) {
         if (!qdcData[qdcId]) return 0;
         if (qdcData[qdcId].aggregatedDemand !== -1) return qdcData[qdcId].aggregatedDemand;
-        if (visited.has(qdcId)) { console.error(`Loop de P.Dem. detectado em ${qdcId}`); return 0; }
-        visited.add(qdcId);
+        if (visitedDemand.has(qdcId)) { console.error(`Loop de P.Dem. detectado em ${qdcId}`); return 0; }
+        visitedDemand.add(qdcId);
 
+        // P.Inst. Agregada (calculada acima)
+        visitedInstalled.clear(); // Limpa cache P.Inst.
+        const aggregatedInstalled = calculateAggregatedInstalled(qdcId);
+        
         // Aplica Fator de Demanda do QDC na P.Inst. Agregada
         const qdcConfigEl = document.getElementById(`qdcFatorDemanda-${qdcId}`);
         const qdcFD = (parseFloat(qdcConfigEl?.value) || 100) / 100.0;
         
-        // P.Inst. Agregada (calculada acima)
-        const aggregatedInstalled = calculateAggregatedInstalled(qdcId); 
-        
-        // P.Dem. Total = P.Inst. Agregada * FD do QDC
-        // NOTA: Esta é a demanda DO ALIMENTADOR deste QDC
+        // CORREÇÃO: P.Dem. Total = P.Inst. Agregada * FD do QDC
+        // (Esta é a demanda DO ALIMENTADOR deste QDC, não a soma das demandas dos filhos)
         let aggregatedDemand = aggregatedInstalled * qdcFD;
         
-        // A P.Demandada Agregada (para soma) é a P.Demandada Direta + P.Demandada Agregada dos Filhos
-        // Esta lógica estava confusa. Vamos simplificar para o que o backend fará:
-        // O backend calculará a P.Inst.Total e aplicará o FD.
-        // A UI deve refletir a P.Inst.Total (Agregada) e a P.Dem.Total (Agregada * FD)
-        
         qdcData[qdcId].aggregatedDemand = aggregatedDemand;
-        visited.delete(qdcId);
+        visitedDemand.delete(qdcId);
         return aggregatedDemand;
     }
 
@@ -194,10 +185,10 @@ function _internal_updateFeederPowerDisplay() {
     let totalInstalledAggregatedGeneral = 0;
 
     Object.keys(qdcData).forEach(qdcId => {
-        visited.clear();
+        visitedInstalled.clear();
+        visitedDemand.clear();
+        
         const aggregatedInstalled = calculateAggregatedInstalled(qdcId); // Calcula P. Inst. Agregada
-
-        visited.clear();
         const aggregatedDemand = calculateAggregatedDemand(qdcId); // Calcula P. Dem. Agregada (com FD)
 
         const qdcPotDemEl = document.getElementById(`qdcPotenciaDemandada-${qdcId}`);
@@ -218,7 +209,7 @@ function _internal_updateFeederPowerDisplay() {
 
     // P. Inst. Geral = Soma das P.Inst. *Agregadas* dos QDCs raiz
     if (feederPotInstaladaEl) feederPotInstaladaEl.value = totalInstalledAggregatedGeneral.toFixed(2);
-    // P. Dem. "Soma" = Soma das P.Dem. *Agregadas* dos QDCs raiz
+    // P. Dem. "Soma" = Soma das P.Dem. *Agregadas* dos QDCs raiz (já com FD de QDC)
     if (feederSomaPotDemandadaEl) feederSomaPotDemandadaEl.value = totalDemandAggregatedGeneral.toFixed(2);
     
     const feederFatorDemanda = (parseFloat(feederFatorDemandaInput?.value) || 100) / 100.0;
@@ -230,7 +221,6 @@ export const updateFeederPowerDisplay = debounce(_internal_updateFeederPowerDisp
 
 // --- LÓGICA DE QDC E FORMULÁRIO ---
 export function resetForm(addDefaultQdc = true, linkedClient = null) {
-    // console.log("resetForm chamado"); // Log Reduzido
     loadedProjectData = null; // Limpa dados do projeto anterior
     const mainForm = document.getElementById('main-form'); if(mainForm) mainForm.reset();
     const techForm = document.getElementById('tech-form'); if(techForm) techForm.reset();
@@ -514,7 +504,7 @@ function getCircuitHTML(id) {
                 <div class="form-group"> <label for="comprimentoM-${id}">Comprimento (m)</label> <input type="number" id="comprimentoM-${id}" value="20"> </div>
                 <div class="form-group"> <label for="tipoIsolacao-${id}">Isolação</label> <select id="tipoIsolacao-${id}"><option value="PVC" selected>PVC 70°C</option><option value="EPR">EPR 90°C</option><option value="XLPE">XLPE 90°C</option></select> </div>
                 <div class="form-group"> <label for="materialCabo-${id}">Condutor</label> <select id="materialCabo-${id}"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Alumínio</option></select> </div>
-                <div class="form-group"> <label for="metodoInstalacao-${id}">Instalação</label> <select id="metodoInstalacao-${id}"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select> </div>
+                <div class="form-group"> <label for="metodoInstalacao-${id}">Instalação</label> <select id="metodoInstalacao-${id}"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value_="">B2</option><option value="C">C</option><option value="D">D</option></select> </div>
                 <div class="form-group"> <label for="temperaturaAmbienteC-${id}">Temp. Ambiente</label> <select id="temperaturaAmbienteC-${id}"></select> </div>
                 <div class="form-group"> <label for="resistividadeSolo-${id}">Resist. Solo</label> <select id="resistividadeSolo-${id}"></select> </div>
                 <div class="form-group"> <label for="numCircuitosAgrupados-${id}">Ckt Agrupados</label> <select id="numCircuitosAgrupados-${id}"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select> </div>
@@ -679,47 +669,49 @@ function populateQdcManagerModal() {
         return;
     }
 
-    // Cria uma estrutura de árvore simples (lista simples por enquanto)
-    // Uma implementação real de "arrastar e soltar" é muito mais complexa
-    // Por agora, vamos apenas listar os QDCs e seus pais
-    let html = '<ul>';
+    // Cria uma estrutura de árvore simples (lista)
     const qdcs = [];
     qdcBlocks.forEach(qdc => {
         const id = qdc.dataset.id;
-        const name = (qdc.querySelector(`#qdcName-${id}`)).value || `QDC ${id}`;
-        const parentId = (qdc.querySelector(`#qdcParent-${id}`)).value || 'feeder';
+        const nameInput = qdc.querySelector(`#qdcName-${id}`);
+        const name = nameInput ? nameInput.value : `QDC ${id}`;
+        const parentSelect = qdc.querySelector(`#qdcParent-${id}`);
+        const parentId = parentSelect ? parentSelect.value : 'feeder';
         qdcs.push({ id, name, parentId });
     });
 
     // Filtra QDCs raiz (pais são 'feeder')
     const rootQdcs = qdcs.filter(q => q.parentId === 'feeder');
-    const childQdcs = qdcs.filter(q => q.parentId !== 'feeder');
-
+    
     function buildList(parentId) {
-        const children = (parentId === 'feeder' ? rootQdcs : qdcs.filter(q => q.parentId === `qdc-${parentId}`));
+        const children = qdcs.filter(q => q.parentId === `qdc-${parentId}`);
         if (children.length === 0) return '';
         
-        let listHtml = parentId === 'feeder' ? '' : '<ul>';
+        let listHtml = '<ul>';
         children.forEach(qdc => {
             listHtml += `<li><strong>${qdc.name}</strong> (ID: ${qdc.id})`;
-            // Recursão para encontrar filhos deste QDC
-            listHtml += buildList(qdc.id); // Passa o ID numérico
+            listHtml += buildList(qdc.id); // Recursão para encontrar filhos deste QDC
             listHtml += `</li>`;
         });
-        listHtml += parentId === 'feeder' ? '' : '</ul>';
+        listHtml += '</ul>';
         return listHtml;
     }
 
-    html = '<ul>' + buildList('feeder') + '</ul>';
+    let html = '<ul>';
+    rootQdcs.forEach(qdc => {
+         html += `<li><strong>${qdc.name}</strong> (ID: ${qdc.id}) - (Alimentador Geral)`;
+         html += buildList(qdc.id); // Inicia recursão para filhos
+         html += `</li>`;
+    });
+    html += '</ul>';
     
-    if (rootQdcs.length === 0 && childQdcs.length > 0) {
+    if (rootQdcs.length === 0 && qdcs.length > 0) {
          html += "<p style='color:red;'>Aviso: Nenhum QDC raiz (ligado ao Alimentador Geral) detectado. Pode haver um loop.</p>";
     }
 
     container.innerHTML = html;
     
     // AVISO: O botão "Salvar Alterações" neste modal ainda não faz nada.
-    // A lógica de arrastar e soltar e salvar a nova hierarquia não está implementada.
 }
 
 
