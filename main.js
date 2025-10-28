@@ -1,4 +1,5 @@
-// Arquivo: main.js (v7.1 - Correção "populateForm" e Bugs Admin/Download)
+// Arquivo: main.js (v7 - Otimizado, Link Manual para PDF, Admin UI Fix, Lazy Load)
+// CORREÇÃO 1 APLICADA (handleCalculateAndPdf)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -443,7 +444,7 @@ async function handleAdminUserActions(event) {
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
 // ========================================================================
-// >>>>> FUNÇÃO REVERTIDA (Download via Link Manual com Data URL) <<<<<
+// >>>>> CORREÇÃO 1 APLICADA (handleCalculateAndPdf) <<<<<
 // ========================================================================
 async function handleCalculateAndPdf() {
     if (!uiData) { alert("Erro: Dados técnicos não carregados..."); return; }
@@ -459,7 +460,7 @@ async function handleCalculateAndPdf() {
     const formDataForFunction = getFullFormData(false);
 
     try {
-        console.log("Enviando para Edge Function 'gerar-relatorio' (esperando blob)..."); // Log Mantido
+        console.log("Enviando para Edge Function 'gerar-relatorio' (esperando blob)...");
 
         // Pede a resposta como Blob
         const { data: pdfBlob, error: functionError } = await supabase.functions.invoke('gerar-relatorio', {
@@ -481,70 +482,62 @@ async function handleCalculateAndPdf() {
             throw new Error("A função de cálculo não retornou um arquivo (blob).");
         }
 
-        console.log(`Blob de PDF recebido: ${(pdfBlob.size / 1024 / 1024).toFixed(2)} MB`); // Log Mantido
-        loadingText.textContent = 'PDF recebido, convertendo...';
+        console.log(`Blob de PDF recebido: ${(pdfBlob.size / 1024 / 1024).toFixed(2)} MB`);
+        loadingText.textContent = 'PDF recebido, preparando link...';
         await new Promise(resolve => setTimeout(resolve, 50));
 
-        // Converte Blob para Data URL (Base64)
-        // console.log("Convertendo Blob para Base64..."); // Log Reduzido
-        const reader = new FileReader();
-        reader.readAsDataURL(pdfBlob);
-        reader.onloadend = () => { // Função callback quando a conversão terminar
-            const base64data = reader.result;
-            if (!base64data) {
-                console.error("Falha ao converter Blob para Data URL.");
-                alert("Erro ao processar o PDF recebido.");
-                loadingOverlay.classList.remove('visible');
-                return;
-            }
-            // console.log("Data URL criada."); // Log Reduzido
+        // =======================
+        // >>>>> INÍCIO DA CORREÇÃO <<<<<
+        // =======================
 
-            const nomeObra = document.getElementById('obra')?.value || 'Projeto';
-            const linkContainer = document.createElement('div');
-            linkContainer.id = 'pdfLinkContainer';
-            linkContainer.style.marginTop = '15px';
-            linkContainer.style.textAlign = 'center';
+        // Crie uma URL temporária (ponteiro) para o Blob em memória.
+        // Isso é instantâneo e não consome memória extra.
+        const pdfUrl = URL.createObjectURL(pdfBlob);
 
-            const a = document.createElement('a');
-            a.href = base64data; // Usa a Data URL
-            a.textContent = "Clique aqui para ver/baixar o PDF";
-            a.target = "_blank"; // Abre em nova aba
-            a.download = `Relatorio_${nomeObra.replace(/[^a-z0-9]/gi, '_')}.pdf`; // Nome do arquivo
-            // Estilos para o link parecer um botão
-            a.style.display = 'inline-block';
-            a.style.padding = '10px 15px';
-            a.style.backgroundColor = 'var(--btn-green)';
-            a.style.color = 'white';
-            a.style.textDecoration = 'none';
-            a.style.borderRadius = '5px';
-            a.style.fontWeight = 'bold';
+        const nomeObra = document.getElementById('obra')?.value || 'Projeto';
+        const linkContainer = document.createElement('div');
+        linkContainer.id = 'pdfLinkContainer';
+        linkContainer.style.marginTop = '15px';
+        linkContainer.style.textAlign = 'center';
 
-            // Remove o link após um tempo para limpar a UI (opcional)
-            a.addEventListener('click', () => {
-                 console.log("Link (Data URL) clicado."); // Log Mantido
-                 setTimeout(() => {
-                    linkContainer.remove();
-                 }, 5000);
-            });
+        const a = document.createElement('a');
+        a.href = pdfUrl; // <-- USA A URL DO OBJETO
+        a.textContent = "Clique aqui para ver/baixar o PDF";
+        a.target = "_blank";
+        a.download = `Relatorio_${nomeObra.replace(/[^a-z0-9]/gi, '_')}.pdf`;
+        
+        // [Estilos do link (igual ao seu código anterior)]
+        a.style.display = 'inline-block';
+        a.style.padding = '10px 15px';
+        a.style.backgroundColor = 'var(--btn-green)';
+        a.style.color = 'white';
+        a.style.textDecoration = 'none';
+        a.style.borderRadius = '5px';
+        a.style.fontWeight = 'bold';
 
-            linkContainer.appendChild(a);
+        a.addEventListener('click', () => {
+             console.log("Link (Objeto URL) clicado.");
+             setTimeout(() => {
+                linkContainer.remove();
+                URL.revokeObjectURL(pdfUrl); // Limpa a URL da memória após o clique
+             }, 5000);
+        });
 
-            // Adiciona o link abaixo do botão "Gerar PDF"
-            const buttonContainer = document.querySelector('.button-container');
-            if (buttonContainer) {
-                buttonContainer.parentNode.insertBefore(linkContainer, buttonContainer.nextSibling);
-            } else {
-                document.getElementById('appContainer').appendChild(linkContainer);
-            }
+        linkContainer.appendChild(a);
 
-            console.log("Link (Data URL) para PDF criado. Aguardando clique do usuário."); // Log Mantido
-            loadingOverlay.classList.remove('visible');
-        };
-        reader.onerror = (error) => {
-             console.error("Erro ao ler Blob como Data URL:", error);
-             alert("Erro ao converter o PDF recebido. Verifique o console.");
-             loadingOverlay.classList.remove('visible');
-        };
+        const buttonContainer = document.querySelector('.button-container');
+        if (buttonContainer) {
+            buttonContainer.parentNode.insertBefore(linkContainer, buttonContainer.nextSibling);
+        } else {
+            document.getElementById('appContainer').appendChild(linkContainer);
+        }
+
+        console.log("Link (Objeto URL) para PDF criado. Aguardando clique do usuário.");
+        loadingOverlay.classList.remove('visible');
+
+        // =======================
+        // >>>>> FIM DA CORREÇÃO <<<<<
+        // =======================
 
     } catch (error) {
         console.error("Erro durante cálculo ou PDF:", error);
@@ -597,7 +590,7 @@ function setupEventListeners() {
     document.getElementById('continueWithoutClientBtn').addEventListener('click', handleContinueWithoutClient);
     document.getElementById('addNewClientFromSelectModalBtn').addEventListener('click', () => { ui.closeModal('selectClientModalOverlay'); handleOpenClientManagement(); });
     // --- Máscaras ---
-    document.getElementById('regCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('regTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('editCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('editTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientCelular')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientTelefone')?.addEventListener('input', utils.mascaraTelefone); const clientDocInput = document.getElementById('clientDocumentoValor'); if(clientDocInput) { clientDocInput.addEventListener('input', (event) => { const tipo = document.getElementById('clientDocumentoTipo')?.value; if(tipo) utils.aplicarMascara(event, tipo); }); } const clientDocTypeSelect = document.getElementById('clientDocumentoTipo'); if(clientDocTypeSelect) { clientDocTypeSelect.addEventListener('change', () => { const docValueInput = document.getElementById('documentoValor'); if(docValueInput) docValueInput.value = ''; }); }
+    document.getElementById('regCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('regTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('editCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('editTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientCelular')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientTelefone')?.addEventListener('input', utils.mascaraTelefone); const clientDocInput = document.getElementById('clientDocumentoValor'); if(clientDocInput) { clientDocInput.addEventListener('input', (event) => { const tipo = document.getElementById('clientDocumentoTipo')?.value; if(tipo) utils.aplicarMascara(event, tipo); }); } const clientDocTypeSelect = document.getElementById('clientDocumentoTipo'); if(clientDocTypeSelect) { clientDocTypeSelect.addEventListener('change', () => { const docValueInput = document.getElementById('clientDocumentoValor'); if(docValueInput) docValueInput.value = ''; }); }
 }
 
 
