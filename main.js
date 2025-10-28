@@ -1,4 +1,4 @@
-// Arquivo: main.js (v8 - Otimizado, Link Manual PDF, Admin UI Fix, Lazy Load)
+// Arquivo: main.js (v8 - Otimizado, Link Manual PDF, Admin UI Fix, Lazy Load, Correção LoadProject)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -276,7 +276,10 @@ function populateFormWithProjectData(project) {
         // Inicializa listeners e dropdowns APÓS adicionar ao DOM
         sortedQdcs.forEach(qdc => {
             const renderedQdcId = String(qdc.id);
-            ui.initializeQdcListeners(renderedQdcId);
+            // Verifica se a função existe antes de chamar
+            if (typeof ui.initializeQdcListeners === 'function') {
+                ui.initializeQdcListeners(renderedQdcId); // Garante listeners
+            }
             document.getElementById(`qdcFases-${renderedQdcId}`)?.dispatchEvent(new Event('change'));
             document.getElementById(`qdcTipoIsolacao-${renderedQdcId}`)?.dispatchEvent(new Event('change'));
         });
@@ -316,7 +319,7 @@ async function handleLoadProject() {
         const project = await api.fetchProjectById(projectId);
         if (project) {
             // >>>>> CORREÇÃO AQUI: Chama a função definida neste arquivo <<<<<
-            populateFormWithProjectData(project);
+            populateFormWithProjectData(project); // Removeu o 'ui.'
             alert(`Obra "${project.project_name}" carregada com sucesso.`);
         } else { alert("Não foi possível encontrar os dados da obra selecionada."); }
     } catch (error) {
