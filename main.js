@@ -181,6 +181,7 @@ function handleContinueWithoutClient() {
 // --- Funções de Projeto (Salvar, Carregar, Excluir) ---
 
 function getFullFormData(forSave = false) {
+    // Coleta dados dos forms e formata para salvar ou calcular
     const mainData = { obra: document.getElementById('obra').value, cidadeObra: document.getElementById('cidadeObra').value, enderecoObra: document.getElementById('enderecoObra').value, areaObra: document.getElementById('areaObra').value, unidadesResidenciais: document.getElementById('unidadesResidenciais').value, unidadesComerciais: document.getElementById('unidadesComerciais').value, observacoes: document.getElementById('observacoes').value, projectCode: document.getElementById('project_code').value };
     const currentClientId = document.getElementById('currentClientId').value;
     const client = allClients.find(c => c.id == currentClientId);
@@ -232,7 +233,7 @@ function populateFormWithProjectData(project) {
     // Armazena dados para lazy loading usando a função exportada por ui.js
     if (typeof ui.setLoadedProjectData === 'function') {
         ui.setLoadedProjectData(project);
-        console.log("[Main] Dados do projeto enviados para ui.js para lazy loading.");
+        // console.log("[Main] Dados do projeto enviados para ui.js para lazy loading."); // Log Reduzido
     } else {
         console.error("Função ui.setLoadedProjectData não encontrada! Lazy loading não funcionará.");
         alert("Erro interno: Falha ao preparar carregamento dos circuitos. Tente recarregar a página.");
@@ -259,6 +260,7 @@ function populateFormWithProjectData(project) {
         const sortedQdcs = []; const visited = new Set();
         function visit(qdcId) { if (!qdcId || visited.has(qdcId)) return; const qdc = qdcMap.get(qdcId); if (!qdc) return; visited.add(qdcId); const parentValue = qdc.parentId; if (parentValue && parentValue !== 'feeder') { const parentId = parentValue.replace('qdc-', ''); visit(parentId); } if(!sortedQdcs.some(sq => sq.id == qdc.id)) { sortedQdcs.push(qdc); } }
         project.qdcs_data.forEach(qdc => visit(String(qdc.id)));
+        // console.log("QDCs ordenados para renderização:", sortedQdcs.map(q => q.id)); // Log Reduzido
 
         // Renderiza APENAS os blocos de QDC no fragmento (sem circuitos)
         sortedQdcs.forEach(qdc => {
@@ -295,7 +297,7 @@ function populateFormWithProjectData(project) {
                     }
                 }
              });
-             // Calcula potências iniciais (baseado apenas nos QDCs, será recalculado ao expandir)
+             // Calcula potências iniciais (será 0, recalculado ao expandir)
              ui.updateFeederPowerDisplay();
         }, 100);
 
@@ -441,7 +443,7 @@ async function handleAdminUserActions(event) {
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
 // ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA (Download via Link Manual com Data URL) <<<<<
+// >>>>> FUNÇÃO REVERTIDA (Download via Link Manual com Data URL) <<<<<
 // ========================================================================
 async function handleCalculateAndPdf() {
     if (!uiData) { alert("Erro: Dados técnicos não carregados..."); return; }
@@ -519,7 +521,7 @@ async function handleCalculateAndPdf() {
 
             // Remove o link após um tempo para limpar a UI (opcional)
             a.addEventListener('click', () => {
-                 console.log("Link (Data URL) clicado.");
+                 console.log("Link (Data URL) clicado."); // Log Mantido
                  setTimeout(() => {
                     linkContainer.remove();
                  }, 5000);
@@ -554,6 +556,7 @@ async function handleCalculateAndPdf() {
 
 // --- setupEventListeners ---
 function setupEventListeners() {
+    // Adiciona listeners para todos os elementos interativos
     document.getElementById('loginBtn').addEventListener('click', handleLogin);
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
     document.getElementById('registerBtn').addEventListener('click', () => ui.openModal('registerModalOverlay'));
@@ -573,8 +576,10 @@ function setupEventListeners() {
     document.getElementById('manageQdcsBtn').addEventListener('click', () => ui.openModal('qdcManagerModalOverlay'));
     const appContainer = document.getElementById('appContainer');
     if(appContainer) {
+        // Usa delegação de evento para interações dentro do container principal
         appContainer.addEventListener('change', ui.handleMainContainerInteraction);
         appContainer.addEventListener('click', ui.handleMainContainerInteraction);
+        // Listener 'input' separado para atualizações em tempo real (potência, nomes)
         appContainer.addEventListener('input', (event) => { const target = event.target; if (target.id.startsWith('potenciaW-') || target.id.startsWith('fatorDemanda-') || target.id.startsWith('qdcFatorDemanda-') || target.id === 'feederFatorDemanda') { ui.updateFeederPowerDisplay(); } if (target.classList.contains('qdc-name-input')) { debouncedUpdateQdcDropdowns(); } if (target.id.startsWith('nomeCircuito-')) { const circuitId = target.closest('.circuit-block')?.dataset.id; if (circuitId) { const labelElement = document.getElementById(`nomeCircuitoLabel-${circuitId}`); if(labelElement) labelElement.textContent = target.value || `Circuito ${circuitId}`; } } });
     }
     document.getElementById('calculateAndPdfBtn').addEventListener('click', handleCalculateAndPdf);
@@ -592,7 +597,7 @@ function setupEventListeners() {
     document.getElementById('continueWithoutClientBtn').addEventListener('click', handleContinueWithoutClient);
     document.getElementById('addNewClientFromSelectModalBtn').addEventListener('click', () => { ui.closeModal('selectClientModalOverlay'); handleOpenClientManagement(); });
     // --- Máscaras ---
-    document.getElementById('regCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('regTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('editCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('editTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientCelular')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientTelefone')?.addEventListener('input', utils.mascaraTelefone); const clientDocInput = document.getElementById('clientDocumentoValor'); if(clientDocInput) { clientDocInput.addEventListener('input', (event) => { const tipo = document.getElementById('clientDocumentoTipo')?.value; if(tipo) utils.aplicarMascara(event, tipo); }); } const clientDocTypeSelect = document.getElementById('clientDocumentoTipo'); if(clientDocTypeSelect) { clientDocTypeSelect.addEventListener('change', () => { const docValueInput = document.getElementById('documentoValor'); if(docValueInput) docValueInput.value = ''; }); }
+    document.getElementById('regCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('regTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('editCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('editTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientCelular')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientTelefone')?.addEventListener('input', utils.mascaraTelefone); const clientDocInput = document.getElementById('clientDocumentoValor'); if(clientDocInput) { clientDocInput.addEventListener('input', (event) => { const tipo = document.getElementById('clientDocumentoTipo')?.value; if(tipo) utils.aplicarMascara(event, tipo); }); } const clientDocTypeSelect = document.getElementById('clientDocumentoTipo'); if(clientDocTypeSelect) { clientDocTypeSelect.addEventListener('change', () => { const docValueInput = document.getElementById('clientDocumentoValor'); if(docValueInput) docValueInput.value = ''; }); }
 }
 
 
