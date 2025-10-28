@@ -1,4 +1,4 @@
-// Arquivo: main.js (v7 - Otimizado, Link Manual para PDF, Admin UI Fix, Lazy Load)
+// Arquivo: main.js (v7.1 - Correção "populateForm" e Bugs Admin/Download)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -597,7 +597,7 @@ function setupEventListeners() {
     document.getElementById('continueWithoutClientBtn').addEventListener('click', handleContinueWithoutClient);
     document.getElementById('addNewClientFromSelectModalBtn').addEventListener('click', () => { ui.closeModal('selectClientModalOverlay'); handleOpenClientManagement(); });
     // --- Máscaras ---
-    document.getElementById('regCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('regTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('editCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('editTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientCelular')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientTelefone')?.addEventListener('input', utils.mascaraTelefone); const clientDocInput = document.getElementById('clientDocumentoValor'); if(clientDocInput) { clientDocInput.addEventListener('input', (event) => { const tipo = document.getElementById('clientDocumentoTipo')?.value; if(tipo) utils.aplicarMascara(event, tipo); }); } const clientDocTypeSelect = document.getElementById('clientDocumentoTipo'); if(clientDocTypeSelect) { clientDocTypeSelect.addEventListener('change', () => { const docValueInput = document.getElementById('clientDocumentoValor'); if(docValueInput) docValueInput.value = ''; }); }
+    document.getElementById('regCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('regTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('editCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('editTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientCelular')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientTelefone')?.addEventListener('input', utils.mascaraTelefone); const clientDocInput = document.getElementById('clientDocumentoValor'); if(clientDocInput) { clientDocInput.addEventListener('input', (event) => { const tipo = document.getElementById('clientDocumentoTipo')?.value; if(tipo) utils.aplicarMascara(event, tipo); }); } const clientDocTypeSelect = document.getElementById('clientDocumentoTipo'); if(clientDocTypeSelect) { clientDocTypeSelect.addEventListener('change', () => { const docValueInput = document.getElementById('documentoValor'); if(docValueInput) docValueInput.value = ''; }); }
 }
 
 
