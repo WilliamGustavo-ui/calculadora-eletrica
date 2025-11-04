@@ -477,7 +477,7 @@ async function handleAdminUserActions(event) {
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
 // ========================================================================
-// --- FUNÇÃO ATUALIZADA (v8.2 - Corrige travamento pós-download) ---
+// --- FUNÇÃO ATUALIZADA (v8.2 - Corrige travamento pós-download com URL.createObjectURL) ---
 // ========================================================================
 async function handleCalculateAndPdf() {
     if (!uiData) { alert("Erro: Dados técnicos não carregados..."); return; }
@@ -485,6 +485,7 @@ async function handleCalculateAndPdf() {
 
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = loadingOverlay.querySelector('p');
+    
     // Limpa o link de download antigo (se existir)
     const oldLinkContainer = document.getElementById('pdfLinkContainer');
     if (oldLinkContainer) {
