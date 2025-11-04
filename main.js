@@ -1,4 +1,4 @@
-// Arquivo: main.js (v8.1 - Correção de travamento com getFullFormData assíncrono)
+// Arquivo: main.js (v8.2 - Correção de travamento PÓS-DOWNLOAD com URL.createObjectURL)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -180,9 +180,7 @@ function handleContinueWithoutClient() {
 
 // --- Funções de Projeto (Salvar, Carregar, Excluir) ---
 
-// ========================================================================
-// --- FUNÇÃO ATUALIZADA (Tornada Assíncrona para não travar a UI) ---
-// ========================================================================
+// (Função assíncrona para não travar a UI ao coletar dados)
 async function getFullFormData(forSave = false) {
     // Coleta dados dos forms e formata para salvar ou calcular
     const mainData = { obra: document.getElementById('obra').value, cidadeObra: document.getElementById('cidadeObra').value, enderecoObra: document.getElementById('enderecoObra').value, areaObra: document.getElementById('areaObra').value, unidadesResidenciais: document.getElementById('unidadesResidenciais').value, unidadesComerciais: document.getElementById('unidadesComerciais').value, observacoes: document.getElementById('observacoes').value, projectCode: document.getElementById('project_code').value };
@@ -198,7 +196,6 @@ async function getFullFormData(forSave = false) {
     const qdcsDataForCalc = [];
     const allCircuitsForCalc = [];
 
-    // --- CORREÇÃO: Trocado forEach por for...of para permitir 'await' ---
     const allQdcBlocks = document.querySelectorAll('#qdc-container .qdc-block');
     
     for (const qdcBlock of allQdcBlocks) {
@@ -232,7 +229,7 @@ async function getFullFormData(forSave = false) {
         
         qdcsDataForSave.push({ ...qdcInfo, config: qdcConfigDataForSave, circuits: circuitsForSave });
 
-        // --- CORREÇÃO: Pausa a execução para permitir que a UI (spinner) atualize ---
+        // Pausa a execução para permitir que a UI (spinner) atualize
         await new Promise(resolve => setTimeout(resolve, 0));
     }
 
@@ -254,7 +251,6 @@ async function handleSaveProject() {
     try {
         await new Promise(resolve => setTimeout(resolve, 50));
         
-        // --- CORREÇÃO: Chama a função assíncrona com 'await' ---
         const projectDataToSave = await getFullFormData(true);
         
         loadingText.textContent = 'Salvando dados da obra...';
@@ -273,18 +269,13 @@ async function handleSaveProject() {
     }
 }
 
-// ========================================================================
-// >>>>> FUNÇÃO ATUALIZADA (populateFormWithProjectData interage com ui.js Lazy Load) <<<<<
-// ========================================================================
 function populateFormWithProjectData(project) {
     console.time("populateForm");
     if (!project) return;
     ui.resetForm(false, project.client); // Reseta, sem QDC default, mas com cliente
 
-    // Armazena dados para lazy loading usando a função exportada por ui.js
     if (typeof ui.setLoadedProjectData === 'function') {
         ui.setLoadedProjectData(project);
-        // console.log("[Main] Dados do projeto enviados para ui.js para lazy loading."); // Log Reduzido
     } else {
         console.error("Função ui.setLoadedProjectData não encontrada! Lazy loading não funcionará.");
         alert("Erro interno: Falha ao preparar carregamento dos circuitos. Tente recarregar a página.");
@@ -311,7 +302,6 @@ function populateFormWithProjectData(project) {
         const sortedQdcs = []; const visited = new Set();
         function visit(qdcId) { if (!qdcId || visited.has(qdcId)) return; const qdc = qdcMap.get(qdcId); if (!qdc) return; visited.add(qdcId); const parentValue = qdc.parentId; if (parentValue && parentValue !== 'feeder') { const parentId = parentValue.replace('qdc-', ''); visit(parentId); } if(!sortedQdcs.some(sq => sq.id == qdc.id)) { sortedQdcs.push(qdc); } }
         project.qdcs_data.forEach(qdc => visit(String(qdc.id)));
-        // console.log("QDCs ordenados para renderização:", sortedQdcs.map(q => q.id)); // Log Reduzido
 
         // Renderiza APENAS os blocos de QDC no fragmento (sem circuitos)
         sortedQdcs.forEach(qdc => {
@@ -327,7 +317,6 @@ function populateFormWithProjectData(project) {
         // Inicializa listeners e dropdowns APÓS adicionar ao DOM
         sortedQdcs.forEach(qdc => {
             const renderedQdcId = String(qdc.id);
-            // Verifica se a função existe antes de chamar
             if (typeof ui.initializeQdcListeners === 'function') {
                 ui.initializeQdcListeners(renderedQdcId); // Garante listeners
             }
@@ -351,7 +340,6 @@ function populateFormWithProjectData(project) {
                     }
                 }
              });
-             // Calcula potências iniciais (será 0, recalculado ao expandir)
              ui.updateFeederPowerDisplay();
         }, 100);
 
@@ -369,8 +357,7 @@ async function handleLoadProject() {
         await new Promise(resolve => setTimeout(resolve, 50));
         const project = await api.fetchProjectById(projectId);
         if (project) {
-            // >>>>> CORREÇÃO AQUI: Chama a função definida neste arquivo <<<<<
-            populateFormWithProjectData(project); // Removeu o 'ui.'
+            populateFormWithProjectData(project); 
             alert(`Obra "${project.project_name}" carregada com sucesso.`);
         } else { alert("Não foi possível encontrar os dados da obra selecionada."); }
     } catch (error) {
@@ -398,7 +385,6 @@ async function handleSearch(term = '') {
     if (!currentUserProfile) return;
     try {
         const projects = await api.fetchProjects(term);
-        // console.log("Projetos buscados:", projects); // Log Reduzido
         ui.populateProjectList(projects);
     } catch(error){
         console.error("Erro ao buscar projetos:", error);
@@ -455,13 +441,10 @@ async function showAdminPanel() {
     }
 }
 
-// Função Admin Actions com Refetch manual
 async function handleAdminUserActions(event) {
     const target = event.target;
     const userId = target.dataset.userId;
     if (!userId) return;
-    // console.log(`[Admin Action] Ação detectada. Botão:`, target); // Log Reduzido
-    // console.log(`[Admin Action] User ID: ${userId}`); // Log Reduzido
     try {
         if (target.classList.contains('approve-user-btn')) {
             await api.approveUser(userId); await showAdminPanel();
@@ -470,10 +453,8 @@ async function handleAdminUserActions(event) {
         } else if (target.classList.contains('block-user-btn')) {
             const isCurrentlyBlocked = target.dataset.isBlocked === 'true';
             const shouldBlock = !isCurrentlyBlocked;
-            // console.log(`[Admin Action] Block/Unblock: Current=${isCurrentlyBlocked}, Action=${shouldBlock}`); // Log Reduzido
             if (confirm(`Tem certeza que deseja ${shouldBlock ? 'BLOQUEAR' : 'DESBLOQUEAR'} este usuário?`)) {
                 const { error: updateError } = await api.toggleUserBlock(userId, shouldBlock);
-                // console.log(`[Admin Action] toggleUserBlock Result:`, updateError || 'Sucesso'); // Log Reduzido
                 if (updateError) throw updateError;
                 const updatedUsers = await api.fetchAllUsers(); // Refetch
                 if (updatedUsers) ui.populateUsersPanel(updatedUsers); // Update UI
@@ -482,7 +463,6 @@ async function handleAdminUserActions(event) {
         } else if (target.classList.contains('remove-user-btn')) {
             if (confirm('ATENÇÃO: Ação irreversível! Excluir este usuário permanentemente?')) {
                 const { data, error: deleteError } = await api.deleteUserFromAdmin(userId);
-                // console.log(`[Admin Action] deleteUserFromAdmin Result:`, deleteError || data); // Log Reduzido
                 if (deleteError) throw deleteError;
                 alert(data?.message || 'Usuário excluído com sucesso.');
                 await showAdminPanel();
@@ -497,7 +477,7 @@ async function handleAdminUserActions(event) {
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
 // ========================================================================
-// --- FUNÇÃO ATUALIZADA (Usa getFullFormData assíncrono) ---
+// --- FUNÇÃO ATUALIZADA (v8.2 - Corrige travamento pós-download) ---
 // ========================================================================
 async function handleCalculateAndPdf() {
     if (!uiData) { alert("Erro: Dados técnicos não carregados..."); return; }
@@ -505,18 +485,27 @@ async function handleCalculateAndPdf() {
 
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = loadingOverlay.querySelector('p');
-    document.getElementById('pdfLinkContainer')?.remove(); // Limpa link antigo
+    // Limpa o link de download antigo (se existir)
+    const oldLinkContainer = document.getElementById('pdfLinkContainer');
+    if (oldLinkContainer) {
+        // Revoga a URL do Blob anterior para liberar memória
+        const oldLink = oldLinkContainer.querySelector('a');
+        if (oldLink && oldLink.href.startsWith('blob:')) {
+            URL.revokeObjectURL(oldLink.href);
+        }
+        oldLinkContainer.remove();
+    }
+
 
     loadingText.textContent = 'Coletando dados do formulário...';
     loadingOverlay.classList.add('visible');
     
     try {
-        // --- CORREÇÃO: Chama getFullFormData com 'await' e move o 'try' ---
         // Coleta os dados de forma assíncrona para não travar a UI
         const formDataForFunction = await getFullFormData(false);
 
         loadingText.textContent = 'Calculando e gerando PDF no servidor...';
-        console.log("Enviando para Edge Function 'gerar-relatorio' (esperando blob)..."); // Log Mantido
+        console.log("Enviando para Edge Function 'gerar-relatorio' (esperando blob)...");
 
         // Pede a resposta como Blob
         const { data: pdfBlob, error: functionError } = await supabase.functions.invoke('gerar-relatorio', {
@@ -538,70 +527,60 @@ async function handleCalculateAndPdf() {
             throw new Error("A função de cálculo não retornou um arquivo (blob).");
         }
 
-        console.log(`Blob de PDF recebido: ${(pdfBlob.size / 1024 / 1024).toFixed(2)} MB`); // Log Mantido
-        loadingText.textContent = 'PDF recebido, convertendo...';
+        console.log(`Blob de PDF recebido: ${(pdfBlob.size / 1024 / 1024).toFixed(2)} MB`);
+        loadingText.textContent = 'PDF recebido, criando link...';
         await new Promise(resolve => setTimeout(resolve, 50));
 
-        // Converte Blob para Data URL (Base64)
-        // console.log("Convertendo Blob para Base64..."); // Log Reduzido
-        const reader = new FileReader();
-        reader.readAsDataURL(pdfBlob);
-        reader.onloadend = () => { // Função callback quando a conversão terminar
-            const base64data = reader.result;
-            if (!base64data) {
-                console.error("Falha ao converter Blob para Data URL.");
-                alert("Erro ao processar o PDF recebido.");
-                loadingOverlay.classList.remove('visible');
-                return;
-            }
-            // console.log("Data URL criada."); // Log Reduzido
+        // --- CORREÇÃO: Troca de FileReader (Base64) para URL.createObjectURL ---
+        // Isso é muito mais rápido e não trava o navegador
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        
+        const nomeObra = document.getElementById('obra')?.value || 'Projeto';
+        const linkContainer = document.createElement('div');
+        linkContainer.id = 'pdfLinkContainer';
+        linkContainer.style.marginTop = '15px';
+        linkContainer.style.textAlign = 'center';
 
-            const nomeObra = document.getElementById('obra')?.value || 'Projeto';
-            const linkContainer = document.createElement('div');
-            linkContainer.id = 'pdfLinkContainer';
-            linkContainer.style.marginTop = '15px';
-            linkContainer.style.textAlign = 'center';
+        const a = document.createElement('a');
+        a.href = pdfUrl; // Usa a URL do Blob
+        a.textContent = "Clique aqui para ver/baixar o PDF";
+        a.target = "_blank"; // Abre em nova aba
+        a.download = `Relatorio_${nomeObra.replace(/[^a-z0-9]/gi, '_')}.pdf`; // Nome do arquivo
+        
+        // Estilos para o link parecer um botão
+        a.style.display = 'inline-block';
+        a.style.padding = '10px 15px';
+        a.style.backgroundColor = 'var(--btn-green)';
+        a.style.color = 'white';
+        a.style.textDecoration = 'none';
+        a.style.borderRadius = '5px';
+        a.style.fontWeight = 'bold';
 
-            const a = document.createElement('a');
-            a.href = base64data; // Usa a Data URL
-            a.textContent = "Clique aqui para ver/baixar o PDF";
-            a.target = "_blank"; // Abre em nova aba
-            a.download = `Relatorio_${nomeObra.replace(/[^a-z0-9]/gi, '_')}.pdf`; // Nome do arquivo
-            // Estilos para o link parecer um botão
-            a.style.display = 'inline-block';
-            a.style.padding = '10px 15px';
-            a.style.backgroundColor = 'var(--btn-green)';
-            a.style.color = 'white';
-            a.style.textDecoration = 'none';
-            a.style.borderRadius = '5px';
-            a.style.fontWeight = 'bold';
+        // O navegador gerencia a limpeza do ObjectURL, mas podemos limpar
+        // o *link* da UI após o clique.
+        a.addEventListener('click', () => {
+             console.log("Link (ObjectURL) clicado.");
+             // Esconde o link após o clique para evitar confusão
+             setTimeout(() => {
+                if(linkContainer) linkContainer.style.display = 'none';
+                // A URL do blob será revogada quando o link antigo for limpo na próxima geração
+             }, 500);
+        });
 
-            // Remove o link após um tempo para limpar a UI (opcional)
-            a.addEventListener('click', () => {
-                 console.log("Link (Data URL) clicado."); // Log Mantido
-                 setTimeout(() => {
-                    linkContainer.remove();
-                 }, 5000);
-            });
+        linkContainer.appendChild(a);
 
-            linkContainer.appendChild(a);
+        // Adiciona o link abaixo do botão "Gerar PDF"
+        const buttonContainer = document.querySelector('.button-container');
+        if (buttonContainer) {
+            buttonContainer.parentNode.insertBefore(linkContainer, buttonContainer.nextSibling);
+        } else {
+            document.getElementById('appContainer').appendChild(linkContainer);
+        }
 
-            // Adiciona o link abaixo do botão "Gerar PDF"
-            const buttonContainer = document.querySelector('.button-container');
-            if (buttonContainer) {
-                buttonContainer.parentNode.insertBefore(linkContainer, buttonContainer.nextSibling);
-            } else {
-                document.getElementById('appContainer').appendChild(linkContainer);
-            }
-
-            console.log("Link (Data URL) para PDF criado. Aguardando clique do usuário."); // Log Mantido
-            loadingOverlay.classList.remove('visible');
-        };
-        reader.onerror = (error) => {
-             console.error("Erro ao ler Blob como Data URL:", error);
-             alert("Erro ao converter o PDF recebido. Verifique o console.");
-             loadingOverlay.classList.remove('visible');
-        };
+        console.log("Link (ObjectURL) para PDF criado. Aguardando clique do usuário.");
+        loadingOverlay.classList.remove('visible');
+        
+        // --- FIM DA CORREÇÃO ---
 
     } catch (error) {
         console.error("Erro durante coleta de dados, cálculo ou PDF:", error);
@@ -646,7 +625,7 @@ function setupEventListeners() {
     document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
     const projectsTableBody = document.getElementById('adminProjectsTableBody'); if(projectsTableBody) projectsTableBody.addEventListener('click', handleProjectPanelClick);
     document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
-    const adminUserList = document.getElementById('adminUserList'); if(adminUserList) { /*console.log("Adicionando listener de clique ao adminUserList.");*/ adminUserList.addEventListener('click', handleAdminUserActions); } else { console.error("Elemento adminUserList não encontrado!"); } // Log Reduzido
+    const adminUserList = document.getElementById('adminUserList'); if(adminUserList) { adminUserList.addEventListener('click', handleAdminUserActions); } else { console.error("Elemento adminUserList não encontrado!"); }
     const editUserForm = document.getElementById('editUserForm'); if(editUserForm) editUserForm.addEventListener('submit', handleUpdateUser);
     document.getElementById('manageClientsBtn').addEventListener('click', handleOpenClientManagement);
     const clientForm = document.getElementById('clientForm'); if(clientForm) clientForm.addEventListener('submit', handleClientFormSubmit);
@@ -674,11 +653,11 @@ function main() {
                 if (userProfile && userProfile.is_approved && !userProfile.is_blocked) {
                     currentUserProfile = userProfile;
                     if (!uiData) {
-                        console.log("Carregando dados técnicos..."); // Log Mantido
+                        console.log("Carregando dados técnicos...");
                         uiData = await api.fetchUiData();
                         if (uiData) {
                             ui.setupDynamicData(uiData);
-                            console.log("Dados técnicos carregados."); // Log Mantido
+                            console.log("Dados técnicos carregados.");
                         } else {
                             console.error("Falha CRÍTICA ao carregar dados técnicos!"); alert("Erro CRÍTICO ao carregar dados técnicos."); ui.showLoginView(); currentUserProfile = null; await auth.signOutUser(); return;
                         }
@@ -705,7 +684,7 @@ function main() {
                  else { /* Sem sessão */ }
             }
         } else if (event === 'SIGNED_OUT') {
-            console.log("Usuário deslogado."); // Log Mantido
+            console.log("Usuário deslogado.");
             currentUserProfile = null; allClients = []; uiData = null;
             ui.showLoginView(); window.location.hash = '';
         } else if (event === 'PASSWORD_RECOVERY') {
@@ -716,6 +695,6 @@ function main() {
 
 // --- Ponto de Entrada ---
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("--- main.js: DOM Content Loaded ---"); // Log Mantido
+    console.log("--- main.js: DOM Content Loaded ---");
     main(); // Inicia a aplicação
 });
