@@ -339,7 +339,6 @@ button:disabled {
 }
 
 /* Circuitos e QDCs */
-/* --- CORREÇÃO 1: Aplicar estilo base ao .qdc-block também --- */
 .circuit-block,
 .qdc-block {
     background-color: var(--input-bg-color);
@@ -371,21 +370,22 @@ button:disabled {
 .circuit-header-center { flex-basis: 60%; text-align: center; }
 .circuit-header-right { flex-basis: 20%; text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
 
-/* --- CORREÇÃO 2: Aplicar transição ao .qdc-content também --- */
+/* --- CORREÇÃO (v8.3) --- */
+/* Alterado de 1000px para 3000px para garantir que formulários altos caibam */
 .circuit-content,
 .qdc-content {
     padding: 20px;
-    max-height: 1000px; /* Grande o suficiente para a transição */
+    max-height: 3000px; /* Aumentado para garantir que todo o formulário caiba */
     transition: max-height 0.3s ease-out, padding 0.3s ease-out;
 }
 
-/* --- CORREÇÃO 3: Aplicar regra de "encolher" ao .qdc-block.collapsed --- */
 .circuit-block.collapsed .circuit-content,
 .qdc-block.collapsed .qdc-content {
     max-height: 0;
     padding-top: 0;
     padding-bottom: 0;
 }
+/* --- FIM DA CORREÇÃO --- */
 
 .circuit-block .toggle-arrow {
     transition: transform 0.3s ease;
