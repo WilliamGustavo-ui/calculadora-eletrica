@@ -1,4 +1,4 @@
-// Arquivo: main.js (v8 - Otimizado, Link Manual PDF, Admin UI Fix, Lazy Load, Correção LoadProject)
+// Arquivo: main.js (v8.1 - Correção de travamento com getFullFormData assíncrono)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -180,7 +180,10 @@ function handleContinueWithoutClient() {
 
 // --- Funções de Projeto (Salvar, Carregar, Excluir) ---
 
-function getFullFormData(forSave = false) {
+// ========================================================================
+// --- FUNÇÃO ATUALIZADA (Tornada Assíncrona para não travar a UI) ---
+// ========================================================================
+async function getFullFormData(forSave = false) {
     // Coleta dados dos forms e formata para salvar ou calcular
     const mainData = { obra: document.getElementById('obra').value, cidadeObra: document.getElementById('cidadeObra').value, enderecoObra: document.getElementById('enderecoObra').value, areaObra: document.getElementById('areaObra').value, unidadesResidenciais: document.getElementById('unidadesResidenciais').value, unidadesComerciais: document.getElementById('unidadesComerciais').value, observacoes: document.getElementById('observacoes').value, projectCode: document.getElementById('project_code').value };
     const currentClientId = document.getElementById('currentClientId').value;
@@ -190,23 +193,71 @@ function getFullFormData(forSave = false) {
     const feederData = {};
     const feederDataForCalc = { id: 'feeder', nomeCircuito: "Alimentador Geral" };
     document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(element => { const value = element.type === 'checkbox' ? element.checked : element.value; feederData[element.id] = value; const key = element.id.replace('feeder', '').charAt(0).toLowerCase() + element.id.replace('feeder', '').slice(1); let calcValue = value; if (element.type === 'number' || ['fatorDemanda', 'fatorPotencia', 'comprimentoM', 'limiteQuedaTensao'].includes(key)) { calcValue = parseFloat(value) || 0; } else if (['tensaoV', 'temperaturaAmbienteC'].includes(key)) { calcValue = parseInt(value, 10) || 0; } else if (key === 'resistividadeSolo') { calcValue = parseFloat(value) || 0; } else if (element.type === 'checkbox') { calcValue = element.checked; } feederDataForCalc[key] = calcValue; });
+    
     const qdcsDataForSave = [];
     const qdcsDataForCalc = [];
     const allCircuitsForCalc = [];
-    document.querySelectorAll('#qdc-container .qdc-block').forEach(qdcBlock => { const qdcId = qdcBlock.dataset.id; const qdcConfigDataForSave = {}; const qdcConfigDataForCalc = {}; qdcBlock.querySelectorAll('.qdc-config-grid input, .qdc-config-grid select').forEach(element => { const value = element.type === 'checkbox' ? element.checked : element.value; qdcConfigDataForSave[element.id] = value; const key = element.id.replace(`qdc`, '').replace(`-${qdcId}`, '').replace(/^[A-Z]/, l => l.toLowerCase()); let calcValue = value; if (element.type === 'number' || ['fatorDemanda', 'fatorPotencia', 'comprimentoM', 'limiteQuedaTensao'].includes(key)) { calcValue = parseFloat(value) || 0; } else if (['tensaoV', 'temperaturaAmbienteC', 'numCircuitosAgrupados'].includes(key)) { calcValue = parseInt(value, 10) || 0; if (key === 'numCircuitosAgrupados' && calcValue === 0) calcValue = 1; } else if (key === 'resistividadeSolo') { calcValue = parseFloat(value) || 0; } else if (element.type === 'checkbox') { calcValue = element.checked; } qdcConfigDataForCalc[key] = calcValue; }); const qdcInfo = { id: qdcId, name: document.getElementById(`qdcName-${qdcId}`)?.value || `QDC ${qdcId}`, parentId: document.getElementById(`qdcParent-${qdcId}`)?.value || 'feeder' }; qdcsDataForCalc.push({ ...qdcInfo, config: qdcConfigDataForCalc }); const circuitsForSave = []; qdcBlock.querySelectorAll('.circuit-block').forEach(circuitBlock => { const circuitId = circuitBlock.dataset.id; const circuitDataForSave = { id: circuitId }; const circuitDataForCalc = { qdcId: qdcId, id: circuitId }; circuitBlock.querySelectorAll('input, select').forEach(element => { const value = element.type === 'checkbox' ? element.checked : element.value; circuitDataForSave[element.id] = value; const key = element.id.replace(`-${circuitId}`, ''); let calcValue = value; if (element.type === 'number' || ['potenciaW', 'fatorDemanda', 'fatorPotencia', 'comprimentoM', 'limiteQuedaTensao'].includes(key)) { calcValue = parseFloat(value) || 0; } else if (['tensaoV', 'temperaturaAmbienteC', 'numCircuitosAgrupados'].includes(key)) { calcValue = parseInt(value, 10) || 0; if (key === 'numCircuitosAgrupados' && calcValue === 0) calcValue = 1; } else if (key === 'resistividadeSolo') { calcValue = parseFloat(value) || 0; } else if (element.type === 'checkbox') { calcValue = element.checked; } circuitDataForCalc[key] = calcValue; }); circuitsForSave.push(circuitDataForSave); allCircuitsForCalc.push(circuitDataForCalc); }); qdcsDataForSave.push({ ...qdcInfo, config: qdcConfigDataForSave, circuits: circuitsForSave }); });
-    if (forSave) { return { project_name: mainData.obra, project_code: mainData.projectCode || null, client_id: currentClientId || null, main_data: mainData, tech_data: techData, feeder_data: feederData, qdcs_data: qdcsDataForSave, owner_id: currentUserProfile?.id }; }
-    else { return { mainData, feederData: feederDataForCalc, qdcsData: qdcsDataForCalc, circuitsData: allCircuitsForCalc, clientProfile, techData }; }
+
+    // --- CORREÇÃO: Trocado forEach por for...of para permitir 'await' ---
+    const allQdcBlocks = document.querySelectorAll('#qdc-container .qdc-block');
+    
+    for (const qdcBlock of allQdcBlocks) {
+        const qdcId = qdcBlock.dataset.id;
+        const qdcConfigDataForSave = {};
+        const qdcConfigDataForCalc = {};
+        
+        qdcBlock.querySelectorAll('.qdc-config-grid input, .qdc-config-grid select').forEach(element => { const value = element.type === 'checkbox' ? element.checked : element.value; qdcConfigDataForSave[element.id] = value; const key = element.id.replace(`qdc`, '').replace(`-${qdcId}`, '').replace(/^[A-Z]/, l => l.toLowerCase()); let calcValue = value; if (element.type === 'number' || ['fatorDemanda', 'fatorPotencia', 'comprimentoM', 'limiteQuedaTensao'].includes(key)) { calcValue = parseFloat(value) || 0; } else if (['tensaoV', 'temperaturaAmbienteC', 'numCircuitosAgrupados'].includes(key)) { calcValue = parseInt(value, 10) || 0; if (key === 'numCircuitosAgrupados' && calcValue === 0) calcValue = 1; } else if (key === 'resistividadeSolo') { calcValue = parseFloat(value) || 0; } else if (element.type === 'checkbox') { calcValue = element.checked; } qdcConfigDataForCalc[key] = calcValue; });
+        
+        const qdcInfo = { id: qdcId, name: document.getElementById(`qdcName-${qdcId}`)?.value || `QDC ${qdcId}`, parentId: document.getElementById(`qdcParent-${qdcId}`)?.value || 'feeder' };
+        qdcsDataForCalc.push({ ...qdcInfo, config: qdcConfigDataForCalc });
+        
+        const circuitsForSave = [];
+        qdcBlock.querySelectorAll('.circuit-block').forEach(circuitBlock => {
+            const circuitId = circuitBlock.dataset.id;
+            const circuitDataForSave = { id: circuitId };
+            const circuitDataForCalc = { qdcId: qdcId, id: circuitId };
+            
+            circuitBlock.querySelectorAll('input, select').forEach(element => {
+                const value = element.type === 'checkbox' ? element.checked : element.value;
+                circuitDataForSave[element.id] = value;
+                const key = element.id.replace(`-${circuitId}`, '');
+                let calcValue = value;
+                if (element.type === 'number' || ['potenciaW', 'fatorDemanda', 'fatorPotencia', 'comprimentoM', 'limiteQuedaTensao'].includes(key)) { calcValue = parseFloat(value) || 0; } else if (['tensaoV', 'temperaturaAmbienteC', 'numCircuitosAgrupados'].includes(key)) { calcValue = parseInt(value, 10) || 0; if (key === 'numCircuitosAgrupados' && calcValue === 0) calcValue = 1; } else if (key === 'resistividadeSolo') { calcValue = parseFloat(value) || 0; } else if (element.type === 'checkbox') { calcValue = element.checked; }
+                circuitDataForCalc[key] = calcValue;
+            });
+            
+            circuitsForSave.push(circuitDataForSave);
+            allCircuitsForCalc.push(circuitDataForCalc);
+        });
+        
+        qdcsDataForSave.push({ ...qdcInfo, config: qdcConfigDataForSave, circuits: circuitsForSave });
+
+        // --- CORREÇÃO: Pausa a execução para permitir que a UI (spinner) atualize ---
+        await new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    if (forSave) {
+        return { project_name: mainData.obra, project_code: mainData.projectCode || null, client_id: currentClientId || null, main_data: mainData, tech_data: techData, feeder_data: feederData, qdcs_data: qdcsDataForSave, owner_id: currentUserProfile?.id };
+    }
+    else {
+        return { mainData, feederData: feederDataForCalc, qdcsData: qdcsDataForCalc, circuitsData: allCircuitsForCalc, clientProfile, techData };
+    }
 }
+
 
 async function handleSaveProject() {
     if (!currentUserProfile) { alert("Você precisa estar logado."); return; }
     const nomeObra = document.getElementById('obra').value.trim();
     if (!nomeObra) { alert("Insira um 'Nome da Obra'."); return; }
     const loadingOverlay = document.getElementById('loadingOverlay'); const loadingText = loadingOverlay.querySelector('p');
-    loadingText.textContent = 'Salvando dados da obra...'; loadingOverlay.classList.add('visible');
+    loadingText.textContent = 'Coletando dados...'; loadingOverlay.classList.add('visible');
     try {
         await new Promise(resolve => setTimeout(resolve, 50));
-        const projectDataToSave = getFullFormData(true);
+        
+        // --- CORREÇÃO: Chama a função assíncrona com 'await' ---
+        const projectDataToSave = await getFullFormData(true);
+        
+        loadingText.textContent = 'Salvando dados da obra...';
         const currentProjectId = document.getElementById('currentProjectId').value;
         const { data, error } = await api.saveProject(projectDataToSave, currentProjectId);
         if (error) throw error;
@@ -446,7 +497,7 @@ async function handleAdminUserActions(event) {
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
 // ========================================================================
-// >>>>> FUNÇÃO REVERTIDA (Download via Link Manual com Data URL) <<<<<
+// --- FUNÇÃO ATUALIZADA (Usa getFullFormData assíncrono) ---
 // ========================================================================
 async function handleCalculateAndPdf() {
     if (!uiData) { alert("Erro: Dados técnicos não carregados..."); return; }
@@ -456,12 +507,15 @@ async function handleCalculateAndPdf() {
     const loadingText = loadingOverlay.querySelector('p');
     document.getElementById('pdfLinkContainer')?.remove(); // Limpa link antigo
 
-    loadingText.textContent = 'Calculando e gerando PDF no servidor...';
+    loadingText.textContent = 'Coletando dados do formulário...';
     loadingOverlay.classList.add('visible');
-
-    const formDataForFunction = getFullFormData(false);
-
+    
     try {
+        // --- CORREÇÃO: Chama getFullFormData com 'await' e move o 'try' ---
+        // Coleta os dados de forma assíncrona para não travar a UI
+        const formDataForFunction = await getFullFormData(false);
+
+        loadingText.textContent = 'Calculando e gerando PDF no servidor...';
         console.log("Enviando para Edge Function 'gerar-relatorio' (esperando blob)..."); // Log Mantido
 
         // Pede a resposta como Blob
@@ -550,9 +604,12 @@ async function handleCalculateAndPdf() {
         };
 
     } catch (error) {
-        console.error("Erro durante cálculo ou PDF:", error);
+        console.error("Erro durante coleta de dados, cálculo ou PDF:", error);
         alert("Ocorreu um erro: " + error.message + "\nVerifique o console.");
          loadingOverlay.classList.remove('visible');
+    } finally {
+        // Garante que o texto de loading seja resetado caso a função falhe antes de mudar
+        loadingText.textContent = 'Calculando, por favor aguarde...';
     }
 }
 
