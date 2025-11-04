@@ -338,8 +338,10 @@ button:disabled {
     gap: 10px;
 }
 
-/* Circuitos */
-.circuit-block {
+/* Circuitos e QDCs */
+/* --- CORREÇÃO 1: Aplicar estilo base ao .qdc-block também --- */
+.circuit-block,
+.qdc-block {
     background-color: var(--input-bg-color);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -369,13 +371,17 @@ button:disabled {
 .circuit-header-center { flex-basis: 60%; text-align: center; }
 .circuit-header-right { flex-basis: 20%; text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
 
-.circuit-content {
+/* --- CORREÇÃO 2: Aplicar transição ao .qdc-content também --- */
+.circuit-content,
+.qdc-content {
     padding: 20px;
     max-height: 1000px; /* Grande o suficiente para a transição */
     transition: max-height 0.3s ease-out, padding 0.3s ease-out;
 }
 
-.circuit-block.collapsed .circuit-content {
+/* --- CORREÇÃO 3: Aplicar regra de "encolher" ao .qdc-block.collapsed --- */
+.circuit-block.collapsed .circuit-content,
+.qdc-block.collapsed .qdc-content {
     max-height: 0;
     padding-top: 0;
     padding-bottom: 0;
