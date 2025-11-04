@@ -1,4 +1,4 @@
-// Arquivo: main.js (v8.2 - Correção de travamento PÓS-DOWNLOAD com URL.createObjectURL)
+// Arquivo: main.js (v8.3 - Corrigido race condition no carregamento do parentId do QDC)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -326,20 +326,17 @@ function populateFormWithProjectData(project) {
 
         // Atualiza os dropdowns de parentesco
         ui.updateQdcParentDropdowns();
-        // Restaura a seleção de parentesco salva (com delay)
+        
+        // --- CORREÇÃO: Bloco setTimeout (a causa do bug) FOI REMOVIDO ---
+        // A função ui.updateQdcParentDropdowns() acima [main.js:377] já
+        // lê o atributo 'data-initial-parent' (definido por ui.addQdcBlock)
+        // e define o valor do select corretamente após o debounce de 400ms.
+        // O bloco setTimeout anterior [main.js:380-394] executava em 100ms
+        // e redefinia o valor para 'feeder' antes que as opções fossem preenchidas.
+
+        // Apenas chamamos o updateFeederPowerDisplay após um pequeno delay
+        // para garantir que os valores iniciais (zerados) sejam exibidos.
         setTimeout(() => {
-             sortedQdcs.forEach(qdc => {
-                const parentSelect = document.getElementById(`qdcParent-${qdc.id}`);
-                if (parentSelect && qdc.parentId) {
-                    if (Array.from(parentSelect.options).some(opt => opt.value === qdc.parentId)) {
-                        (parentSelect).value = qdc.parentId;
-                        parentSelect.dataset.initialParent = qdc.parentId;
-                    } else {
-                        (parentSelect).value = 'feeder';
-                        parentSelect.dataset.initialParent = 'feeder';
-                    }
-                }
-             });
              ui.updateFeederPowerDisplay();
         }, 100);
 
@@ -476,9 +473,7 @@ async function handleAdminUserActions(event) {
 
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
-// ========================================================================
-// --- FUNÇÃO ATUALIZADA (v8.2 - Corrige travamento pós-download com URL.createObjectURL) ---
-// ========================================================================
+// (Função atualizada para v8.2 - Corrige travamento pós-download com URL.createObjectURL)
 async function handleCalculateAndPdf() {
     if (!uiData) { alert("Erro: Dados técnicos não carregados..."); return; }
     if (!currentUserProfile) { alert("Erro: Usuário não autenticado..."); await handleLogout(); return; }
