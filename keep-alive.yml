@@ -1,0 +1,25 @@
+name: Ping Supabase Keep-Alive
+
+on:
+  # O workflow será executado em um agendamento (cron job)
+  schedule:
+    # Este cron job significa: 'À meia-noite (00:00 UTC) todos os dias da semana'
+    # Você pode ajustar o '0 */6 * * *' para a frequência que desejar. 
+    # O intervalo mínimo suportado pelo GitHub Actions é a cada 5 minutos.
+    - cron: '0 */6 * * *' 
+  
+  # Permite que você execute o workflow manualmente na aba "Actions" do GitHub
+  workflow_dispatch:
+
+jobs:
+  ping_site:
+    # O job será executado em um runner do Ubuntu
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Executar Ping (CURL) no Site
+        run: |
+          # Use o cURL para fazer uma requisição GET simples.
+          # O -s (silent) oculta o progresso, e o -o /dev/null descarta a saída, 
+          # mantendo o log do Action limpo e focado no resultado.
+          curl -s -o /dev/null "https://williamgustavo-ui.github.io/calculadora-eletrica/"
