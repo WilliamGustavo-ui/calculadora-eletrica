@@ -11,7 +11,7 @@ on:
     # a cada 24 horas (Diariamente): '0 0 * * *'
     # a cada 7 dias (Máx. seguro para Supabase): '0 0 * * 1' (Toda segunda-feira à meia-noite)
     #
-    - cron: '0 * * * *' # Atualmente configurado para a cada 1 hora
+    - cron: '*/6 * * * *' # Atualmente configurado para a cada 6 min
   
   workflow_dispatch:
 
