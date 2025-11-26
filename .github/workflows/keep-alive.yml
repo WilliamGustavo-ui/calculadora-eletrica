@@ -1,15 +1,26 @@
 name: Ping Supabase Keep-Alive
+
 on:
   schedule:
- - cron: '0 */6 * * *' 
+    # Opções de ping (Minuto Hora Dia-do-Mês Mês Dia-da-Semana - UTC):
+    #
+    # a cada 6 minutos: '*/6 * * * *' (O mínimo suportado pelo GitHub é a cada 5 minutos)
+    # a cada 1 hora: '0 * * * *'
+    # a cada 6 horas: '0 */6 * * *'
+    # a cada 12 horas: '0 */12 * * *'
+    # a cada 24 horas (Diariamente): '0 0 * * *'
+    # a cada 7 dias (Máx. seguro para Supabase): '0 0 * * 1' (Toda segunda-feira à meia-noite)
+    #
+    - cron: '0 * * * *' # Atualmente configurado para a cada 1 hora
+  
   workflow_dispatch:
+
 jobs:
   ping_site:
     runs-on: ubuntu-latest
-        steps:
-      - name: Executar Ping (CURL) no Site
+    
+    steps:
+      - name: Executar Ping Seguro no Supabase API
         run: |
-          # Use o cURL para fazer uma requisição GET simples.
-          # O -s (silent) oculta o progresso, e o -o /dev/null descarta a saída, 
-          # mantendo o log do Action limpo e focado no resultado.
-          curl -s -o /dev/null "https://williamgustavo-ui.github.io/calculadora-eletrica/"
+          curl -s -o /dev/null "https://nlbkcnaocannelwdcqwa.supabase.co/rest/v1/" \
+          -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}"
