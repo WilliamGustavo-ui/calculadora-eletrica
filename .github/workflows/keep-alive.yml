@@ -3,7 +3,7 @@ name: Ping Supabase Keep-Alive
 on:
   schedule:
     # Mantido a cada 1 hora
-    - cron: '*/6 * * * *'
+    - cron: ''0 */12 * * *'
   
   workflow_dispatch:
 
