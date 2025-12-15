@@ -1,3 +1,4 @@
+// Arquivo: supabaseClient.js
 // Importa a função para criar o cliente diretamente da biblioteca Supabase.
 // Usar a URL do CDN com '/+esm' é a forma moderna de importar módulos.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
