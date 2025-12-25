@@ -288,10 +288,10 @@ function populateFormWithProjectData(project) {
     document.getElementById('project_code').value = project.project_code || '';
     if (project.tech_data) { Object.keys(project.tech_data).forEach(key => { const el = document.getElementById(key); if (el) el.value = project.tech_data[key]; }); }
     if (project.feeder_data) { Object.keys(project.feeder_data).forEach(key => { const el = document.getElementById(key); if (el) { if (el.type === 'checkbox') el.checked = project.feeder_data[key]; else el.value = project.feeder_data[key]; } });
-        document.getElementById('feederFases')?.dispatchEvent(new Event('change'));
-        document.getElementById('feederTipoIsolacao')?.dispatchEvent(new Event('change'));
-    }
-
+        document.getElementById('feederPotenciaInstalada').value = project.feeder_data.feederPotenciaInstalada || "0.00";
+    document.getElementById('feederSomaPotenciaDemandada').value = project.feeder_data.feederSomaPotenciaDemandada || "0.00";
+    document.getElementById('feederPotenciaDemandada').value = project.feeder_data.feederPotenciaDemandada || "0.00";
+}
     const qdcContainerTarget = document.getElementById('qdc-container');
     if (project.qdcs_data && Array.isArray(project.qdcs_data) && qdcContainerTarget) {
         const fragment = document.createDocumentFragment();
