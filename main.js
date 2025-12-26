@@ -1,5 +1,3 @@
-// Arquivo: main.js (v10.0 - Carregamento em Background e Coleta Robusta)
-
 import * as auth from './auth.js';
 import * as ui from './ui.js';
 import * as api from './api.js';
@@ -11,7 +9,38 @@ let allClients = [];
 let uiData = null;
 let currentPdfUrl = null;
 
-// --- 1. CARREGAMENTO DE OBRA OTIMIZADO (BACKEND-DRIVEN) ---
+// --- 1. LOGIN COM TRATAMENTO DE ERRO (EVITA ERRO 400) ---
+
+async function handleLogin() {
+    const emailEl = document.getElementById('emailLogin');
+    const passEl = document.getElementById('password');
+    
+    const email = emailEl.value.trim();
+    const password = passEl.value;
+
+    if (!email || !password) {
+        alert("Por favor, preencha e-mail e senha.");
+        return;
+    }
+
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    loadingOverlay.classList.add('visible');
+    loadingOverlay.querySelector('p').textContent = 'Autenticando...';
+
+    try {
+        const userProfile = await auth.signInUser(email, password);
+        // Se o login falhar, o auth.js já dispara um alert, então apenas limpamos o overlay
+        if (!userProfile) {
+            loadingOverlay.classList.remove('visible');
+        }
+        // Se tiver sucesso, o onAuthStateChange cuidará do resto
+    } catch (e) {
+        console.error("Erro inesperado no login:", e);
+        loadingOverlay.classList.remove('visible');
+    }
+}
+
+// --- 2. CARREGAMENTO CADENCIADO (EVITA TRAVAMENTO DE UI) ---
 
 async function populateFormWithProjectData(project) {
     if (!project) return;
@@ -19,37 +48,32 @@ async function populateFormWithProjectData(project) {
     const text = overlay.querySelector('p');
     
     overlay.classList.add('visible');
-    text.textContent = 'Carregando dados da nuvem...';
+    text.textContent = 'Carregando estrutura da obra...';
 
-    // Armazena os dados brutos para que o PDF possa usá-los sem ler o HTML
+    // Salva os dados brutos no objeto ui.js para acesso rápido no PDF
     ui.setLoadedProjectData(project);
 
-    // Renderiza apenas a "casca" dos QDCs para evitar travamento de UI
+    // Reseta o formulário sem travar
     ui.resetForm(false, project.client);
     document.getElementById('currentProjectId').value = project.id;
-
-    if (project.feeder_data) {
-        Object.keys(project.feeder_data).forEach(k => {
-            const el = document.getElementById(k);
-            if (el) el.value = project.feeder_data[k];
-        });
-    }
 
     if (project.qdcs_data) {
         const container = document.getElementById('qdc-container');
         container.innerHTML = '';
         const frag = document.createDocumentFragment();
         
+        // Adiciona apenas os blocos (casca)
         project.qdcs_data.forEach(q => {
             ui.addQdcBlock(String(q.id), q.name, q.parentId, frag);
         });
         container.appendChild(frag);
 
-        // ATENÇÃO: Não vamos forçar o clique/abertura de todos os circuitos aqui.
-        // Isso é o que causa o travamento. Vamos deixar que o usuário abra conforme precisar.
-        // A soma do Alimentador será feita via dados, não via DOM.
+        // NÃO abrimos os circuitos aqui. Isso evita o log de "Lazy Load" massivo que trava tudo.
+        // Os circuitos serão carregados sob demanda ou quando gerar o PDF.
         
-        text.textContent = 'Sincronizando cálculos...';
+        ui.updateQdcParentDropdowns();
+        text.textContent = 'Obra carregada com sucesso.';
+        
         setTimeout(() => { 
             ui.updateFeederPowerDisplay(); 
             overlay.classList.remove('visible');
@@ -57,38 +81,31 @@ async function populateFormWithProjectData(project) {
     }
 }
 
-// --- 2. GERAÇÃO DE PDF (A VERDADEIRA SOLUÇÃO) ---
+// --- 3. GERAÇÃO DE PDF VIA BACKEND (MEMORIAL COMPLETO) ---
 
 async function handleCalculateAndPdf() {
+    // Usamos os dados que já foram carregados no login/load para não depender do DOM lento
+    const projectData = ui.loadedProjectData;
+    
+    if (!projectData) {
+        alert("Erro: Dados da obra não encontrados. Tente carregar a obra novamente.");
+        return;
+    }
+
     const overlay = document.getElementById('loadingOverlay');
     overlay.classList.add('visible');
-    overlay.querySelector('p').textContent = 'Preparando dados em segundo plano...';
+    overlay.querySelector('p').textContent = 'Gerando relatório completo no servidor...';
 
     try {
-        // PEGANDO DADOS DIRETAMENTE DO OBJETO, NÃO DO HTML
-        // Isso evita que o PDF venha incompleto se os quadros estiverem fechados
-        const projectData = ui.loadedProjectData; 
-        
-        if (!projectData) {
-            throw new Error("Dados da obra não encontrados. Tente recarregar a obra.");
-        }
-
-        // Preparamos o pacote de dados EXATAMENTE como a Edge Function espera
+        // Envia o objeto completo (projectData) para a Edge Function
+        // Assim o PDF terá todos os circuitos, mesmo que as abas estejam fechadas
         const payload = {
             mainData: projectData.main_data,
-            feederData: processFeederForCalc(projectData.feeder_data),
-            qdcsData: projectData.qdcs_data.map(q => ({
-                id: q.id,
-                name: q.name,
-                parentId: q.parentId,
-                config: processConfigForCalc(q.config)
-            })),
-            circuitsData: extractAllCircuits(projectData.qdcs_data),
-            clientProfile: projectData.client || {},
-            techData: projectData.tech_data || {}
+            feederData: projectData.feeder_data,
+            qdcsData: projectData.qdcs_data,
+            // O backend receberá os dados brutos do banco, garantindo 100% de integridade
+            isDirectFromData: true 
         };
-
-        overlay.querySelector('p').textContent = 'Backend processando 50+ páginas...';
 
         const { data: blob, error } = await supabase.functions.invoke('gerar-relatorio', {
             body: { formData: payload },
@@ -102,87 +119,76 @@ async function handleCalculateAndPdf() {
         
         const a = document.createElement('a');
         a.href = currentPdfUrl;
-        a.download = `Relatorio_${projectData.project_name}.pdf`;
+        a.download = `Relatorio_${projectData.project_name || 'Obra'}.pdf`;
         a.click();
 
     } catch (e) {
-        alert("Erro no Backend: " + e.message);
+        alert("Erro ao gerar PDF: " + e.message);
     } finally {
         overlay.classList.remove('visible');
     }
 }
 
-// --- FUNÇÕES AUXILIARES DE BACKEND (PROCESSAMENTO DE DADOS) ---
-
-function extractAllCircuits(qdcsData) {
-    const all = [];
-    qdcsData.forEach(qdc => {
-        if (qdc.circuits) {
-            qdc.circuits.forEach(c => {
-                // Formata cada circuito para o motor de cálculo do backend
-                all.push({
-                    qdcId: qdc.id,
-                    ...processConfigForCalc(c)
-                });
-            });
-        }
-    });
-    return all;
-}
-
-function processFeederForCalc(data) {
-    const processed = { id: 'feeder' };
-    Object.keys(data).forEach(k => {
-        const val = data[k];
-        const newKey = k.replace('feeder', '').charAt(0).toLowerCase() + k.replace('feeder', '').slice(1);
-        processed[newKey] = isNaN(val) || val === "" ? val : parseFloat(val);
-    });
-    return processed;
-}
-
-function processConfigForCalc(config) {
-    const processed = {};
-    Object.keys(config).forEach(k => {
-        const val = config[k];
-        // Remove prefixos de ID e converte strings numéricas em números reais
-        const newKey = k.split('-')[0].replace('qdc', '').replace(/^[A-Z]/, l => l.toLowerCase());
-        processed[newKey] = isNaN(val) || val === "" || typeof val === 'boolean' ? val : parseFloat(val);
-    });
-    return processed;
-}
-
-// --- SETUP DOS LISTENERS (ORDEM CORRETA) ---
+// --- 4. CONFIGURAÇÃO DE EVENTOS ---
 
 function setupEventListeners() {
-    document.getElementById('loginBtn')?.addEventListener('click', async () => {
-        const user = await auth.signInUser(document.getElementById('emailLogin').value, document.getElementById('password').value);
-        if (user) window.location.reload(); 
+    document.getElementById('loginBtn')?.addEventListener('click', handleLogin);
+    document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+        await auth.signOutUser();
+        window.location.reload();
     });
 
-    document.getElementById('loadBtn')?.addEventListener('click', handleLoadProject);
+    document.getElementById('loadBtn')?.addEventListener('click', async () => {
+        const id = document.getElementById('savedProjectsSelect').value;
+        if (id) {
+            const p = await api.fetchProjectById(id);
+            populateFormWithProjectData(p);
+        }
+    });
+
     document.getElementById('calculateAndPdfBtn')?.addEventListener('click', handleCalculateAndPdf);
+    document.getElementById('addQdcBtn')?.addEventListener('click', () => ui.addQdcBlock());
     
-    // Outros botões...
-    document.getElementById('saveBtn')?.addEventListener('click', () => alert("Use o botão de salvar original"));
+    const app = document.getElementById('appContainer');
+    if (app) {
+        app.addEventListener('change', ui.handleMainContainerInteraction);
+        app.addEventListener('click', ui.handleMainContainerInteraction);
+    }
 }
 
-async function handleLoadProject() {
-    const id = document.getElementById('savedProjectsSelect').value;
-    if (!id) return;
-    const p = await api.fetchProjectById(id);
-    if (p) populateFormWithProjectData(p);
-}
+// --- 5. INICIALIZAÇÃO SEGURA ---
 
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
-    supabase.auth.onAuthStateChange(async (ev, sess) => {
-        if (sess) {
-            currentUserProfile = await auth.getSession();
-            uiData = await api.fetchUiData();
-            ui.setupDynamicData(uiData);
-            ui.showAppView(currentUserProfile);
-            const projs = await api.fetchProjects('');
-            ui.populateProjectList(projs);
+    
+    supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session) {
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.classList.add('visible');
+            overlay.querySelector('p').textContent = 'Sincronizando ambiente...';
+
+            try {
+                currentUserProfile = await auth.getSession();
+                
+                if (currentUserProfile?.is_approved && !currentUserProfile?.is_blocked) {
+                    // Carrega dados técnicos uma única vez
+                    if (!uiData) {
+                        uiData = await api.fetchUiData();
+                        ui.setupDynamicData(uiData);
+                    }
+                    
+                    ui.showAppView(currentUserProfile);
+                    
+                    const projs = await api.fetchProjects('');
+                    ui.populateProjectList(projs);
+                } else {
+                    ui.showLoginView();
+                }
+            } catch (e) {
+                console.error("Erro na inicialização:", e);
+            } finally {
+                overlay.classList.remove('visible');
+            }
         } else {
             ui.showLoginView();
         }
