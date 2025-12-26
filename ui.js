@@ -7,17 +7,13 @@ let uiData = null;
 let tempOptions = { pvc: [], epr: [] };
 export let loadedProjectData = null; 
 
-// Armazena dados para permitir cálculos sem renderizar circuitos pesados no DOM
+// Armazena dados do projeto para permitir o cálculo sem renderizar circuitos no DOM
 export function setLoadedProjectData(projectData) {
-    loadedProjectData = projectData;
+    loadedProjectData = projectData; [cite: 3]
 }
 
-// --- 1. LÓGICA DE CÁLCULO REMOTO (EDGE FUNCTION) ---
+// --- 1. LÓGICA DE CÁLCULO REMOTO (Evita Travamentos) ---
 
-/**
- * Coleta dados dos QDCs e Circuitos. Se os circuitos não estiverem no DOM (Lazy Load), 
- * busca nos dados salvos em memória.
- */
 export async function collectFormDataForCalculation() {
     const qdcsData = [];
     const circuitsData = [];
@@ -28,19 +24,15 @@ export async function collectFormDataForCalculation() {
         const parentId = document.getElementById(`qdcParent-${qdcId}`)?.value || 'feeder';
         const fdQdc = document.getElementById(`qdcFatorDemanda-${qdcId}`)?.value || 100;
 
-        qdcsData.push({
-            id: qdcId,
-            parentId: parentId,
-            config: { fatorDemanda: fdQdc }
-        });
+        qdcsData.push({ id: qdcId, parentId: parentId, config: { fatorDemanda: fdQdc } });
 
         const circuitsInDom = qdcBlock.querySelectorAll('.circuit-block');
         if (circuitsInDom.length > 0) {
             circuitsInDom.forEach(c => {
                 const cId = c.dataset.id;
-                circuitsData.push({
-                    qdcId: qdcId,
-                    potenciaW: document.getElementById(`potenciaW-${cId}`)?.value || 0
+                circuitsData.push({ 
+                    qdcId: qdcId, 
+                    potenciaW: document.getElementById(`potenciaW-${cId}`)?.value || 0 
                 });
             });
         } else {
@@ -56,9 +48,6 @@ export async function collectFormDataForCalculation() {
     return { qdcsData, circuitsData };
 }
 
-/**
- * Aciona a Edge Function para calcular a hierarquia de potências sem travar a UI.
- */
 async function _internal_updateFeederPowerDisplay() {
     const feederPotInstaladaEl = document.getElementById('feederPotenciaInstalada');
     const feederSomaPotDemandadaEl = document.getElementById('feederSomaPotenciaDemandada');
@@ -67,19 +56,16 @@ async function _internal_updateFeederPowerDisplay() {
 
     try {
         const { qdcsData, circuitsData } = await collectFormDataForCalculation();
-        
         const { data, error } = await supabase.functions.invoke('calcular-totais', {
             body: { qdcsData, circuitsData, feederFatorDemanda: fdGeral }
         });
 
         if (error) throw error;
 
-        // Atualiza Alimentador Geral
         if (feederPotInstaladaEl) feederPotInstaladaEl.value = data.geral.instalada.toFixed(2);
         if (feederSomaPotDemandadaEl) feederSomaPotDemandadaEl.value = data.geral.somaDemandada.toFixed(2);
         if (feederPotDemandadaFinalEl) feederPotDemandadaFinalEl.value = data.geral.final.toFixed(2);
 
-        // Atualiza campos de cada QDC
         Object.keys(data.qdcs).forEach(qdcId => {
             const pi = document.getElementById(`qdcPotenciaInstalada-${qdcId}`);
             const pd = document.getElementById(`qdcPotenciaDemandada-${qdcId}`);
@@ -92,22 +78,26 @@ async function _internal_updateFeederPowerDisplay() {
 }
 export const updateFeederPowerDisplay = debounce(_internal_updateFeederPowerDisplay, 600);
 
-// --- 2. GESTÃO DE UI E MODAIS ---
+// --- 2. GESTÃO DE UI E PROJETOS ---
+
+export function populateProjectList(projects) {
+    const select = document.getElementById('savedProjectsSelect');
+    if(!select) return; [cite: 3]
+    select.innerHTML = '<option value="">-- Selecione uma obra --</option>';
+    if (projects && Array.isArray(projects)) {
+        projects.forEach(p => {
+            const o = document.createElement('option');
+            o.value = p.id;
+            o.textContent = `${p.project_code || 'S/C'} - ${p.project_name}`;
+            select.appendChild(o);
+        });
+    }
+}
 
 export function setupDynamicData(data) {
     uiData = data;
     if (uiData?.fatores_k1) tempOptions.pvc = uiData.fatores_k1.map(f => f.temperatura_c).sort((a,b)=>a-b);
     if (uiData?.fatores_k1_epr) tempOptions.epr = uiData.fatores_k1_epr.map(f => f.temperatura_c).sort((a,b)=>a-b);
-}
-
-export function openModal(modalId) { 
-    const m = document.getElementById(modalId); 
-    if(m) m.style.display = 'flex'; 
-}
-
-export function closeModal(modalId) { 
-    const m = document.getElementById(modalId); 
-    if(m) m.style.display = 'none'; 
 }
 
 export function showAppView(userProfile) {
@@ -122,58 +112,34 @@ export function showLoginView() {
     document.getElementById('appContainer').style.display = 'none';
 }
 
+export function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+export function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
 // --- 3. TEMPLATES HTML ---
 
 function getQdcHTML(id, name, parentId) {
     return `
     <div class="qdc-block collapsed" id="qdc-${id}" data-id="${id}" data-circuits-loaded="false">
         <div class="qdc-header">
-            <div class="form-group"><label>Nome</label><input type="text" id="qdcName-${id}" value="${name}" class="qdc-name-input"></div>
+            <div class="form-group"><label>Nome</label><input type="text" id="qdcName-${id}" value="${name}"></div>
             <div class="form-group"><label>Alimentação</label><select id="qdcParent-${id}" class="qdc-parent-select" data-initial-parent="${parentId}"></select></div>
             <div class="qdc-header-right">
                 <button type="button" class="toggle-circuits-btn btn-grey" data-qdc-id="${id}">Exibir</button>
                 <button type="button" class="add-circuit-to-qdc-btn btn-green" data-qdc-id="${id}">+ Ckt</button>
             </div>
         </div>
-        <div class="qdc-content">
+        <div class="qdc-content" style="display:none; padding: 20px;">
             <div class="form-grid-3-col">
-                 <div class="form-group"><label>P. Inst (W)</label><input type="text" id="qdcPotenciaInstalada-${id}" readonly></div>
-                 <div class="form-group"><label>P. Dem (Agregada)</label><input type="text" id="qdcPotenciaDemandada-${id}" readonly></div>
-                 <div class="form-group"><label>FD (%)</label><input type="number" id="qdcFatorDemanda-${id}" value="100"></div>
+                <div class="form-group"><label>Instalada</label><input type="text" id="qdcPotenciaInstalada-${id}" readonly></div>
+                <div class="form-group"><label>Demandada</label><input type="text" id="qdcPotenciaDemandada-${id}" readonly></div>
+                <div class="form-group"><label>FD %</label><input type="number" id="qdcFatorDemanda-${id}" value="100"></div>
             </div>
-            <div id="circuits-for-qdc-${id}" class="circuits-container-internal">
-                 <p class="circuits-loading-placeholder" style="display:none; text-align:center;">Carregando...</p>
-            </div>
+            <div id="circuits-for-qdc-${id}"></div>
         </div>
     </div>`;
 }
 
-function getCircuitHTML(id) {
-    return `
-    <div class="circuit-block" id="circuit-${id}" data-id="${id}">
-        <div class="circuit-header">
-            <span>Ckt ${id}</span>
-            <input type="text" id="nomeCircuito-${id}" placeholder="Nome do Circuito">
-            <input type="number" id="potenciaW-${id}" value="1000" style="width: 100px;">
-        </div>
-    </div>`;
-}
-
-// --- 4. FUNÇÕES DE RENDERIZAÇÃO ---
-
-export function populateProjectList(projects) {
-    const select = document.getElementById('savedProjectsSelect');
-    if(!select) return;
-    select.innerHTML = '<option value="">-- Selecione uma obra --</option>';
-    if (projects && Array.isArray(projects)) {
-        projects.forEach(p => {
-            const o = document.createElement('option');
-            o.value = p.id;
-            o.textContent = `${p.project_code || 'S/C'} - ${p.project_name}`;
-            select.appendChild(o);
-        });
-    }
-}
+// --- 4. FUNÇÕES DE RENDERIZAÇÃO E EVENTOS ---
 
 export function addQdcBlock(id = null, name = null, parentId = 'feeder', container = null) {
     let internalId = id ? String(id) : String(++qdcCount);
@@ -189,19 +155,63 @@ export function addQdcBlock(id = null, name = null, parentId = 'feeder', contain
     return internalId;
 }
 
+export function addCircuit(qdcId, data = null, container = null) {
+    const id = data?.id || ++circuitCount;
+    const div = document.createElement('div');
+    div.innerHTML = `<div class="circuit-block" data-id="${id}" style="border: 1px solid #ddd; padding: 10px; margin-bottom: 10px;">
+        <span>Ckt ${id}</span>
+        <input type="text" id="nomeCircuito-${id}" value="${data?.nomeCircuito || 'Circuito ' + id}">
+        <input type="number" id="potenciaW-${id}" value="${data?.potenciaW || 1000}">
+    </div>`;
+    const target = container || document.getElementById(`circuits-for-qdc-${qdcId}`);
+    target.appendChild(div.firstElementChild);
+}
+
+export async function ensureCircuitsLoaded(qdcBlock, qdcId) {
+    if (qdcBlock.dataset.circuitsLoaded === 'true') return; [cite: 3]
+    const container = document.getElementById(`circuits-for-qdc-${qdcId}`);
+    const saved = loadedProjectData?.qdcs_data?.find(q => String(q.id) === String(qdcId));
+    if (saved?.circuits) {
+        const frag = document.createDocumentFragment();
+        saved.circuits.forEach(c => addCircuit(qdcId, c, frag));
+        container.appendChild(frag);
+    }
+    qdcBlock.dataset.circuitsLoaded = 'true';
+}
+
+export function handleMainContainerInteraction(event) {
+    const target = event.target;
+    const qdcBlock = target.closest('.qdc-block');
+    if (!qdcBlock) return;
+    const qdcId = qdcBlock.dataset.id;
+    const content = qdcBlock.querySelector('.qdc-content');
+
+    if (target.classList.contains('toggle-circuits-btn')) {
+        const isHidden = content.style.display === 'none';
+        content.style.display = isHidden ? 'block' : 'none';
+        target.textContent = isHidden ? 'Ocultar' : 'Exibir';
+        if (isHidden) ensureCircuitsLoaded(qdcBlock, qdcId);
+    }
+    
+    if (target.classList.contains('add-circuit-to-qdc-btn')) {
+        content.style.display = 'block';
+        ensureCircuitsLoaded(qdcBlock, qdcId);
+        addCircuit(qdcId);
+        updateFeederPowerDisplay();
+    }
+}
+
 export function updateQdcParentDropdowns() {
     const options = [{ value: 'feeder', text: 'Alimentador Geral' }];
     document.querySelectorAll('.qdc-block').forEach(q => {
         const id = q.dataset.id;
-        const name = document.getElementById(`qdcName-${id}`)?.value || `QDC ${id}`;
-        options.push({ value: `qdc-${id}`, text: name });
+        options.push({ value: `qdc-${id}`, text: document.getElementById(`qdcName-${id}`)?.value || `QDC ${id}` });
     });
     document.querySelectorAll('.qdc-parent-select').forEach(s => {
-        const currentId = s.closest('.qdc-block').dataset.id;
         const val = s.dataset.initialParent || s.value;
         s.innerHTML = '';
         options.forEach(o => {
-            if (`qdc-${currentId}` !== o.value) {
+            if (`qdc-${s.closest('.qdc-block').dataset.id}` !== o.value) {
                 const opt = document.createElement('option');
                 opt.value = o.value; opt.textContent = o.text; s.appendChild(opt);
             }
@@ -210,74 +220,36 @@ export function updateQdcParentDropdowns() {
     });
 }
 
-export function addCircuit(qdcId, data = null, container = null) {
-    const id = data?.id || ++circuitCount;
-    const div = document.createElement('div');
-    div.innerHTML = getCircuitHTML(id);
-    const circuitElement = div.firstElementChild;
-    
-    if (data) {
-        const nameInput = circuitElement.querySelector(`#nomeCircuito-${id}`);
-        const powerInput = circuitElement.querySelector(`#potenciaW-${id}`);
-        if(nameInput) nameInput.value = data.nomeCircuito || data[`nomeCircuito-${id}`] || "";
-        if(powerInput) powerInput.value = data.potenciaW || data[`potenciaW-${id}`] || 1000;
-    }
-
-    const target = container || document.getElementById(`circuits-for-qdc-${qdcId}`);
-    target.appendChild(circuitElement);
-}
-
-// --- 5. LAZY LOADING E INTERAÇÃO ---
-
-export async function ensureCircuitsLoaded(qdcBlock, qdcId) {
-    if (qdcBlock.dataset.circuitsLoaded === 'true') return;
-    
-    const container = document.getElementById(`circuits-for-qdc-${qdcId}`);
-    qdcBlock.dataset.circuitsLoaded = 'true';
-    
-    const savedQdc = loadedProjectData?.qdcs_data?.find(q => String(q.id) === String(qdcId));
-    if (savedQdc?.circuits) {
-        const frag = document.createDocumentFragment();
-        savedQdc.circuits.forEach(c => addCircuit(qdcId, c, frag));
-        container.appendChild(frag);
-    }
-}
-
-export function handleMainContainerInteraction(event) {
-    const target = event.target;
-    const qdcBlock = target.closest('.qdc-block');
-    if (!qdcBlock) return;
-    const qdcId = qdcBlock.dataset.id;
-
-    if (target.classList.contains('toggle-circuits-btn')) {
-        const isCollapsed = qdcBlock.classList.contains('collapsed');
-        if (isCollapsed) {
-            qdcBlock.classList.remove('collapsed');
-            target.textContent = 'Ocultar';
-            ensureCircuitsLoaded(qdcBlock, qdcId);
-        } else {
-            qdcBlock.classList.add('collapsed');
-            target.textContent = 'Exibir';
-        }
-    }
-    
-    if (target.classList.contains('add-circuit-to-qdc-btn')) {
-        ensureCircuitsLoaded(qdcBlock, qdcId);
-        addCircuit(qdcId);
-        qdcBlock.classList.remove('collapsed');
-    }
-}
-
 export function resetForm(addDefault = true, client = null) {
     loadedProjectData = null;
     document.getElementById('qdc-container').innerHTML = '';
-    if (client) {
-        document.getElementById('clientLinkDisplay').textContent = `Cliente: ${client.nome}`;
-    }
+    if (client) document.getElementById('clientLinkDisplay').textContent = `Cliente: ${client.nome}`;
     if (addDefault) addQdcBlock();
     updateFeederPowerDisplay();
 }
 
-// Funções administrativas pendentes (Adicione conforme sua necessidade de UI original)
-export function populateUsersPanel(users) {}
-export function populateClientManagementModal(clients) {}
+// --- 5. FUNÇÕES ADMINISTRATIVAS (Originais) ---
+
+export function populateUsersPanel(users) {
+    const list = document.getElementById('adminUserList');
+    if (!list) return; [cite: 3]
+    list.innerHTML = '';
+    users.forEach(user => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span><strong>${user.nome}</strong> (${user.email})</span>
+        <button class="btn-green approve-user-btn" data-user-id="${user.id}">${user.is_approved ? 'Aprovado' : 'Aprovar'}</button>
+        <button class="btn-red remove-user-btn" data-user-id="${user.id}">Excluir</button>`;
+        list.appendChild(li);
+    });
+}
+
+export function populateProjectsPanel(projects, clients, users, currentUserProfile) {
+    const tableBody = document.getElementById('adminProjectsTableBody');
+    if (!tableBody) return; [cite: 3]
+    tableBody.innerHTML = '';
+    projects.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${p.project_code}</td><td>${p.project_name}</td><td>${p.client?.nome || 'Nenhum'}</td>`;
+        tableBody.appendChild(tr);
+    });
+}
