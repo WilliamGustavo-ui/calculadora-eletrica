@@ -1,3 +1,4 @@
+// Arquivo: ui.js (Versão Final - JavaScript Puro - v18.2)
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR, debounce } from './utils.js';
 import { supabase } from './supabaseClient.js';
 
@@ -7,13 +8,17 @@ let uiData = null;
 let tempOptions = { pvc: [], epr: [] };
 export let loadedProjectData = null; 
 
-// Armazena dados do projeto para permitir o cálculo sem renderizar circuitos no DOM
+// Armazena dados do projeto carregado para permitir cálculos em QDCs não renderizados
 export function setLoadedProjectData(projectData) {
-    loadedProjectData = projectData; [cite: 3]
+    loadedProjectData = projectData;
 }
 
 // --- 1. LÓGICA DE CÁLCULO REMOTO (Evita Travamentos) ---
 
+/**
+ * Coleta os dados de potências de forma leve. 
+ * Se o QDC estiver fechado (Lazy Load), lê os dados do cache 'loadedProjectData'.
+ */
 export async function collectFormDataForCalculation() {
     const qdcsData = [];
     const circuitsData = [];
@@ -48,6 +53,9 @@ export async function collectFormDataForCalculation() {
     return { qdcsData, circuitsData };
 }
 
+/**
+ * Chama a Edge Function no Supabase para processar a hierarquia.
+ */
 async function _internal_updateFeederPowerDisplay() {
     const feederPotInstaladaEl = document.getElementById('feederPotenciaInstalada');
     const feederSomaPotDemandadaEl = document.getElementById('feederSomaPotenciaDemandada');
@@ -56,16 +64,19 @@ async function _internal_updateFeederPowerDisplay() {
 
     try {
         const { qdcsData, circuitsData } = await collectFormDataForCalculation();
+        
         const { data, error } = await supabase.functions.invoke('calcular-totais', {
             body: { qdcsData, circuitsData, feederFatorDemanda: fdGeral }
         });
 
         if (error) throw error;
 
+        // Atualiza Alimentador Geral
         if (feederPotInstaladaEl) feederPotInstaladaEl.value = data.geral.instalada.toFixed(2);
         if (feederSomaPotDemandadaEl) feederSomaPotDemandadaEl.value = data.geral.somaDemandada.toFixed(2);
         if (feederPotDemandadaFinalEl) feederPotDemandadaFinalEl.value = data.geral.final.toFixed(2);
 
+        // Atualiza inputs de cada QDC visível
         Object.keys(data.qdcs).forEach(qdcId => {
             const pi = document.getElementById(`qdcPotenciaInstalada-${qdcId}`);
             const pd = document.getElementById(`qdcPotenciaDemandada-${qdcId}`);
@@ -82,7 +93,7 @@ export const updateFeederPowerDisplay = debounce(_internal_updateFeederPowerDisp
 
 export function populateProjectList(projects) {
     const select = document.getElementById('savedProjectsSelect');
-    if(!select) return; [cite: 3]
+    if(!select) return;
     select.innerHTML = '<option value="">-- Selecione uma obra --</option>';
     if (projects && Array.isArray(projects)) {
         projects.forEach(p => {
@@ -112,8 +123,15 @@ export function showLoginView() {
     document.getElementById('appContainer').style.display = 'none';
 }
 
-export function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-export function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+export function openModal(id) { 
+    const modal = document.getElementById(id);
+    if(modal) modal.style.display = 'flex'; 
+}
+
+export function closeModal(id) { 
+    const modal = document.getElementById(id);
+    if(modal) modal.style.display = 'none'; 
+}
 
 // --- 3. TEMPLATES HTML ---
 
@@ -126,12 +144,13 @@ function getQdcHTML(id, name, parentId) {
             <div class="qdc-header-right">
                 <button type="button" class="toggle-circuits-btn btn-grey" data-qdc-id="${id}">Exibir</button>
                 <button type="button" class="add-circuit-to-qdc-btn btn-green" data-qdc-id="${id}">+ Ckt</button>
+                <button type="button" class="remove-qdc-btn btn-red" data-qdc-id="${id}">Remover</button>
             </div>
         </div>
         <div class="qdc-content" style="display:none; padding: 20px;">
             <div class="form-grid-3-col">
                 <div class="form-group"><label>Instalada</label><input type="text" id="qdcPotenciaInstalada-${id}" readonly></div>
-                <div class="form-group"><label>Demandada</label><input type="text" id="qdcPotenciaDemandada-${id}" readonly></div>
+                <div class="form-group"><label>Demandada (Agregada)</label><input type="text" id="qdcPotenciaDemandada-${id}" readonly style="color: #28a745; font-weight: bold;"></div>
                 <div class="form-group"><label>FD %</label><input type="number" id="qdcFatorDemanda-${id}" value="100"></div>
             </div>
             <div id="circuits-for-qdc-${id}"></div>
@@ -158,17 +177,20 @@ export function addQdcBlock(id = null, name = null, parentId = 'feeder', contain
 export function addCircuit(qdcId, data = null, container = null) {
     const id = data?.id || ++circuitCount;
     const div = document.createElement('div');
-    div.innerHTML = `<div class="circuit-block" data-id="${id}" style="border: 1px solid #ddd; padding: 10px; margin-bottom: 10px;">
-        <span>Ckt ${id}</span>
-        <input type="text" id="nomeCircuito-${id}" value="${data?.nomeCircuito || 'Circuito ' + id}">
-        <input type="number" id="potenciaW-${id}" value="${data?.potenciaW || 1000}">
+    div.innerHTML = `<div class="circuit-block" data-id="${id}" style="border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px;">
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <span>Ckt ${id}</span>
+            <input type="text" id="nomeCircuito-${id}" value="${data?.nomeCircuito || 'Circuito ' + id}" style="flex: 1;">
+            <label>W:</label>
+            <input type="number" id="potenciaW-${id}" value="${data?.potenciaW || 1000}" style="width: 80px;">
+        </div>
     </div>`;
     const target = container || document.getElementById(`circuits-for-qdc-${qdcId}`);
     target.appendChild(div.firstElementChild);
 }
 
 export async function ensureCircuitsLoaded(qdcBlock, qdcId) {
-    if (qdcBlock.dataset.circuitsLoaded === 'true') return; [cite: 3]
+    if (qdcBlock.dataset.circuitsLoaded === 'true') return;
     const container = document.getElementById(`circuits-for-qdc-${qdcId}`);
     const saved = loadedProjectData?.qdcs_data?.find(q => String(q.id) === String(qdcId));
     if (saved?.circuits) {
@@ -190,14 +212,28 @@ export function handleMainContainerInteraction(event) {
         const isHidden = content.style.display === 'none';
         content.style.display = isHidden ? 'block' : 'none';
         target.textContent = isHidden ? 'Ocultar' : 'Exibir';
-        if (isHidden) ensureCircuitsLoaded(qdcBlock, qdcId);
+        if (isHidden) {
+            qdcBlock.classList.remove('collapsed');
+            ensureCircuitsLoaded(qdcBlock, qdcId);
+        } else {
+            qdcBlock.classList.add('collapsed');
+        }
     }
     
     if (target.classList.contains('add-circuit-to-qdc-btn')) {
         content.style.display = 'block';
+        qdcBlock.classList.remove('collapsed');
         ensureCircuitsLoaded(qdcBlock, qdcId);
         addCircuit(qdcId);
         updateFeederPowerDisplay();
+    }
+
+    if (target.classList.contains('remove-qdc-btn')) {
+        if(confirm("Deseja realmente remover este QDC?")) {
+            qdcBlock.remove();
+            updateQdcParentDropdowns();
+            updateFeederPowerDisplay();
+        }
     }
 }
 
@@ -205,13 +241,15 @@ export function updateQdcParentDropdowns() {
     const options = [{ value: 'feeder', text: 'Alimentador Geral' }];
     document.querySelectorAll('.qdc-block').forEach(q => {
         const id = q.dataset.id;
-        options.push({ value: `qdc-${id}`, text: document.getElementById(`qdcName-${id}`)?.value || `QDC ${id}` });
+        const name = document.getElementById(`qdcName-${id}`)?.value || `QDC ${id}`;
+        options.push({ value: `qdc-${id}`, text: name });
     });
     document.querySelectorAll('.qdc-parent-select').forEach(s => {
+        const currentId = s.closest('.qdc-block').dataset.id;
         const val = s.dataset.initialParent || s.value;
         s.innerHTML = '';
         options.forEach(o => {
-            if (`qdc-${s.closest('.qdc-block').dataset.id}` !== o.value) {
+            if (`qdc-${currentId}` !== o.value) {
                 const opt = document.createElement('option');
                 opt.value = o.value; opt.textContent = o.text; s.appendChild(opt);
             }
@@ -223,33 +261,55 @@ export function updateQdcParentDropdowns() {
 export function resetForm(addDefault = true, client = null) {
     loadedProjectData = null;
     document.getElementById('qdc-container').innerHTML = '';
-    if (client) document.getElementById('clientLinkDisplay').textContent = `Cliente: ${client.nome}`;
+    const linkDisplay = document.getElementById('clientLinkDisplay');
+    if (client && linkDisplay) {
+        linkDisplay.textContent = `Cliente: ${client.nome}`;
+    } else if (linkDisplay) {
+        linkDisplay.textContent = 'Cliente: Nenhum';
+    }
     if (addDefault) addQdcBlock();
     updateFeederPowerDisplay();
 }
 
-// --- 5. FUNÇÕES ADMINISTRATIVAS (Originais) ---
+// --- 5. FUNÇÕES ADMINISTRATIVAS ---
 
 export function populateUsersPanel(users) {
     const list = document.getElementById('adminUserList');
-    if (!list) return; [cite: 3]
+    if (!list) return;
     list.innerHTML = '';
     users.forEach(user => {
         const li = document.createElement('li');
-        li.innerHTML = `<span><strong>${user.nome}</strong> (${user.email})</span>
-        <button class="btn-green approve-user-btn" data-user-id="${user.id}">${user.is_approved ? 'Aprovado' : 'Aprovar'}</button>
-        <button class="btn-red remove-user-btn" data-user-id="${user.id}">Excluir</button>`;
+        li.innerHTML = `<span><strong>${user.nome || user.email}</strong></span>
+        <div class="admin-user-actions">
+            <button class="btn-green approve-user-btn" data-user-id="${user.id}">${user.is_approved ? 'Aprovado' : 'Aprovar'}</button>
+            <button class="btn-red remove-user-btn" data-user-id="${user.id}">Excluir</button>
+        </div>`;
         list.appendChild(li);
     });
 }
 
 export function populateProjectsPanel(projects, clients, users, currentUserProfile) {
     const tableBody = document.getElementById('adminProjectsTableBody');
-    if (!tableBody) return; [cite: 3]
+    if (!tableBody) return;
     tableBody.innerHTML = '';
     projects.forEach(p => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${p.project_code}</td><td>${p.project_name}</td><td>${p.client?.nome || 'Nenhum'}</td>`;
+        tr.innerHTML = `<td>${p.project_code || 'S/C'}</td>
+        <td>${p.project_name}</td>
+        <td>${p.owner?.nome || 'N/A'}</td>
+        <td>${p.client?.nome || 'Nenhum'}</td>`;
         tableBody.appendChild(tr);
+    });
+}
+
+export function populateClientManagementModal(clients) {
+    const list = document.getElementById('clientList');
+    if (!list) return;
+    list.innerHTML = '';
+    clients.forEach(c => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span><strong>${c.nome}</strong></span>
+        <button class="btn-edit edit-client-btn" data-client-id="${c.id}">Editar</button>`;
+        list.appendChild(li);
     });
 }
