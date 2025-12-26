@@ -9,7 +9,7 @@ self.onmessage = async (e) => {
             global: { headers: { Authorization: authHeader } }
         });
 
-        // O trabalho pesado de cálculo acontece no backend (Edge Function)
+        // O cálculo e a geração do binário ocorrem inteiramente no backend
         const { data: pdfBlob, error } = await supabase.functions.invoke('gerar-relatorio', {
             body: { formData },
             responseType: 'blob'
@@ -17,7 +17,7 @@ self.onmessage = async (e) => {
 
         if (error) throw error;
 
-        // Devolve o arquivo pronto para a interface
+        // Retorna apenas o resultado final para a thread principal
         self.postMessage({ success: true, pdfBlob, obra: formData.mainData?.obra });
     } catch (err) {
         self.postMessage({ success: false, error: err.message });

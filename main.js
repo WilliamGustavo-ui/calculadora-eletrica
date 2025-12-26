@@ -1,4 +1,4 @@
-// Arquivo: main.js (v9.2 - Performance Otimizada)
+// Arquivo: main.js (v9.3 - Focado em Fluidez e Backend-First)
 import * as auth from './auth.js';
 import * as ui from './ui.js';
 import * as api from './api.js';
@@ -30,20 +30,36 @@ function getPdfWorker() {
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-                setTimeout(() => URL.revokeObjectURL(pdfUrl), 60000); // Libera memória
+                setTimeout(() => URL.revokeObjectURL(pdfUrl), 60000); // Gerenciamento de memória
             } else {
-                alert("Erro no Worker: " + error);
+                alert("Erro ao gerar PDF: " + error);
             }
         };
     }
     return pdfWorker;
 }
 
-// --- Funções de Busca e Carregamento (Restauradas) ---
+// --- Autenticação ---
+async function handleLogin() {
+    const email = document.getElementById('emailLogin').value;
+    const password = document.getElementById('password').value;
+    const userProfile = await auth.signInUser(email, password);
+    if (!userProfile) console.error("Falha no login.");
+}
+
+async function handleLogout() {
+    await auth.signOutUser();
+}
+
+// --- Gerenciamento de Projetos e Carregamento Suave ---
 async function handleSearch(term = '') {
     if (!currentUserProfile) return;
-    const projects = await api.fetchProjects(term);
-    ui.populateProjectList(projects);
+    try {
+        const projects = await api.fetchProjects(term);
+        ui.populateProjectList(projects);
+    } catch (error) {
+        console.error("Erro na busca:", error);
+    }
 }
 
 async function handleLoadProject() {
@@ -56,18 +72,19 @@ async function handleLoadProject() {
         const project = await api.fetchProjectById(projectId);
         if (project) {
             ui.resetForm(false, project.client);
-            ui.setLoadedProjectData(project); // Prepara dados para o Lazy Load do ui.js
+            ui.setLoadedProjectData(project); // Prepara o Lazy Load no ui.js
             
             document.getElementById('currentProjectId').value = project.id;
             document.getElementById('project_code').value = project.project_code || '';
             document.getElementById('obra').value = project.project_name || '';
 
-            // Renderiza QDCs com pausas para não travar a UI
+            // Renderiza apenas os esqueletos dos QDCs primeiro
             const container = document.getElementById('qdc-container');
             if (project.qdcs_data) {
                 for (const qdc of project.qdcs_data) {
                     ui.addQdcBlock(String(qdc.id), qdc.name, qdc.parentId, container);
-                    await new Promise(r => setTimeout(r, 0)); // Pausa tática para o navegador respirar
+                    // IMPORTANTE: Pausa assíncrona para não travar a UI entre cada bloco
+                    await new Promise(resolve => setTimeout(resolve, 0)); 
                 }
             }
             ui.updateQdcParentDropdowns();
@@ -78,7 +95,7 @@ async function handleLoadProject() {
     }
 }
 
-// --- Coleta de Dados Otimizada (Backend-Ready) ---
+// --- Coleta de Dados para PDF (Otimizada para Backend) ---
 async function getFullFormData(forSave = false) {
     const mainData = { 
         obra: document.getElementById('obra').value,
@@ -107,8 +124,8 @@ async function getFullFormData(forSave = false) {
             config[el.id] = el.type === 'checkbox' ? el.checked : el.value;
         });
 
-        // Coleta apenas os circuitos que já foram carregados no DOM
         const circuits = [];
+        // Coleta circuitos apenas se já estiverem renderizados no DOM
         qdcBlock.querySelectorAll('.circuit-block').forEach(cBlock => {
             const cId = cBlock.dataset.id;
             const cData = { id: cId, qdcId: qdcId };
@@ -119,10 +136,10 @@ async function getFullFormData(forSave = false) {
             circuitsData.push(cData);
         });
 
-        qdcsData.push({ id: qdcId, name: qdcBlock.querySelector('.qdc-name-input')?.value, parentId: qdcBlock.querySelector('.qdc-parent-select')?.value, config, circuits });
+        qdcsData.push({ id: qdcId, name: qdcBlock.querySelector('.qdc-name-input')?.value, config, circuits });
         
-        // Evita travamento durante a coleta de centenas de campos
-        await new Promise(r => setTimeout(r, 0));
+        // Evita travamento na coleta de dados massivos
+        await new Promise(resolve => setTimeout(resolve, 0));
     }
 
     if (forSave) return { main_data: mainData, qdcs_data: qdcsData, feeder_data: feederData, owner_id: currentUserProfile.id };
@@ -144,17 +161,14 @@ async function handleCalculateAndPdf() {
         });
     } catch (e) {
         loadingOverlay.classList.remove('visible');
-        alert("Erro ao preparar relatório.");
+        alert("Erro ao preparar dados.");
     }
 }
 
-// --- Bootstrap ---
+// --- Listeners e Setup ---
 function setupEventListeners() {
-    document.getElementById('loginBtn')?.addEventListener('click', async () => {
-        const user = await auth.signInUser(document.getElementById('emailLogin').value, document.getElementById('password').value);
-        if(user) main();
-    });
-    document.getElementById('logoutBtn')?.addEventListener('click', () => auth.signOutUser());
+    document.getElementById('loginBtn')?.addEventListener('click', handleLogin);
+    document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
     document.getElementById('loadBtn')?.addEventListener('click', handleLoadProject);
     document.getElementById('calculateAndPdfBtn')?.addEventListener('click', handleCalculateAndPdf);
     document.getElementById('searchInput')?.addEventListener('input', utils.debounce((e) => handleSearch(e.target.value), 400));
