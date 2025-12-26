@@ -1,4 +1,4 @@
-// Arquivo: main.js (v9.3 - Versão Completa: CRUD, Admin, Memória e Soma de Carga)
+// Arquivo: main.js (v9.5 - Versão Integral e Consolidada para Estabilidade Online)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -10,7 +10,7 @@ let currentUserProfile = null;
 let allClients = [];
 let uiData = null;
 
-// Variável global para controle de memória do PDF (Blob URLs)
+// Variável global para gerenciar a limpeza de memória RAM do navegador (Blob URLs)
 let currentPdfUrl = null;
 
 // --- 1. FUNÇÕES DE AUTENTICAÇÃO E ACESSO ---
@@ -28,22 +28,18 @@ async function handleLogout() {
 
 async function handleRegister(event) {
     event.preventDefault();
-    const email = document.getElementById('regEmail').value;
-    const password = document.getElementById('regPassword').value;
     const details = {
         nome: document.getElementById('regNome').value,
         cpf: document.getElementById('regCpf').value,
         telefone: document.getElementById('regTelefone').value,
         crea: document.getElementById('regCrea').value,
-        email: email
+        email: document.getElementById('regEmail').value
     };
-    const { error } = await auth.signUpUser(email, password, details);
+    const { error } = await auth.signUpUser(details.email, document.getElementById('regPassword').value, details);
     if (!error) {
         alert('Cadastro realizado com sucesso! Aguarde a aprovação de um administrador.');
         ui.closeModal('registerModalOverlay');
         event.target.reset();
-    } else {
-        alert(`Erro no registro: ${error.message}`);
     }
 }
 
@@ -64,7 +60,7 @@ async function handleResetPassword(event) {
     if (newPassword.length < 6) { alert("Mínimo 6 caracteres."); return; }
     const { error } = await auth.updatePassword(newPassword);
     if (!error) {
-        alert("Senha atualizada! Relogue.");
+        alert("Senha atualizada! Por favor, faça login novamente.");
         window.location.hash = '';
         window.location.reload();
     }
@@ -96,7 +92,7 @@ async function handleClientFormSubmit(event) {
     try {
         let result = clientId ? await api.updateClient(clientId, clientData) : await api.addClient(clientData);
         if (result.error) throw result.error;
-        alert('Cliente salvo!');
+        alert('Cliente salvo com sucesso!');
         ui.resetClientForm();
         await handleOpenClientManagement();
     } catch (error) { alert('Erro: ' + error.message); }
@@ -109,7 +105,7 @@ async function handleClientListClick(event) {
         const client = allClients.find(c => c.id == clientId);
         if (client) ui.openEditClientForm(client);
     }
-    if (target.classList.contains('delete-client-btn') && confirm('Excluir cliente?')) {
+    if (target.classList.contains('delete-client-btn') && confirm('Excluir este cliente?')) {
         const { error } = await api.deleteClient(clientId);
         if (!error) await handleOpenClientManagement();
     }
@@ -136,7 +132,7 @@ function handleConfirmClientSelection(isChange = false) {
     ui.closeModal('selectClientModalOverlay');
 }
 
-// CORREÇÃO: Garante que o Alimentador Geral some as potências após o carregamento
+// CORREÇÃO: Função para garantir que o Alimentador Geral não inicie zerado
 async function populateFormWithProjectData(project) {
     if (!project) return;
     ui.resetForm(false, project.client);
@@ -151,6 +147,7 @@ async function populateFormWithProjectData(project) {
         });
     }
     document.getElementById('project_code').value = project.project_code || '';
+    
     if (project.tech_data) {
         Object.keys(project.tech_data).forEach(k => {
             const el = document.getElementById(k);
@@ -171,7 +168,6 @@ async function populateFormWithProjectData(project) {
         const qdcTarget = document.getElementById('qdc-container');
         const frag = document.createDocumentFragment();
         
-        // Ordenação hierárquica
         const qdcMap = new Map();
         project.qdcs_data.forEach(q => qdcMap.set(String(q.id), q));
         const sorted = []; const visited = new Set();
@@ -203,7 +199,7 @@ async function populateFormWithProjectData(project) {
             document.getElementById(`qdcFases-${rid}`)?.dispatchEvent(new Event('change'));
             document.getElementById(`qdcTipoIsolacao-${rid}`)?.dispatchEvent(new Event('change'));
             
-            // Força o carregamento via Lazy Loading para somar a potência
+            // Força o carregamento dos circuitos via Lazy Loading para a soma de carga
             const block = document.getElementById(`qdc-${rid}`);
             if (block) {
                 const btn = block.querySelector('.toggle-circuits-btn');
@@ -215,41 +211,61 @@ async function populateFormWithProjectData(project) {
     }
 }
 
-// --- 4. CÁLCULO E PDF (RESOLVE TRAVAMENTO) ---
+// --- 4. CÁLCULO E GERAÇÃO DE PDF (COM GESTÃO DE RAM) ---
 
 async function handleCalculateAndPdf() {
     if (!uiData || !currentUserProfile) return;
     const overlay = document.getElementById('loadingOverlay');
     const text = overlay.querySelector('p');
 
-    if (currentPdfUrl) { URL.revokeObjectURL(currentPdfUrl); currentPdfUrl = null; }
+    // LIBERAÇÃO DE MEMÓRIA: Revoga a URL do Blob anterior para evitar travamentos
+    if (currentPdfUrl) { 
+        URL.revokeObjectURL(currentPdfUrl); 
+        currentPdfUrl = null; 
+        console.log("RAM liberada.");
+    }
     document.getElementById('pdfLinkContainer')?.remove();
 
-    text.textContent = 'Coletando dados...';
+    text.textContent = 'Coletando dados da obra...';
     overlay.classList.add('visible');
 
     try {
         const formData = await getFullFormData(false);
-        text.textContent = 'Gerando relatório PDF...';
-        const { data: blob, error } = await supabase.functions.invoke('gerar-relatorio', { body: { formData }, responseType: 'blob' });
-        if (error) throw error;
+        text.textContent = 'Calculando e gerando PDF (isso pode demorar em obras grandes)...';
+        
+        const { data: blob, error } = await supabase.functions.invoke('gerar-relatorio', { 
+            body: { formData }, 
+            responseType: 'blob' 
+        });
 
+        if (error) throw error;
+        if (!blob || blob.size === 0) throw new Error("A função não retornou um arquivo válido.");
+
+        // Gerar nova URL e disparar download automático
         currentPdfUrl = URL.createObjectURL(blob);
+        const fileName = `Relatorio_${document.getElementById('obra').value.replace(/\s+/g, '_')}.pdf`;
+
         const a = document.createElement('a');
         a.href = currentPdfUrl;
-        a.download = `Relatorio_${document.getElementById('obra').value.replace(/\s+/g, '_')}.pdf`;
+        a.download = fileName;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
 
+        // Backup manual para download
         const div = document.createElement('div');
         div.id = 'pdfLinkContainer';
         div.style.textAlign = 'center';
-        div.innerHTML = `<a href="${currentPdfUrl}" class="btn-green" style="display:inline-block; margin-top:10px;">Baixar Novamente</a>`;
+        div.innerHTML = `<a href="${currentPdfUrl}" class="btn-green" style="display:inline-block; margin-top:15px;">Baixar Relatório Novamente</a>`;
         document.querySelector('.button-container').after(div);
-        alert("PDF Gerado!");
-    } catch (e) { alert("Erro: " + e.message); }
-    finally { overlay.classList.remove('visible'); }
+
+        alert("PDF gerado com sucesso!");
+    } catch (e) { 
+        console.error("Erro na geração do PDF:", e);
+        alert("Erro: " + e.message); 
+    } finally { 
+        overlay.classList.remove('visible'); 
+    }
 }
 
 async function getFullFormData(forSave = false) {
@@ -261,8 +277,16 @@ async function getFullFormData(forSave = false) {
     };
     const clientId = document.getElementById('currentClientId').value;
     const client = allClients.find(c => c.id == clientId);
-    const clientProfile = client ? { cliente: client.nome, documento: client.documento_valor, tipoDocumento: client.documento_tipo, email: client.email, celular: client.celular, enderecoCliente: client.endereco } : {};
-    const techData = { respTecnico: document.getElementById('respTecnico').value, titulo: document.getElementById('titulo').value, crea: document.getElementById('crea').value };
+    const clientProfile = client ? { 
+        cliente: client.nome, documento: client.documento_valor, 
+        tipoDocumento: client.documento_tipo, email: client.email, 
+        celular: client.celular, enderecoCliente: client.endereco 
+    } : {};
+    const techData = { 
+        respTecnico: document.getElementById('respTecnico').value, 
+        titulo: document.getElementById('titulo').value, 
+        crea: document.getElementById('crea').value 
+    };
     
     const feederData = {};
     const feederCalc = { id: 'feeder', nomeCircuito: "Alimentador Geral" };
@@ -301,7 +325,7 @@ async function getFullFormData(forSave = false) {
             cSave.push(cs); circsCalc.push(cc);
         });
         qdcsSave.push({ ...qInfo, config: qSave, circuits: cSave });
-        await new Promise(r => setTimeout(r, 0));
+        await new Promise(r => setTimeout(r, 0)); // Evita travamento da interface
     }
 
     return forSave ? 
@@ -309,13 +333,17 @@ async function getFullFormData(forSave = false) {
         { mainData, feederData: feederCalc, qdcsData: qdcsCalc, circuitsData: circsCalc, clientProfile, techData };
 }
 
-// --- 5. ADMIN E AUXILIARES ---
+// --- 5. ADMINISTRAÇÃO E AUXILIARES ---
 
 async function handleSaveProject() {
-    const data = await getFullFormData(true);
+    const d = await getFullFormData(true);
     const id = document.getElementById('currentProjectId').value;
-    const { data: res, error } = await api.saveProject(data, id);
-    if (!error) { alert("Salvo!"); document.getElementById('currentProjectId').value = res.id; handleSearch(); }
+    const { data: res, error } = await api.saveProject(d, id);
+    if (!error) { 
+        alert("Projeto salvo com sucesso!"); 
+        document.getElementById('currentProjectId').value = res.id;
+        handleSearch(); 
+    }
 }
 
 async function handleLoadProject() {
@@ -331,9 +359,11 @@ async function handleSearch(term = '') {
 }
 
 async function showAdminPanel() {
-    const users = await api.fetchAllUsers();
-    ui.populateUsersPanel(users);
-    ui.openModal('adminPanelModalOverlay');
+    try {
+        const users = await api.fetchAllUsers();
+        ui.populateUsersPanel(users);
+        ui.openModal('adminPanelModalOverlay');
+    } catch (e) { console.error("Erro no painel admin:", e); }
 }
 
 async function handleAdminUserActions(event) {
@@ -345,7 +375,7 @@ async function handleAdminUserActions(event) {
         const block = target.dataset.isBlocked !== 'true';
         if (confirm(`Confirmar ${block ? 'bloqueio' : 'desbloqueio'}?`)) { await api.toggleUserBlock(userId, block); showAdminPanel(); }
     }
-    if (target.classList.contains('remove-user-btn') && confirm('Excluir permanentemente?')) {
+    if (target.classList.contains('remove-user-btn') && confirm('Excluir este usuário permanentemente?')) {
         await api.deleteUserFromAdmin(userId);
         showAdminPanel();
     }
@@ -367,6 +397,7 @@ function setupEventListeners() {
     document.getElementById('clientList').addEventListener('click', handleClientListClick);
     document.getElementById('registerForm').addEventListener('submit', handleRegister);
     document.getElementById('confirmClientSelectionBtn').addEventListener('click', () => handleConfirmClientSelection());
+    document.getElementById('changeClientBtn')?.addEventListener('click', () => handleOpenClientManagement());
 
     document.getElementById('searchInput').addEventListener('input', utils.debounce((e) => handleSearch(e.target.value), 300));
 
@@ -379,21 +410,29 @@ function setupEventListeners() {
         });
     }
     
-    // Máscaras
+    // Máscaras de CPF e Celular
     document.getElementById('regCpf')?.addEventListener('input', utils.mascaraCPF);
     document.getElementById('regTelefone')?.addEventListener('input', utils.mascaraCelular);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
-    supabase.auth.onAuthStateChange(async (ev, sess) => {
-        if (sess) {
+    supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session) {
             currentUserProfile = await auth.getSession();
             if (currentUserProfile?.is_approved && !currentUserProfile?.is_blocked) {
-                uiData = await api.fetchUiData();
-                ui.setupDynamicData(uiData);
-                ui.showAppView(currentUserProfile);
-                handleSearch();
+                // Carrega dados técnicos APENAS se ainda não existirem
+                if (!uiData) {
+                    uiData = await api.fetchUiData();
+                    if (uiData) {
+                        ui.setupDynamicData(uiData);
+                        ui.showAppView(currentUserProfile);
+                        handleSearch();
+                    } else {
+                        console.error("Falha ao carregar dados técnicos.");
+                        await auth.signOutUser();
+                    }
+                }
             } else { ui.showLoginView(); }
         } else { ui.showLoginView(); }
     });
