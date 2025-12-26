@@ -1,4 +1,4 @@
-// Arquivo: main.js (v8.5 - Versão Completa e Corrigida)
+// Arquivo: main.js (v8.6 - Correção de Sintaxe e Performance)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -9,19 +9,17 @@ import { supabase } from './supabaseClient.js';
 let currentUserProfile = null;
 let allClients = [];
 let uiData = null;
-let lastPdfUrl = null; // Controle de memória para evitar travamentos
-
-// --- FUNÇÕES DE AUTENTICAÇÃO ---
+let lastPdfUrl = null; // Controle de memória do PDF [cite: 259]
 
 async function handleLogin() {
     const email = document.getElementById('emailLogin').value;
     const password = document.getElementById('password').value;
     const userProfile = await auth.signInUser(email, password);
-    if (!userProfile) console.error("Falha no login ou usuário bloqueado."); [cite: 1]
+    if (!userProfile) console.error("Falha no login.");
 }
 
 async function handleLogout() {
-    if (lastPdfUrl) URL.revokeObjectURL(lastPdfUrl); [cite: 259]
+    if (lastPdfUrl) URL.revokeObjectURL(lastPdfUrl); // Limpa RAM ao sair [cite: 259]
     await auth.signOutUser();
 }
 
@@ -38,12 +36,12 @@ async function handleRegister(event) {
     };
     const { error } = await auth.signUpUser(email, password, details);
     if (!error) {
-        alert('Cadastro realizado! Aguarde aprovação de um administrador.'); [cite: 1]
+        alert('Cadastro realizado! Aguarde aprovação.');
         ui.closeModal('registerModalOverlay');
     }
 }
 
-// --- GESTÃO DE PROJETOS E MEMORIAL ---
+// --- COLETA DE DADOS OTIMIZADA ---
 
 async function getFullFormData(forSave = false) {
     const mainData = { 
@@ -54,8 +52,8 @@ async function getFullFormData(forSave = false) {
         areaObra: document.getElementById('areaObra').value,
         unidadesResidenciais: document.getElementById('unidadesResidenciais').value,
         unidadesComerciais: document.getElementById('unidadesComerciais').value,
-        observacoes: document.getElementById('observacoes').value 
-    }; [cite: 212, 215]
+        observacoes: document.getElementById('observacoes').value
+    };
 
     const currentClientId = document.getElementById('currentClientId').value;
     const client = allClients.find(c => c.id == currentClientId);
@@ -64,22 +62,20 @@ async function getFullFormData(forSave = false) {
         tipoDocumento: client.documento_tipo, 
         documento: client.documento_valor, 
         celular: client.celular, 
-        telefone: client.telefone, 
-        email: client.email, 
-        enderecoCliente: client.endereco 
-    } : {}; [cite: 208, 211]
-
+        email: client.email 
+    } : {};
+    
     const techData = { 
         respTecnico: document.getElementById('respTecnico').value, 
         titulo: document.getElementById('titulo').value, 
         crea: document.getElementById('crea').value 
-    }; [cite: 216, 217]
+    };
 
     const feederData = {};
     document.querySelectorAll('#feeder-form input, #feeder-form select').forEach(el => {
         const key = el.id.replace('feeder', '').charAt(0).toLowerCase() + el.id.replace('feeder', '').slice(1);
         feederData[key] = el.type === 'checkbox' ? el.checked : el.value;
-    }); [cite: 226]
+    });
 
     const qdcsData = [];
     const allCircuits = [];
@@ -107,57 +103,60 @@ async function getFullFormData(forSave = false) {
 
         qdcsData.push({
             id: qId,
-            name: document.getElementById(`qdcName-${qId}`)?.value || `QDC ${qId}`,
+            name: document.getElementById(`qdcName-${qId}`)?.value,
             parentId: document.getElementById(`qdcParent-${qId}`)?.value || 'feeder',
             config: qdcConfig,
             circuits: circuits
         });
     }
 
-    if (forSave) {
-        return { project_name: mainData.obra, project_code: mainData.projectCode, client_id: currentClientId, main_data: mainData, tech_data: techData, feeder_data: feederData, qdcs_data: qdcsData, owner_id: currentUserProfile?.id };
-    }
-    return { mainData, feederData, qdcsData, circuitsData: allCircuits, clientProfile, techData }; [cite: 68]
+    return forSave ? 
+        { project_name: mainData.obra, project_code: mainData.projectCode, client_id: currentClientId, main_data: mainData, tech_data: techData, feeder_data: feederData, qdcs_data: qdcsData, owner_id: currentUserProfile?.id } : 
+        { mainData, feederData, qdcsData, circuitsData: allCircuits, clientProfile, techData };
 }
+
+// --- GERAÇÃO DE MEMORIAL (CORREÇÃO DE TRAVAMENTO) ---
 
 async function handleCalculateAndPdf() {
     if (!currentUserProfile) return alert("Usuário não autenticado.");
-    const loadingOverlay = document.getElementById('loadingOverlay');
     const btn = document.getElementById('calculateAndPdfBtn');
-
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    
     try {
         btn.disabled = true;
         loadingOverlay.classList.add('visible');
-        
-        // Limpeza de memória RAM de PDFs anteriores
-        if (lastPdfUrl) URL.revokeObjectURL(lastPdfUrl); [cite: 259]
+
+        // Revoga a URL anterior para liberar memória RAM imediatamente [cite: 259]
+        if (lastPdfUrl) URL.revokeObjectURL(lastPdfUrl);
 
         const formData = await getFullFormData(false);
+
         const { data: pdfBlob, error } = await supabase.functions.invoke('gerar-relatorio', {
             body: { formData },
             responseType: 'blob'
-        }); [cite: 189]
+        });
 
         if (error) throw error;
 
+        // Cria URL do blob e gerencia o download [cite: 260]
         lastPdfUrl = URL.createObjectURL(pdfBlob);
         const a = document.createElement('a');
         a.href = lastPdfUrl;
-        a.download = `Relatorio_${formData.mainData.obra.replace(/[^a-z0-9]/gi, '_')}.pdf`; [cite: 260]
+        a.download = `Relatorio_${formData.mainData.obra.replace(/\s+/g, '_')}.pdf`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
 
     } catch (err) {
         console.error("Erro no memorial:", err);
-        alert("Erro ao gerar memorial: " + err.message); [cite: 262]
+        alert("Erro: " + err.message);
     } finally {
         btn.disabled = false;
         loadingOverlay.classList.remove('visible');
     }
 }
 
-// --- CONFIGURAÇÃO DE EVENTOS ---
+// --- EVENTOS E INICIALIZAÇÃO ---
 
 function setupEventListeners() {
     document.getElementById('loginBtn')?.addEventListener('click', handleLogin);
@@ -166,12 +165,11 @@ function setupEventListeners() {
     document.getElementById('registerForm')?.addEventListener('submit', handleRegister);
     document.getElementById('calculateAndPdfBtn')?.addEventListener('click', handleCalculateAndPdf);
     
-    // Otimização de busca e salvamento
     document.getElementById('saveBtn')?.addEventListener('click', async () => {
         const data = await getFullFormData(true);
         const id = document.getElementById('currentProjectId').value;
         const { data: saved, error } = await api.saveProject(data, id);
-        if (!error) alert("Obra salva!"); [cite: 196]
+        if (!error) alert("Obra salva!");
     });
 
     const appContainer = document.getElementById('appContainer');
@@ -179,7 +177,7 @@ function setupEventListeners() {
         appContainer.addEventListener('change', ui.handleMainContainerInteraction);
         appContainer.addEventListener('click', ui.handleMainContainerInteraction);
         
-        // Listener de potência com debounce de 1s para não travar a CPU
+        // Debounce de 1s para evitar sobrecarga da CPU durante digitação
         appContainer.addEventListener('input', utils.debounce((e) => {
             if (e.target.id.includes('potencia') || e.target.id.includes('Fator')) {
                 ui.updateFeederPowerDisplay();
