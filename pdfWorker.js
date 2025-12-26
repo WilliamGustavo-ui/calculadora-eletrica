@@ -1,16 +1,23 @@
+// Arquivo: pdfWorker.js
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
 self.onmessage = async (e) => {
     const { formData, SUPABASE_URL, SUPABASE_ANON_KEY, authHeader } = e.data;
+
     try {
         const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             global: { headers: { Authorization: authHeader } }
         });
+
+        // O trabalho pesado de cálculo acontece no backend (Edge Function)
         const { data: pdfBlob, error } = await supabase.functions.invoke('gerar-relatorio', {
             body: { formData },
             responseType: 'blob'
         });
+
         if (error) throw error;
+
+        // Devolve o arquivo pronto para a interface
         self.postMessage({ success: true, pdfBlob, obra: formData.mainData?.obra });
     } catch (err) {
         self.postMessage({ success: false, error: err.message });
