@@ -1,4 +1,4 @@
-// Arquivo: main.js (v8.5 - Solução para bloqueio de Main Thread e Memory Leak)
+// Arquivo: main.js (v8.6 - Correção de Sintaxe e Performance)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -12,10 +12,18 @@ let uiData = null;
 
 // --- Funções de Autenticação ---
 async function handleLogin() {
-    const email = document.getElementById('emailLogin').value;
-    const password = document.getElementById('password').value;
+    const emailEl = document.getElementById('emailLogin');
+    const passwordEl = document.getElementById('password');
+    
+    if (!emailEl || !passwordEl) return;
+
+    const email = emailEl.value;
+    const password = passwordEl.value;
+    
     const userProfile = await auth.signInUser(email, password);
-    if (!userProfile) console.error("Falha no login."); [cite: 1, 2]
+    if (!userProfile) {
+        console.error("Falha no login ou usuário bloqueado.");
+    }
 }
 
 async function handleLogout() {
@@ -31,17 +39,19 @@ async function handleRegister(event) {
         crea: document.getElementById('regCrea').value,
         email: document.getElementById('regEmail').value
     };
-    const { error } = await auth.signUpUser(details.email, document.getElementById('regPassword').value, details); [cite: 1]
+    const password = document.getElementById('regPassword').value;
+    
+    const { error } = await auth.signUpUser(details.email, password, details);
     if (!error) {
-        alert('Cadastro realizado! Aguarde aprovação.');
+        alert('Cadastro realizado! Aguarde a aprovação de um administrador.');
         ui.closeModal('registerModalOverlay');
         event.target.reset();
     } else {
-        alert(`Erro: ${error.message}`);
+        alert(`Erro no registro: ${error.message}`);
     }
 }
 
-// --- Gerenciamento de Dados e Obras ---
+// --- Gerenciamento de Dados (Otimizado para evitar travamentos) ---
 async function getFullFormData(forSave = false) {
     const mainData = { 
         obra: document.getElementById('obra').value, 
@@ -52,10 +62,10 @@ async function getFullFormData(forSave = false) {
         unidadesComerciais: document.getElementById('unidadesComerciais').value, 
         observacoes: document.getElementById('observacoes').value, 
         projectCode: document.getElementById('project_code').value 
-    }; [cite: 79]
+    };
 
     const currentClientId = document.getElementById('currentClientId').value;
-    const client = allClients.find(c => c.id == currentClientId);
+    const client = allClients.find(c => String(c.id) === String(currentClientId));
     const clientProfile = client ? { 
         cliente: client.nome, 
         tipoDocumento: client.documento_tipo, 
@@ -64,13 +74,13 @@ async function getFullFormData(forSave = false) {
         telefone: client.telefone, 
         email: client.email, 
         enderecoCliente: client.endereco 
-    } : {}; [cite: 81]
+    } : {};
 
     const techData = { 
         respTecnico: document.getElementById('respTecnico').value, 
         titulo: document.getElementById('titulo').value, 
         crea: document.getElementById('crea').value 
-    }; [cite: 79]
+    };
     
     const feederData = {};
     const feederDataForCalc = { id: 'feeder', nomeCircuito: "Alimentador Geral" };
@@ -79,7 +89,7 @@ async function getFullFormData(forSave = false) {
         feederData[el.id] = val;
         const key = el.id.replace('feeder', '').charAt(0).toLowerCase() + el.id.replace('feeder', '').slice(1);
         feederDataForCalc[key] = (el.type === 'number' || ['fatorDemanda', 'fatorPotencia', 'comprimentoM', 'limiteQuedaTensao', 'tensaoV', 'temperaturaAmbienteC'].includes(key)) ? parseFloat(val) || 0 : val;
-    }); [cite: 27, 30]
+    });
 
     const qdcsDataForSave = [];
     const qdcsDataForCalc = [];
@@ -97,9 +107,14 @@ async function getFullFormData(forSave = false) {
             qdcConfigSave[el.id] = val;
             const key = el.id.replace(`qdc`, '').replace(`-${qdcId}`, '').replace(/^[A-Z]/, l => l.toLowerCase());
             qdcConfigCalc[key] = (el.type === 'number' || ['fatorDemanda', 'fatorPotencia', 'comprimentoM', 'limiteQuedaTensao'].includes(key)) ? parseFloat(val) || 0 : val;
-        }); [cite: 19]
+        });
 
-        const qdcInfo = { id: qdcId, name: document.getElementById(`qdcName-${qdcId}`)?.value || `QDC ${qdcId}`, parentId: document.getElementById(`qdcParent-${qdcId}`)?.value || 'feeder' };
+        const qdcInfo = { 
+            id: qdcId, 
+            name: document.getElementById(`qdcName-${qdcId}`)?.value || `QDC ${qdcId}`, 
+            parentId: document.getElementById(`qdcParent-${qdcId}`)?.value || 'feeder' 
+        };
+        
         qdcsDataForCalc.push({ ...qdcInfo, config: qdcConfigCalc });
 
         const circuitsSave = [];
@@ -107,67 +122,69 @@ async function getFullFormData(forSave = false) {
             const cId = circuitBlock.dataset.id;
             const cSave = { id: cId };
             const cCalc = { qdcId: qdcId, id: cId };
+            
             circuitBlock.querySelectorAll('input, select').forEach(el => {
                 const val = el.type === 'checkbox' ? el.checked : el.value;
                 cSave[el.id] = val;
                 const key = el.id.replace(`-${cId}`, '');
                 cCalc[key] = (el.type === 'number' || ['potenciaW', 'fatorDemanda', 'fatorPotencia'].includes(key)) ? parseFloat(val) || 0 : val;
-            }); [cite: 81]
+            });
             circuitsSave.push(cSave);
             allCircuitsForCalc.push(cCalc);
         });
         
         qdcsDataForSave.push({ ...qdcInfo, config: qdcConfigSave, circuits: circuitsSave });
-        // Pausa de 0ms para liberar a UI e evitar erro de 'Violation'
+        
+        // Desafoga a Main Thread para evitar travamento (Violation)
         await new Promise(resolve => setTimeout(resolve, 0));
     }
 
-    return forSave ? { 
-        project_name: mainData.obra, 
-        project_code: mainData.projectCode, 
-        client_id: currentClientId, 
-        main_data: mainData, 
-        tech_data: techData, 
-        feeder_data: feederData, 
-        qdcs_data: qdcsDataForSave, 
-        owner_id: currentUserProfile?.id 
-    } : { mainData, feederData: feederDataForCalc, qdcsData: qdcsDataForCalc, circuitsData: allCircuitsForCalc, clientProfile, techData };
+    if (forSave) {
+        return { 
+            project_name: mainData.obra, 
+            project_code: mainData.projectCode, 
+            client_id: currentClientId || null, 
+            main_data: mainData, 
+            tech_data: techData, 
+            feeder_data: feederData, 
+            qdcs_data: qdcsDataForSave, 
+            owner_id: currentUserProfile?.id 
+        };
+    }
+    return { mainData, feederData: feederDataForCalc, qdcsData: qdcsDataForCalc, circuitsData: allCircuitsForCalc, clientProfile, techData };
 }
 
-// >>>>> FUNÇÃO CORRIGIDA: handleCalculateAndPdf <<<<<
+// --- Geração de PDF (Sem vazamento de memória) ---
 async function handleCalculateAndPdf() {
     if (!uiData || !currentUserProfile) return;
 
     const loadingOverlay = document.getElementById('loadingOverlay');
-    const loadingText = loadingOverlay.querySelector('p');
+    const loadingText = loadingOverlay?.querySelector('p');
     
-    // 1. Limpeza Proativa de Memória
     const oldLinkContainer = document.getElementById('pdfLinkContainer');
     if (oldLinkContainer) {
         const oldLink = oldLinkContainer.querySelector('a');
         if (oldLink && oldLink.href.startsWith('blob:')) {
-            URL.revokeObjectURL(oldLink.href); // Libera o PDF antigo da RAM
+            URL.revokeObjectURL(oldLink.href); // Limpa memória RAM 
         }
         oldLinkContainer.remove();
     }
 
-    loadingOverlay.classList.add('visible');
-    loadingText.textContent = 'Coletando dados...';
+    if (loadingOverlay) loadingOverlay.classList.add('visible');
+    if (loadingText) loadingText.textContent = 'Coletando dados e calculando...';
     
     try {
-        // Coleta assíncrona para não travar o clique
         const formDataForFunction = await getFullFormData(false);
 
-        loadingText.textContent = 'Gerando Relatório no Servidor...';
+        if (loadingText) loadingText.textContent = 'Gerando PDF no servidor...';
         
         const { data: pdfBlob, error: functionError } = await supabase.functions.invoke('gerar-relatorio', {
             body: { formData: formDataForFunction },
             responseType: 'blob'
-        }); [cite: 201]
+        });
 
-        if (functionError || !pdfBlob) throw new Error(functionError?.message || "Erro ao receber arquivo.");
+        if (functionError || !pdfBlob) throw new Error("A função não retornou um arquivo válido.");
 
-        // 2. Criação do Objeto PDF
         const pdfUrl = URL.createObjectURL(pdfBlob);
         const nomeObra = document.getElementById('obra')?.value || 'Projeto';
         
@@ -180,55 +197,70 @@ async function handleCalculateAndPdf() {
         a.textContent = "BAIXAR RELATÓRIO PDF";
         a.download = `Relatorio_${nomeObra.replace(/[^a-z0-9]/gi, '_')}.pdf`;
         a.className = 'btn-green';
-        a.style.cssText = 'padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;';
+        a.style.cssText = 'padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;';
 
-        // Auto-destruição do link para economizar recursos
         a.addEventListener('click', () => {
             setTimeout(() => { 
-                if(linkContainer) linkContainer.style.display = 'none'; 
-                // Não revogamos aqui para permitir que o usuário abra o link novamente se necessário
-            }, 2000);
+                if (linkContainer) linkContainer.style.display = 'none'; 
+            }, 1000);
         });
 
         linkContainer.appendChild(a);
         const btnContainer = document.querySelector('.button-container');
-        btnContainer ? btnContainer.parentNode.insertBefore(linkContainer, btnContainer.nextSibling) : document.body.appendChild(linkContainer);
-
-        console.log("PDF Pronto para download.");
+        if (btnContainer) {
+            btnContainer.parentNode.insertBefore(linkContainer, btnContainer.nextSibling);
+        } else {
+            document.body.appendChild(linkContainer);
+        }
 
     } catch (error) {
         console.error("Erro no PDF:", error);
-        alert("Erro ao gerar PDF: " + error.message);
+        alert("Ocorreu um erro: " + error.message);
     } finally {
-        loadingOverlay.classList.remove('visible');
-        loadingText.textContent = 'Calculando...';
+        if (loadingOverlay) loadingOverlay.classList.remove('visible');
     }
 }
 
-// --- Inicialização ---
+// --- Inicialização e Listeners ---
 function setupEventListeners() {
     document.getElementById('loginBtn')?.addEventListener('click', handleLogin);
     document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
-    document.getElementById('saveBtn')?.addEventListener('click', handleSaveProject);
+    document.getElementById('registerBtn')?.addEventListener('click', () => ui.openModal('registerModalOverlay'));
+    document.getElementById('registerForm')?.addEventListener('submit', handleRegister);
     document.getElementById('calculateAndPdfBtn')?.addEventListener('click', handleCalculateAndPdf);
+    document.getElementById('addQdcBtn')?.addEventListener('click', () => ui.addQdcBlock());
     
-    const app = document.getElementById('appContainer');
-    if (app) {
-        app.addEventListener('change', ui.handleMainContainerInteraction);
-        app.addEventListener('click', ui.handleMainContainerInteraction);
+    const appContainer = document.getElementById('appContainer');
+    if (appContainer) {
+        appContainer.addEventListener('change', ui.handleMainContainerInteraction);
+        appContainer.addEventListener('click', ui.handleMainContainerInteraction);
+        appContainer.addEventListener('input', (event) => {
+            const target = event.target;
+            if (target.id.startsWith('potenciaW-') || target.id.startsWith('fatorDemanda-') || target.id === 'feederFatorDemanda') {
+                ui.updateFeederPowerDisplay();
+            }
+        });
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
+    
     supabase.auth.onAuthStateChange(async (event, session) => {
         if (session) {
-            currentUserProfile = await auth.getSession(); [cite: 1]
-            if (!uiData) {
-                uiData = await api.fetchUiData(); [cite: 205]
-                ui.setupDynamicData(uiData);
+            const profile = await auth.getSession();
+            if (profile && profile.is_approved && !profile.is_blocked) {
+                currentUserProfile = profile;
+                if (!uiData) {
+                    uiData = await api.fetchUiData();
+                    if (uiData) ui.setupDynamicData(uiData);
+                }
+                ui.showAppView(currentUserProfile);
+                allClients = await api.fetchClients();
+            } else {
+                await auth.signOutUser();
+                ui.showLoginView();
             }
-            ui.showAppView(currentUserProfile);
         } else {
             ui.showLoginView();
         }
