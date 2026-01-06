@@ -1,4 +1,4 @@
-// Arquivo: ui.js (v4 - Cards Estáticos e Edição via Modal)
+// Arquivo: ui.js (v5 - Versão Corrigida e Completa)
 import { ligacoes, BTU_TO_WATTS_FACTOR, CV_TO_WATTS_FACTOR } from './utils.js';
 import { debounce } from './utils.js';
 
@@ -8,85 +8,65 @@ let uiData = null;
 let tempOptions = { pvc: [], epr: [] };
 export let loadedProjectData = null;
 
-export function setLoadedProjectData(projectData) {
-    loadedProjectData = projectData;
-}
+export function setLoadedProjectData(projectData) { loadedProjectData = projectData; }
 
 export function setupDynamicData(data) {
     uiData = data;
-    if (uiData?.fatores_k1 && Array.isArray(uiData.fatores_k1)) {
-        tempOptions.pvc = uiData.fatores_k1.filter(f => f && typeof f.fator === 'number' && f.fator > 0 && typeof f.temperatura_c === 'number').map(f => f.temperatura_c).sort((a, b) => a - b);
+    if (uiData?.fatores_k1) {
+        tempOptions.pvc = uiData.fatores_k1.map(f => f.temperatura_c).sort((a, b) => a - b);
     }
-    if (!tempOptions.pvc.includes(30)) tempOptions.pvc.push(30);
-    tempOptions.pvc = [...new Set(tempOptions.pvc)].sort((a,b) => a - b);
-
-    if (uiData?.fatores_k1_epr && Array.isArray(uiData.fatores_k1_epr)) {
-        tempOptions.epr = uiData.fatores_k1_epr.filter(f => f && typeof f.fator === 'number' && f.fator > 0 && typeof f.temperatura_c === 'number').map(f => f.temperatura_c).sort((a, b) => a - b);
+    tempOptions.pvc = [...new Set(tempOptions.pvc || [30])];
+    if (uiData?.fatores_k1_epr) {
+        tempOptions.epr = uiData.fatores_k1_epr.map(f => f.temperatura_c).sort((a, b) => a - b);
     }
-    if (tempOptions.epr.length === 0) tempOptions.epr = tempOptions.pvc.length > 0 ? [...tempOptions.pvc] : [30];
-    tempOptions.epr = [...new Set(tempOptions.epr)].sort((a,b) => a - b);
+    tempOptions.epr = [...new Set(tempOptions.epr || [30])];
 }
 
-// --- FUNÇÕES DE VISIBILIDADE ---
-export function showLoginView() { document.getElementById('loginContainer').style.display = 'block'; document.getElementById('appContainer').style.display = 'none'; document.getElementById('resetPasswordContainer').style.display = 'none'; }
-export function showAppView(userProfile) { document.getElementById('loginContainer').style.display = 'none'; document.getElementById('appContainer').style.display = 'block'; document.getElementById('resetPasswordContainer').style.display = 'none'; const isAdmin = userProfile?.is_admin || false; document.getElementById('adminPanelBtn').style.display = isAdmin ? 'block' : 'none'; }
-export function showResetPasswordView() { document.getElementById('loginContainer').style.display = 'none'; document.getElementById('appContainer').style.display = 'none'; document.getElementById('resetPasswordContainer').style.display = 'block'; }
+// --- VISIBILIDADE ---
+export function showLoginView() { document.getElementById('loginContainer').style.display = 'block'; document.getElementById('appContainer').style.display = 'none'; }
+export function showAppView(userProfile) { document.getElementById('loginContainer').style.display = 'none'; document.getElementById('appContainer').style.display = 'block'; document.getElementById('adminPanelBtn').style.display = userProfile?.is_admin ? 'block' : 'none'; }
+export function openModal(modalId) { const m = document.getElementById(modalId); if(m) m.style.display = 'flex'; }
+export function closeModal(modalId) { const m = document.getElementById(modalId); if(m) m.style.display = 'none'; }
 
-export function openModal(modalId) { const modal = document.getElementById(modalId); if(modal) modal.style.display = 'flex'; }
-export function closeModal(modalId) { const modal = document.getElementById(modalId); if(modal) modal.style.display = 'none'; }
-
-// --- ATUALIZAÇÃO HIERÁRQUICA DE CARGA (Mantida integralmente) ---
+// --- SOMA HIERÁRQUICA (Mantida original) ---
 function _internal_updateFeederPowerDisplay() {
     const qdcData = {};
     let totalDemandAggregatedGeneral = 0;
     let totalInstalledAggregatedGeneral = 0;
-
     document.querySelectorAll('#qdc-container .qdc-block').forEach(qdcBlock => {
         const qdcId = qdcBlock.dataset.id;
         let installedDirect = 0;
         let demandedDirect = 0;
-
         qdcBlock.querySelectorAll('.circuit-block').forEach(circuitBlock => {
             const id = circuitBlock.dataset.id;
-            const potenciaW = parseFloat(circuitBlock.querySelector(`#potenciaW-${id}`).value) || 0;
-            const fatorDemanda = (parseFloat(circuitBlock.querySelector(`#fatorDemanda-${id}`).value) || 100) / 100.0;
+            const potenciaW = parseFloat(circuitBlock.querySelector(`#potenciaW-${id}`)?.value) || 0;
+            const fd = (parseFloat(circuitBlock.querySelector(`#fatorDemanda-${id}`)?.value) || 100) / 100.0;
             installedDirect += potenciaW;
-            demandedDirect += (potenciaW * fatorDemanda);
+            demandedDirect += (potenciaW * fd);
         });
-        
         const parentId = qdcBlock.querySelector(`#qdcParent-${qdcId}`)?.value || 'feeder';
-        qdcData[qdcId] = { installedDirect, demandedDirect, parentId, childrenIds: [], aggregatedInstalled: -1, aggregatedDemand: -1 };
+        qdcData[qdcId] = { installedDirect, demandedDirect, parentId, childrenIds: [], aggregatedInstalled: -1 };
         document.getElementById(`qdcPotenciaInstalada-${qdcId}`).value = installedDirect.toFixed(2);
         document.getElementById(`qdcDemandaPropria-${qdcId}`).value = demandedDirect.toFixed(2);
     });
-
     Object.keys(qdcData).forEach(id => {
         const p = qdcData[id].parentId;
-        if (p !== 'feeder') {
-            const pk = p.replace('qdc-', '');
-            if (qdcData[pk]) qdcData[pk].childrenIds.push(id);
-        }
+        if (p !== 'feeder' && qdcData[p.replace('qdc-', '')]) qdcData[p.replace('qdc-', '')].childrenIds.push(id);
     });
-
-    function calcInstalled(id) {
+    function calcInst(id) {
         if (qdcData[id].aggregatedInstalled !== -1) return qdcData[id].aggregatedInstalled;
-        let sum = qdcData[id].installedDirect;
-        qdcData[id].childrenIds.forEach(cid => sum += calcInstalled(cid));
-        qdcData[id].aggregatedInstalled = sum;
-        return sum;
+        let s = qdcData[id].installedDirect;
+        qdcData[id].childrenIds.forEach(cid => s += calcInst(cid));
+        qdcData[id].aggregatedInstalled = s;
+        return s;
     }
-
     Object.keys(qdcData).forEach(id => {
-        const aggInst = calcInstalled(id);
-        const fd = (parseFloat(document.getElementById(`qdcFatorDemanda-${id}`)?.value) || 100) / 100.0;
-        const aggDem = aggInst * fd;
-        document.getElementById(`qdcPotenciaDemandada-${id}`).value = aggDem.toFixed(2);
-        if (qdcData[id].parentId === 'feeder') {
-            totalDemandAggregatedGeneral += aggDem;
-            totalInstalledAggregatedGeneral += aggInst;
-        }
+        const ai = calcInst(id);
+        const qfd = (parseFloat(document.getElementById(`qdcFatorDemanda-${id}`)?.value) || 100) / 100.0;
+        const ad = ai * qfd;
+        document.getElementById(`qdcPotenciaDemandada-${id}`).value = ad.toFixed(2);
+        if (qdcData[id].parentId === 'feeder') { totalDemandAggregatedGeneral += ad; totalInstalledAggregatedGeneral += ai; }
     });
-
     document.getElementById('feederPotenciaInstalada').value = totalInstalledAggregatedGeneral.toFixed(2);
     document.getElementById('feederSomaPotenciaDemandada').value = totalDemandAggregatedGeneral.toFixed(2);
     const gfd = (parseFloat(document.getElementById('feederFatorDemanda')?.value) || 100) / 100.0;
@@ -94,7 +74,7 @@ function _internal_updateFeederPowerDisplay() {
 }
 export const updateFeederPowerDisplay = debounce(_internal_updateFeederPowerDisplay, 350);
 
-// --- COMPONENTES QDC ---
+// --- COMPONENTES ---
 export function addQdcBlock(id = null, name = null, parentId = 'feeder', container = null) {
     if (id) qdcCount = Math.max(qdcCount, parseInt(id, 10)); else qdcCount++;
     const internalId = id || String(qdcCount);
@@ -112,13 +92,10 @@ export function addQdcBlock(id = null, name = null, parentId = 'feeder', contain
         <div class="qdc-content">
             <div class="form-grid-3-col">
                  <div class="form-group"><label>Instalada</label><input type="text" id="qdcPotenciaInstalada-${internalId}" readonly></div>
-                 <div class="form-group"><label>Demandada (Própria)</label><input type="text" id="qdcDemandaPropria-${internalId}" readonly></div>
-                 <div class="form-group"><label>Demandada (Agregada)</label><input type="text" id="qdcPotenciaDemandada-${internalId}" readonly></div>
+                 <div class="form-group"><label>Demanda Própria</label><input type="text" id="qdcDemandaPropria-${internalId}" readonly></div>
+                 <div class="form-group"><label>Demanda Agregada</label><input type="text" id="qdcPotenciaDemandada-${internalId}" readonly></div>
             </div>
-            <div class="hidden-qdc-config" style="display:none;">
-                 <input type="number" id="qdcFatorDemanda-${internalId}" value="100">
-                 <select id="qdcFases-${internalId}"><option value="Trifasico">Trifásico</option></select>
-            </div>
+            <div class="hidden" style="display:none;"><input type="number" id="qdcFatorDemanda-${internalId}" value="100"></div>
             <div id="circuits-for-qdc-${internalId}" class="circuits-container-internal"></div>
         </div>
     </div>`;
@@ -130,26 +107,27 @@ export function addQdcBlock(id = null, name = null, parentId = 'feeder', contain
 
 export function updateQdcParentDropdowns() {
     const options = [{ value: 'feeder', text: 'Alimentador Geral' }];
-    document.querySelectorAll('#qdc-container .qdc-block').forEach(qdc => {
-        const id = qdc.dataset.id;
+    document.querySelectorAll('#qdc-container .qdc-block').forEach(q => {
+        const id = q.dataset.id;
         options.push({ value: `qdc-${id}`, text: document.getElementById(`qdcName-${id}`).value });
     });
     document.querySelectorAll('.qdc-parent-select').forEach(select => {
-        const currentId = select.closest('.qdc-block').dataset.id;
+        const curId = select.closest('.qdc-block').dataset.id;
         const initial = select.dataset.initialParent || select.value;
         select.innerHTML = '';
-        options.forEach(opt => { if (`qdc-${currentId}` !== opt.value) {
-            const o = document.createElement('option'); o.value = opt.value; o.textContent = opt.text; select.appendChild(o);
-        }});
+        options.forEach(opt => {
+            if (`qdc-${curId}` !== opt.value) {
+                const o = document.createElement('option'); o.value = opt.value; o.textContent = opt.text; select.appendChild(o);
+            }
+        });
         select.value = initial;
     });
 }
 
-// --- CIRCUITO COMO CARD ESTÁTICO ---
 function getCircuitHTML(id) {
     return `
     <div class="circuit-block static-card" id="circuit-${id}" data-id="${id}">
-        <div class="circuit-header no-toggle" style="cursor: default;">
+        <div class="circuit-header no-toggle">
             <div class="circuit-info-summary">
                 <span class="circuit-badge">${id}</span>
                 <strong id="nomeCircuitoLabel-${id}">Circuito ${id}</strong>
@@ -183,7 +161,6 @@ export function addCircuit(qdcId, data = null, container = null) {
     const el = div.firstElementChild;
     const target = container instanceof DocumentFragment ? container : document.getElementById(`circuits-for-qdc-${qdcId}`);
     target.appendChild(el);
-
     if (data) {
         Object.keys(data).forEach(key => {
             const inputId = key.includes('-') ? key : `${key}-${id}`;
@@ -196,14 +173,13 @@ export function addCircuit(qdcId, data = null, container = null) {
     if (!(container instanceof DocumentFragment)) updateFeederPowerDisplay();
 }
 
-// --- INTERAÇÃO E EVENTOS ---
 export function handleMainContainerInteraction(event) {
     const target = event.target;
     const qdcBlock = target.closest('.qdc-block');
     const circuitBlock = target.closest('.circuit-block');
 
     if (qdcBlock && event.type === 'click') {
-        if (target.closest('.add-circuit-to-qdc-btn')) {
+        if (target.classList.contains('add-circuit-to-qdc-btn')) {
             document.getElementById('targetQdcId').value = qdcBlock.dataset.id;
             document.getElementById('targetQdcName').textContent = document.getElementById(`qdcName-${qdcBlock.dataset.id}`).value;
             document.getElementById('editingCircuitId').value = "";
@@ -211,29 +187,42 @@ export function handleMainContainerInteraction(event) {
             document.getElementById('modalCircuitForm').reset();
             openModal('addCircuitModalOverlay');
         }
-        if (target.closest('.remove-qdc-btn')) { if (confirm("Remover QDC?")) { qdcBlock.remove(); updateQdcParentDropdowns(); updateFeederPowerDisplay(); } }
+        if (target.classList.contains('remove-qdc-btn')) { if (confirm("Remover QDC?")) { qdcBlock.remove(); updateQdcParentDropdowns(); updateFeederPowerDisplay(); } }
     }
 
     if (circuitBlock && event.type === 'click') {
         const id = circuitBlock.dataset.id;
-        if (target.closest('.edit-circuit-btn')) {
+        if (target.classList.contains('edit-circuit-btn')) {
             document.getElementById('editingCircuitId').value = id;
             document.getElementById('targetQdcId').value = qdcBlock.dataset.id;
             document.getElementById('modalTitle').textContent = "Editar Circuito " + id;
-            // Preenche modal com dados do card
-            document.getElementById('modalNomeCircuito').value = document.getElementById(`nomeCircuito-${id}`).value;
-            document.getElementById('modalTipoCircuito').value = document.getElementById(`tipoCircuito-${id}`).value;
-            document.getElementById('modalPotenciaW').value = document.getElementById(`potenciaW-${id}`).value;
-            document.getElementById('modalFatorDemanda').value = document.getElementById(`fatorDemanda-${id}`).value;
-            document.getElementById('modalFases').value = document.getElementById(`fases-${id}`).value || 'Monofasico';
-            document.getElementById('modalTensaoV').value = document.getElementById(`tensaoV-${id}`).value || '220';
-            document.getElementById('modalComprimentoM').value = document.getElementById(`comprimentoM-${id}`).value || '20';
-            document.getElementById('modalTipoIsolacao').value = document.getElementById(`tipoIsolacao-${id}`).value || 'PVC';
-            document.getElementById('modalAgrupamento').value = document.getElementById(`numCircuitosAgrupados-${id}`).value || '1';
-            document.getElementById('modalRequerDR').checked = document.getElementById(`requerDR-${id}`).checked;
+            
+            // CORREÇÃO: Verifica se os elementos do modal existem antes de atribuir valor
+            const fields = {
+                'modalNomeCircuito': `nomeCircuito-${id}`,
+                'modalTipoCircuito': `tipoCircuito-${id}`,
+                'modalPotenciaW': `potenciaW-${id}`,
+                'modalFatorDemanda': `fatorDemanda-${id}`,
+                'modalFases': `fases-${id}`,
+                'modalTensaoV': `tensaoV-${id}`,
+                'modalComprimentoM': `comprimentoM-${id}`,
+                'modalTipoIsolacao': `tipoIsolacao-${id}`,
+                'modalAgrupamento': `numCircuitosAgrupados-${id}`
+            };
+
+            Object.keys(fields).forEach(modalId => {
+                const modalEl = document.getElementById(modalId);
+                const sourceEl = document.getElementById(fields[modalId]);
+                if (modalEl && sourceEl) modalEl.value = sourceEl.value;
+            });
+            
+            const drModal = document.getElementById('modalRequerDR');
+            const drSource = document.getElementById(`requerDR-${id}`);
+            if (drModal && drSource) drModal.checked = drSource.checked;
+
             openModal('addCircuitModalOverlay');
         }
-        if (target.closest('.remove-circuit-btn')) { if (confirm("Remover Circuito?")) { circuitBlock.remove(); updateFeederPowerDisplay(); } }
+        if (target.classList.contains('remove-circuit-btn')) { if (confirm("Remover Circuito?")) { circuitBlock.remove(); updateFeederPowerDisplay(); } }
     }
 }
 
@@ -245,5 +234,15 @@ export function resetForm(addDefault = true, client = null) {
     updateFeederPowerDisplay();
 }
 
-// Funções de popular (mantidas do seu arquivo original para não quebrar nada)
-export function populateProjectList(projects) { const select = document.getElementById('savedProjectsSelect'); if(!select) return; select.innerHTML = '<option value="">-- Selecione uma obra --</option>'; if (projects && Array.isArray(projects)) { projects.forEach(p => { const o = document.createElement('option'); o.value = p.id; o.textContent = `${p.project_code ?? 'S/C'} - ${p.project_name ?? 'Obra sem nome'}`; select.appendChild(o); }); } }
+export function populateProjectList(projects) {
+    const select = document.getElementById('savedProjectsSelect');
+    if(!select) return;
+    select.innerHTML = '<option value="">-- Selecione uma obra --</option>';
+    if (projects && Array.isArray(projects)) {
+        projects.forEach(p => {
+            const o = document.createElement('option'); o.value = p.id;
+            o.textContent = `${p.project_code ?? 'S/C'} - ${p.project_name ?? 'Obra sem nome'}`;
+            select.appendChild(o);
+        });
+    }
+}

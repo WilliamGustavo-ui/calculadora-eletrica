@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Projetos Eletricos v18.2</title>
+    <title>Calculadora de Projetos Elétricos v18.6</title>
     <link rel="stylesheet" href="style.css">
-    </head>
+</head>
 <body>
 
     <div id="registerModalOverlay" class="modal-overlay">
@@ -23,34 +23,35 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn-green">Registrar</button>
-                    <button type="button" class="close-modal-btn btn-grey" data-modal-id="registerModalOverlay">X</button> </div>
+                </div>
             </form>
         </div>
     </div>
+
     <div id="forgotPasswordModalOverlay" class="modal-overlay">
         <div class="modal-content">
             <button type="button" class="close-modal-btn" data-modal-id="forgotPasswordModalOverlay">X</button>
             <h2>Redefinir Senha</h2>
             <form id="forgotPasswordForm" autocomplete="off">
                 <div class="form-group">
-                    <label for="forgotEmail">Digite seu e-mail para receber o link de redefinição:</label>
+                    <label for="forgotEmail">E-mail para redefinição:</label>
                     <input type="email" id="forgotEmail" required>
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn-blue-dark">Enviar Link</button>
-                    <button type="button" class="close-modal-btn btn-grey" data-modal-id="forgotPasswordModalOverlay">X</button> </div>
+                </div>
             </form>
         </div>
     </div>
+
     <div id="adminPanelModalOverlay" class="modal-overlay">
         <div class="modal-content">
             <button type="button" class="close-modal-btn" data-modal-id="adminPanelModalOverlay">X</button>
-            <h3>Painel de Administrador - Gerenciar Usuários</h3>
+            <h3>Painel de Administrador</h3>
             <ul id="adminUserList"></ul>
-            <div class="modal-footer">
-                </div>
         </div>
     </div>
+
     <div id="editUserModalOverlay" class="modal-overlay">
         <div class="modal-content">
             <button type="button" class="close-modal-btn" data-modal-id="editUserModalOverlay">X</button>
@@ -66,10 +67,11 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn-green">Salvar Alterações</button>
-                    <button type="button" class="close-modal-btn btn-grey" data-modal-id="editUserModalOverlay">X</button> </div>
+                </div>
             </form>
         </div>
     </div>
+
     <div id="manageProjectsModalOverlay" class="modal-overlay">
         <div class="modal-content large">
             <button type="button" class="close-modal-btn" data-modal-id="manageProjectsModalOverlay">X</button>
@@ -78,244 +80,178 @@
                 <thead> <tr> <th>Código</th> <th>Obra</th> <th>Dono</th> <th>Cliente</th> <th>Ações</th> </tr> </thead>
                 <tbody id="adminProjectsTableBody"></tbody>
             </table>
-            <div class="modal-footer">
-                </div>
         </div>
     </div>
+
     <div id="clientManagementModalOverlay" class="modal-overlay">
         <div class="modal-content large">
             <button type="button" class="close-modal-btn" data-modal-id="clientManagementModalOverlay">X</button>
             <h3>Gerenciamento de Clientes</h3>
-            <div id="clientListContainer">
-                <h4>Clientes Cadastrados</h4>
-                <ul id="clientList" style="max-height: 200px; overflow-y: auto; margin:0; padding:0;"></ul>
-            </div>
-            <hr style="margin: 25px 0;">
-            <div id="clientFormContainer">
-                <h4 id="clientFormTitle">Cadastrar Novo Cliente</h4>
-                <form id="clientForm">
-                    <input type="hidden" id="clientId">
-                    <div class="form-grid-3-col">
-                        <div class="form-group"><label for="clientNome">Nome / Razão Social</label><input type="text" id="clientNome" required></div>
-                        <div class="form-group"><label for="clientDocumentoValor">Documento</label><div class="document-group"><select id="clientDocumentoTipo"><option value="CPF">CPF</option><option value="CNPJ">CNPJ</option></select><input type="text" id="clientDocumentoValor"></div></div>
-                        <div class="form-group"><label for="clientEmail">E-mail</label><input type="email" id="clientEmail"></div>
-                        <div class="form-group"><label for="clientCelular">Celular</label><input type="text" id="clientCelular"></div>
-                        <div class="form-group"><label for="clientTelefone">Telefone</label><input type="text" id="clientTelefone"></div>
-                        <div class="form-group full-width"><label for="clientEndereco">Endereço</label><input type="text" id="clientEndereco"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="submit" id="clientFormSubmitBtn" class="btn-green">Salvar Cliente</button>
-                        <button type="button" id="clientFormCancelBtn" class="close-modal-btn btn-grey" style="display: none;">X</button> </div>
-                </form>
-            </div>
+            <ul id="clientList" style="max-height: 200px; overflow-y: auto;"></ul>
+            <hr>
+            <h4 id="clientFormTitle">Cadastrar Novo Cliente</h4>
+            <form id="clientForm">
+                <input type="hidden" id="clientId">
+                <div class="form-grid-3-col">
+                    <div class="form-group"><label>Nome</label><input type="text" id="clientNome" required></div>
+                    <div class="form-group"><label>Doc Tipo</label><select id="clientDocumentoTipo"><option value="CPF">CPF</option><option value="CNPJ">CNPJ</option></select></div>
+                    <div class="form-group"><label>Documento</label><input type="text" id="clientDocumentoValor"></div>
+                    <div class="form-group"><label>E-mail</label><input type="email" id="clientEmail"></div>
+                    <div class="form-group"><label>Celular</label><input type="text" id="clientCelular"></div>
+                    <div class="form-group"><label>Telefone</label><input type="text" id="clientTelefone"></div>
+                    <div class="form-group full-width"><label>Endereço</label><input type="text" id="clientEndereco"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" id="clientFormSubmitBtn" class="btn-green">Salvar Cliente</button>
+                    <button type="button" id="clientFormCancelBtn" class="btn-grey" style="display:none;">Cancelar</button>
+                </div>
+            </form>
         </div>
     </div>
+
     <div id="selectClientModalOverlay" class="modal-overlay">
         <div class="modal-content">
              <button type="button" class="close-modal-btn" data-modal-id="selectClientModalOverlay">X</button>
-            <h3>Vincular Cliente à Nova Obra</h3>
+            <h3>Vincular Cliente</h3>
             <div class="form-group">
-                <label for="clientSelectForNewProject">Selecione um Cliente Existente</label>
+                <label for="clientSelectForNewProject">Selecione um Cliente</label>
                 <select id="clientSelectForNewProject"></select>
             </div>
             <div class="modal-footer">
-                <button type="button" id="confirmClientSelectionBtn" class="btn-blue-dark">Vincular e Continuar</button>
-                <button type="button" id="continueWithoutClientBtn" class="btn-grey">Continuar Sem Cliente</button>
+                <button type="button" id="confirmClientSelectionBtn" class="btn-blue-dark">Vincular</button>
+                <button type="button" id="continueWithoutClientBtn" class="btn-grey">Sem Cliente</button>
             </div>
-            <hr style="margin: 20px 0;">
-            <p style="text-align: center;">Ou</p>
-            <button type="button" id="addNewClientFromSelectModalBtn" style="width:100%;" class="btn-green">Cadastrar Novo Cliente</button>
+            <hr>
+            <button type="button" id="addNewClientFromSelectModalBtn" class="btn-green" style="width:100%;">Novo Cliente</button>
         </div>
     </div>
-    <div id="qdcManagerModalOverlay" class="modal-overlay">
+
+    <div id="addCircuitModalOverlay" class="modal-overlay">
         <div class="modal-content large">
-            <button type="button" class="close-modal-btn" data-modal-id="qdcManagerModalOverlay">X</button>
-            <h3>Gerenciador de Quadros de Distribuição (QDCs)</h3>
-            <p>Arraste e solte os quadros para reorganizar a hierarquia. O quadro no nível mais alto será o QDC Principal.</p>
-            <div id="qdcTreeContainer" class="qdc-tree">
+            <button type="button" class="close-modal-btn" data-modal-id="addCircuitModalOverlay">X</button>
+            <h3 id="modalTitle">Configurar Circuito</h3>
+            <p>Quadro: <strong id="targetQdcName"></strong></p>
+            
+            <input type="hidden" id="targetQdcId">
+            <input type="hidden" id="editingCircuitId">
+
+            <form id="modalCircuitForm">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="modalNomeCircuito">Nome do Circuito</label>
+                        <input type="text" id="modalNomeCircuito" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="modalTipoCircuito">Tipo</label>
+                        <select id="modalTipoCircuito">
+                            <option value="iluminacao">Iluminação</option>
+                            <option value="tug" selected>TUG</option>
+                            <option value="tue">TUE</option>
+                            <option value="aquecimento">Aquecimento</option>
+                            <option value="motores">Motores</option>
+                            <option value="ar_condicionado">Ar Condicionado</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label for="modalPotenciaW">Potência (W)</label><input type="number" id="modalPotenciaW"></div>
+                    <div class="form-group"><label for="modalFatorDemanda">Fator Demanda (%)</label><input type="number" id="modalFatorDemanda" value="100"></div>
+                    <div class="form-group">
+                        <label for="modalFases">Fases</label>
+                        <select id="modalFases">
+                            <option value="Monofasico">Monofásico</option>
+                            <option value="Bifasico">Bifásico</option>
+                            <option value="Trifasico">Trifásico</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label for="modalTensaoV">Tensão (V)</label><input type="number" id="modalTensaoV" value="220"></div>
+                    <div class="form-group"><label for="modalComprimentoM">Comprimento (m)</label><input type="number" id="modalComprimentoM" value="20"></div>
+                    <div class="form-group">
+                        <label for="modalTipoIsolacao">Isolação</label>
+                        <select id="modalTipoIsolacao">
+                            <option value="PVC">PVC 70°C</option>
+                            <option value="EPR">EPR 90°C</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label for="modalAgrupamento">Ckt Agrupados</label><input type="number" id="modalAgrupamento" value="1"></div>
+                    <div class="checkbox-group"><input type="checkbox" id="modalRequerDR" checked><label for="modalRequerDR">Requer DR</label></div>
                 </div>
+            </form>
+
             <div class="modal-footer">
-                <button type="button" id="saveQdcHierarchyBtn" class="btn-green">Salvar Alterações</button>
-                </div>
+                <button type="button" id="confirmAddCircuitBtn" class="btn-green">Salvar Circuito</button>
+            </div>
         </div>
     </div>
     
     <div id="loginContainer" class="container">
-        <form id="loginForm" autocomplete="on"> <h2>Login</h2>
-            <div class="form-group">
-                <label for="emailLogin">Email</label>
-                <input type="email" id="emailLogin" required autocomplete="username">
-            </div>
-            <div class="form-group">
-                <label for="password">Senha</label>
-                <input type="password" id="password" required autocomplete="current-password">
-            </div>
-        </form>
-        <button id="loginBtn" class="btn-green" style="width:100%; margin-top: 10px;">Entrar</button>
-        <button id="registerBtn" class="btn-blue-dark" style="width:100%; margin-top: 10px;">Registrar-se</button>
-        <p style="text-align: center; margin-top: 15px;">
-            <a href="#" id="forgotPasswordLink">Esqueceu a senha?</a>
-        </p>
-    </div>
-    <div id="addCircuitModalOverlay" class="modal-overlay">
-    <div class="modal-content">
-        <button type="button" class="close-modal-btn" data-modal-id="addCircuitModalOverlay">X</button>
-        <h3>Novo Circuito</h3>
-        <p>Configurando para: <strong id="targetQdcName"></strong></p>
-        
-        <input type="hidden" id="targetQdcId">
-        
-        <div class="form-group" style="margin-bottom: 15px;">
-            <label for="modalNomeCircuito">Nome do Circuito</label>
-            <input type="text" id="modalNomeCircuito" placeholder="Ex: Tomadas Cozinha">
-        </div>
-
-        <div class="form-grid">
-            <div class="form-group">
-                <label for="modalTipoCircuito">Tipo</label>
-                <select id="modalTipoCircuito">
-                    <option value="iluminacao">Iluminação</option>
-                    <option value="tug" selected>TUG</option>
-                    <option value="tue">TUE</option>
-                    <option value="aquecimento">Aquecimento</option>
-                    <option value="motores">Motores</option>
-                    <option value="ar_condicionado">Ar Condicionado</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="modalPotenciaW">Potência (W)</label>
-                <input type="number" id="modalPotenciaW" value="1200">
-            </div>
-        </div>
-
-        <div class="modal-footer">
-            <button type="button" id="confirmAddCircuitBtn" class="btn-green">Adicionar ao Quadro</button>
-            <button type="button" class="btn-grey" onclick="document.getElementById('addCircuitModalOverlay').style.display='none'">Cancelar</button>
-        </div>
-    </div>
-</div>
-    <div id="resetPasswordContainer" class="container" style="display: none; max-width: 450px;">
-        <h2>Crie sua Nova Senha</h2>
-        <form id="resetPasswordForm" autocomplete="off">
-            <input type="text" name="username" autocomplete="username" style="display:none;">
-            <div class="form-group">
-                <label for="newPassword">Nova Senha (mínimo 6 caracteres)</label>
-                <input type="password" id="newPassword" required autocomplete="new-password">
-            </div>
-            <button type="submit" class="btn-green">Salvar Nova Senha</button>
+        <form id="loginForm"> 
+            <h2>Login</h2>
+            <div class="form-group"><label>Email</label><input type="email" id="emailLogin" required autocomplete="username"></div>
+            <div class="form-group"><label>Senha</label><input type="password" id="password" required autocomplete="current-password"></div>
+            <button type="button" id="loginBtn" class="btn-green" style="width:100%; margin-top: 10px;">Entrar</button>
+            <button type="button" id="registerBtn" class="btn-blue-dark" style="width:100%; margin-top: 10px;">Registrar-se</button>
+            <p style="text-align: center; margin-top: 15px;"><a href="#" id="forgotPasswordLink">Esqueceu a senha?</a></p>
         </form>
     </div>
 
     <div id="appContainer" class="container" style="display: none;">
         <div id="loadingOverlay" class="loading-overlay">
             <div class="spinner"></div>
-            <p>Calculando, por favor aguarde...</p>
+            <p>Calculando...</p>
         </div>
 
         <div class="top-right-buttons">
-            <button id="manageClientsBtn" class="btn-blue-dark">Gerenciar Clientes</button>
-            <button id="manageProjectsBtn" class="btn-blue-dark">Gerenciar Obras</button>
-            <button id="adminPanelBtn" class="btn-orange">Gerenciar Usuários</button>
+            <button id="manageClientsBtn" class="btn-blue-dark">Clientes</button>
+            <button id="manageProjectsBtn" class="btn-blue-dark">Obras</button>
+            <button id="adminPanelBtn" class="btn-orange" style="display:none;">Gerenciar Usuários</button>
             <button id="logoutBtn" class="btn-red">Sair</button>
         </div>
-        <h1>Calculadora de Projetos Elétricos</h1>
+        <h1>Calculadora Elétrica</h1>
         
         <div id="project-controls">
-            <h2>Gerenciamento de Obras</h2>
+            <h2>Controles de Obra</h2>
             <div class="controls-grid">
-                <div class="form-group">
-                    <label for="searchInput">Buscar por Nome da Obra, Código ou Cliente</label>
-                    <input type="text" id="searchInput" placeholder="Digite para buscar...">
-                </div>
-                <div class="form-group" style="grid-column: 1 / -1;">
-                    <label for="savedProjectsSelect">Selecionar Obra Salva</label>
-                    <select id="savedProjectsSelect"></select>
-                </div>
+                <div class="form-group"><input type="text" id="searchInput" placeholder="Buscar obra..."></div>
+                <div class="form-group" style="grid-column: 1 / -1;"><select id="savedProjectsSelect"></select></div>
                 <div class="button-wrapper full-width">
-                    <button id="newBtn" class="btn-blue-dark">Nova Obra</button>
-                    <button id="loadBtn" class="btn-load">Carregar Obra</button>
-                    <button id="saveBtn" class="btn-green">Salvar / Atualizar</button>
-                    <button id="deleteBtn" class="btn-red">Excluir Obra</button>
+                    <button id="newBtn" class="btn-blue-dark">Nova</button>
+                    <button id="loadBtn" class="btn-load">Carregar</button>
+                    <button id="saveBtn" class="btn-green">Salvar</button>
                 </div>
             </div>
         </div>
 
-        <form id="main-form" autocomplete="off">
+        <form id="main-form">
             <input type="hidden" id="currentProjectId">
             <input type="hidden" id="currentClientId">
-            <div class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <h2>Informações da Obra</h2>
-                <button type="button" id="changeClientBtn" class="btn-blue-dark" style="padding: 5px 10px; font-size: 0.8rem;">Vincular / Alterar Cliente</button>
-            </div>
             <div id="clientLinkDisplay">Cliente: Nenhum</div>
             <div class="form-grid-3-col">
-                <div class="form-group"><label for="project_code">Código da Obra</label><input type="text" id="project_code" readonly placeholder="Gerado ao salvar"></div>
-                <div class="form-group"><label for="obra">Nome da Obra</label><input type="text" id="obra"></div>
-                <div class="form-group"><label for="cidadeObra">Cidade da Obra</label><input type="text" id="cidadeObra"></div>
-                <div class="form-group full-width"><label for="enderecoObra">Endereço da Obra</label><input type="text" id="enderecoObra"></div>
-                <div class="form-group"><label for="areaObra">Área da Obra (m²)</label><input type="number" id="areaObra"></div>
-                <div class="form-group"><label for="unidadesResidenciais">Qnt. Unid. Residenciais</label><input type="number" id="unidadesResidenciais" value="1"></div>
-                <div class="form-group"><label for="unidadesComerciais">Qnt. Unid. Comerciais</label><input type="number" id="unidadesComerciais" value="0"></div>
-                <div class="form-group full-width"> <label for="observacoes">Observações</label> <textarea id="observacoes" rows="4"></textarea> </div>
+                <div class="form-group"><label>Código</label><input type="text" id="project_code" readonly></div>
+                <div class="form-group"><label>Obra</label><input type="text" id="obra"></div>
+                <div class="form-group"><label>Cidade</label><input type="text" id="cidadeObra"></div>
             </div>
         </form>
 
         <div id="feeder-container">
             <h2>Alimentador Geral</h2>
-            <form id="feeder-form" class="circuit-block" autocomplete="off">
+            <form id="feeder-form" class="circuit-block">
                 <div class="form-grid">
-                    <div class="form-group"> <label for="feederPotenciaInstalada">Potência Total Instalada (W)</label> <input type="text" id="feederPotenciaInstalada" value="0.00" readonly> </div>
-                    
-                    <div class="form-group"> <label for="feederSomaPotenciaDemandada">Soma da Demanda dos Circuitos (W)</label> <input type="text" id="feederSomaPotenciaDemandada" value="0.00" readonly> </div>
-                    
-                    <div class="form-group"> <label for="feederPotenciaDemandada">Demanda Total Calculada (W)</label> <input type="text" id="feederPotenciaDemandada" value="0.00" readonly> </div>
-
-                    <div class="form-group"><label for="feederFatorDemanda">Fator de Demanda Geral (%)</label><input type="number" id="feederFatorDemanda" value="100" step="1"></div>
-                    <div class="form-group"><label for="feederFases">Sistema de Fases</label><select id="feederFases"><option value="Monofasico">Monofasico</option><option value="Bifasico">Bifasico</option><option value="Trifasico" selected>Trifasico</option></select></div>
-                    <div class="form-group"><label for="feederTipoLigacao">Tipo de Ligacao</label><select id="feederTipoLigacao"></select></div>
-                    <div class="form-group"><label for="feederTensaoV">Tensao (V)</label><select id="feederTensaoV"><option value="12">12 V</option><option value="24">24 V</option><option value="36">36 V</option><option value="127">127 V</option><option value="220" selected>220 V</option><option value="380">380 V</option><option value="440">440 V</option><option value="760">760 V</option></select></div>
-                    <div class="form-group"><label for="feederFatorPotencia">Fator de Potência</label><input type="number" id="feederFatorPotencia" step="0.01" value="0.92"></div>
-                    <div class="form-group"><label for="feederComprimentoM">Comprimento (m)</label><input type="number" id="feederComprimentoM" value="15"></div>
-                    <div class="form-group"> <label for="feederTipoIsolacao">Tipo de Isolacao</label> <select id="feederTipoIsolacao"> <option value="PVC">PVC 70 C</option> <option value="EPR">EPR 90 C</option> <option value="XLPE">XLPE 90 C</option> </select> </div>
-                    <div class="form-group"><label for="feederMaterialCabo">Material do Condutor</label><select id="feederMaterialCabo"><option value="Cobre" selected>Cobre</option><option value="Aluminio">Aluminio</option></select></div>
-                    <div class="form-group"><label for="feederMetodoInstalacao">Metodo de Instalacao</label><select id="feederMetodoInstalacao"><option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option><option value="B2">B2</option><option value="C">C</option><option value="D">D</option></select></div>
-                    <div class="form-group"><label for="feederTemperaturaAmbienteC">Temperatura Ambiente (C)</label><select id="feederTemperaturaAmbienteC"></select></div>
-                    <div class="form-group"><label for="feederResistividadeSolo">Resistividade T. do Solo (C.m/W)</label><select id="feederResistividadeSolo"></select></div>
-                    <div class="form-group"><label for="feederLimiteQuedaTensao">Limite Queda de Tensao (%)</label><input type="number" id="feederLimiteQuedaTensao" step="0.1" value="5.0"></div>
-                    <div class="form-group"><label for="feederTipoDisjuntor">Tipo de Disjuntor</label><select id="feederTipoDisjuntor"><option value="Minidisjuntor (DIN)">Minidisjuntor (DIN)</option><option value="Caixa Moldada (MCCB)" selected>Caixa Moldada (MCCB)</option></select></div>
-                    <div class="form-group"><label for="feederDpsClasse">Classe DPS</label><select id="feederDpsClasse"><option value="">Nenhum</option><option value="I">I</option><option value="II">II</option></select></div>
-                    <div class="checkbox-group"><input type="checkbox" id="feederRequerDR" checked><label for="feederRequerDR">Requer Protecao DR Geral</label></div>
+                    <div class="form-group"><label>Instalada (W)</label><input type="text" id="feederPotenciaInstalada" readonly></div>
+                    <div class="form-group"><label>Demanda Calculada (W)</label><input type="text" id="feederPotenciaDemandada" readonly></div>
+                    <div class="form-group"><label>Soma Demanda Circuitos (W)</label><input type="text" id="feederSomaPotenciaDemandada" readonly></div>
+                    <div class="form-group"><label>Fator Demanda Geral (%)</label><input type="number" id="feederFatorDemanda" value="100"></div>
                 </div>
             </form>
         </div>
 
-      <div id="feeder-container-1">
-            <h2>QDC's e Circuitos</h2>
-            <div class="circuit-block">
+        <div id="qdc-section">
+            <h2>QDCs e Circuitos</h2>
+            <div id="qdc-container"></div>
+            <div class="button-container"><button id="addQdcBtn" class="btn-blue-dark">Adicionar QDC</button></div>
+        </div>
 
-                <div id="qdc-container">
-                    </div>
-        
-                <div class="add-buttons-container">
-                    <button id="addQdcBtn" class="btn-blue-dark">Adicionar QDC</button>
-                    <button id="manageQdcsBtn" class="btn-grey">Gerenciar Hierarquia de QDCs</button>
-                </div>
-            </div>
-        
-            <form id="tech-form" autocomplete="off">
-                <h2>Responsável Técnico</h2>
-                <div class="form-grid">
-                    <div class="form-group"><label for="respTecnico">Nome</label><input type="text" id="respTecnico"></div>
-                    <div class="form-group"><label for="titulo">Título</label><input type="text" id="titulo"></div>
-                    <div class="form-group"><label for="crea">CREA</label><input type="text" id="crea"></div>
-                </div>
-            </form>
-    
-            <div class="button-container">
-                 <button id="calculateAndPdfBtn" class="btn-green">Gerar e Baixar PDFs</button>
-            </div>
-      </div>
-        
+        <div class="button-container" style="margin-top: 30px;">
+            <button id="calculateAndPdfBtn" class="btn-green" style="width: 100%;">Gerar Relatório PDF</button>
+        </div>
     </div>
 
     <script type="module" src="main.js"></script>
