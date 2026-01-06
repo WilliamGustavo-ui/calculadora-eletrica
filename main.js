@@ -1,4 +1,4 @@
-// Arquivo: main.js (v8.3 - Corrigido race condition no carregamento do parentId do QDC)
+// Arquivo: main.js (v8.4 - Integrado com Popup de Adição de Circuito)
 
 import * as auth from './auth.js';
 import * as ui from './ui.js';
@@ -110,7 +110,7 @@ async function handleClientFormSubmit(event) {
         if (result.error) { throw result.error; }
         alert(clientId ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!');
         ui.resetClientForm();
-        await handleOpenClientManagement(); // Recarrega
+        await handleOpenClientManagement(); 
     } catch (error) {
         alert('Erro ao salvar cliente: ' + error.message);
     }
@@ -133,7 +133,7 @@ async function handleClientListClick(event) {
             if (error) {
                 alert('Erro ao excluir cliente: ' + error.message);
             } else {
-                await handleOpenClientManagement(); // Recarrega
+                await handleOpenClientManagement(); 
             }
         }
     }
@@ -159,9 +159,8 @@ function handleConfirmClientSelection(isChange = false) {
     const client = allClients.find(c => c.id == selectedClientId);
 
     if (!isChange) {
-        ui.resetForm(true, client); // Reseta formulário VINCULANDO o cliente
+        ui.resetForm(true, client); 
     } else {
-        // Apenas muda o cliente no projeto atual
         if (client) {
             document.getElementById('clientLinkDisplay').textContent = `Cliente: ${client.nome} (${client.client_code || 'S/C'})`;
             document.getElementById('currentClientId').value = client.id;
@@ -174,15 +173,13 @@ function handleConfirmClientSelection(isChange = false) {
 }
 
 function handleContinueWithoutClient() {
-    handleNewProject(false); // Reseta formulário sem cliente
+    handleNewProject(false); 
     ui.closeModal('selectClientModalOverlay');
 }
 
-// --- Funções de Projeto (Salvar, Carregar, Excluir) ---
+// --- Funções de Projeto ---
 
-// (Função assíncrona para não travar a UI ao coletar dados)
 async function getFullFormData(forSave = false) {
-    // Coleta dados dos forms e formata para salvar ou calcular
     const mainData = { obra: document.getElementById('obra').value, cidadeObra: document.getElementById('cidadeObra').value, enderecoObra: document.getElementById('enderecoObra').value, areaObra: document.getElementById('areaObra').value, unidadesResidenciais: document.getElementById('unidadesResidenciais').value, unidadesComerciais: document.getElementById('unidadesComerciais').value, observacoes: document.getElementById('observacoes').value, projectCode: document.getElementById('project_code').value };
     const currentClientId = document.getElementById('currentClientId').value;
     const client = allClients.find(c => c.id == currentClientId);
@@ -228,8 +225,6 @@ async function getFullFormData(forSave = false) {
         });
         
         qdcsDataForSave.push({ ...qdcInfo, config: qdcConfigDataForSave, circuits: circuitsForSave });
-
-        // Pausa a execução para permitir que a UI (spinner) atualize
         await new Promise(resolve => setTimeout(resolve, 0));
     }
 
@@ -250,9 +245,7 @@ async function handleSaveProject() {
     loadingText.textContent = 'Coletando dados...'; loadingOverlay.classList.add('visible');
     try {
         await new Promise(resolve => setTimeout(resolve, 50));
-        
         const projectDataToSave = await getFullFormData(true);
-        
         loadingText.textContent = 'Salvando dados da obra...';
         const currentProjectId = document.getElementById('currentProjectId').value;
         const { data, error } = await api.saveProject(projectDataToSave, currentProjectId);
@@ -270,20 +263,15 @@ async function handleSaveProject() {
 }
 
 function populateFormWithProjectData(project) {
-    console.time("populateForm");
     if (!project) return;
-    ui.resetForm(false, project.client); // Reseta, sem QDC default, mas com cliente
+    ui.resetForm(false, project.client); 
 
     if (typeof ui.setLoadedProjectData === 'function') {
         ui.setLoadedProjectData(project);
-    } else {
-        console.error("Função ui.setLoadedProjectData não encontrada! Lazy loading não funcionará.");
-        alert("Erro interno: Falha ao preparar carregamento dos circuitos. Tente recarregar a página.");
     }
 
     document.getElementById('currentProjectId').value = project.id;
 
-    // Preenche dados principais, técnico e alimentador geral
     if (project.main_data) { Object.keys(project.main_data).forEach(key => { const el = document.getElementById(key); if (el) el.value = project.main_data[key]; }); }
     document.getElementById('project_code').value = project.project_code || '';
     if (project.tech_data) { Object.keys(project.tech_data).forEach(key => { const el = document.getElementById(key); if (el) el.value = project.tech_data[key]; }); }
@@ -298,52 +286,32 @@ function populateFormWithProjectData(project) {
         const qdcMap = new Map();
         project.qdcs_data.forEach(qdc => qdcMap.set(String(qdc.id), qdc));
 
-        // Ordena QDCs para renderização hierárquica
         const sortedQdcs = []; const visited = new Set();
         function visit(qdcId) { if (!qdcId || visited.has(qdcId)) return; const qdc = qdcMap.get(qdcId); if (!qdc) return; visited.add(qdcId); const parentValue = qdc.parentId; if (parentValue && parentValue !== 'feeder') { const parentId = parentValue.replace('qdc-', ''); visit(parentId); } if(!sortedQdcs.some(sq => sq.id == qdc.id)) { sortedQdcs.push(qdc); } }
         project.qdcs_data.forEach(qdc => visit(String(qdc.id)));
 
-        // Renderiza APENAS os blocos de QDC no fragmento (sem circuitos)
         sortedQdcs.forEach(qdc => {
             const renderedQdcId = ui.addQdcBlock(String(qdc.id), qdc.name, qdc.parentId, fragment);
             const qdcElementInFragment = fragment.querySelector(`#qdc-${renderedQdcId}`);
-            if (!qdcElementInFragment) { console.error(`Elemento QDC ${renderedQdcId} não encontrado no fragmento.`); return; }
             if (qdc.config) { Object.keys(qdc.config).forEach(key => { const el = qdcElementInFragment.querySelector(`#${key}`); if (el) { if (el.type === 'checkbox') (el).checked = qdc.config[key]; else (el).value = qdc.config[key]; } }); }
         });
 
-        // Adiciona todos os QDCs (vazios e colapsados) ao DOM
         qdcContainerTarget.appendChild(fragment);
 
-        // Inicializa listeners e dropdowns APÓS adicionar ao DOM
         sortedQdcs.forEach(qdc => {
             const renderedQdcId = String(qdc.id);
             if (typeof ui.initializeQdcListeners === 'function') {
-                ui.initializeQdcListeners(renderedQdcId); // Garante listeners
+                ui.initializeQdcListeners(renderedQdcId); 
             }
             document.getElementById(`qdcFases-${renderedQdcId}`)?.dispatchEvent(new Event('change'));
             document.getElementById(`qdcTipoIsolacao-${renderedQdcId}`)?.dispatchEvent(new Event('change'));
         });
 
-        // Atualiza os dropdowns de parentesco
         ui.updateQdcParentDropdowns();
-        
-        // --- CORREÇÃO: Bloco setTimeout (a causa do bug) FOI REMOVIDO ---
-        // A função ui.updateQdcParentDropdowns() acima [main.js:377] já
-        // lê o atributo 'data-initial-parent' (definido por ui.addQdcBlock)
-        // e define o valor do select corretamente após o debounce de 400ms.
-        // O bloco setTimeout anterior [main.js:380-394] executava em 100ms
-        // e redefinia o valor para 'feeder' antes que as opções fossem preenchidas.
-
-        // Apenas chamamos o updateFeederPowerDisplay após um pequeno delay
-        // para garantir que os valores iniciais (zerados) sejam exibidos.
-        setTimeout(() => {
-             ui.updateFeederPowerDisplay();
-        }, 100);
-
+        setTimeout(() => { ui.updateFeederPowerDisplay(); }, 100);
     } else {
         ui.updateFeederPowerDisplay();
     }
-    console.timeEnd("populateForm");
 }
 
 async function handleLoadProject() {
@@ -453,9 +421,9 @@ async function handleAdminUserActions(event) {
             if (confirm(`Tem certeza que deseja ${shouldBlock ? 'BLOQUEAR' : 'DESBLOQUEAR'} este usuário?`)) {
                 const { error: updateError } = await api.toggleUserBlock(userId, shouldBlock);
                 if (updateError) throw updateError;
-                const updatedUsers = await api.fetchAllUsers(); // Refetch
-                if (updatedUsers) ui.populateUsersPanel(updatedUsers); // Update UI
-                else await showAdminPanel(); // Fallback
+                const updatedUsers = await api.fetchAllUsers(); 
+                if (updatedUsers) ui.populateUsersPanel(updatedUsers); 
+                else await showAdminPanel(); 
             }
         } else if (target.classList.contains('remove-user-btn')) {
             if (confirm('ATENÇÃO: Ação irreversível! Excluir este usuário permanentemente?')) {
@@ -473,7 +441,6 @@ async function handleAdminUserActions(event) {
 
 async function handleUpdateUser(event) { event.preventDefault(); const userId = document.getElementById('editUserId').value; const data = { nome: document.getElementById('editNome').value, cpf: document.getElementById('editCpf').value, telefone: document.getElementById('editTelefone').value, crea: document.getElementById('editCrea').value, }; const { error } = await api.updateUserProfile(userId, data); if (error) { alert("Erro ao atualizar usuário: " + error.message); } else { alert("Usuário atualizado com sucesso!"); ui.closeModal('editUserModalOverlay'); await showAdminPanel(); } }
 
-// (Função atualizada para v8.2 - Corrige travamento pós-download com URL.createObjectURL)
 async function handleCalculateAndPdf() {
     if (!uiData) { alert("Erro: Dados técnicos não carregados..."); return; }
     if (!currentUserProfile) { alert("Erro: Usuário não autenticado..."); await handleLogout(); return; }
@@ -481,56 +448,30 @@ async function handleCalculateAndPdf() {
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = loadingOverlay.querySelector('p');
     
-    // Limpa o link de download antigo (se existir)
     const oldLinkContainer = document.getElementById('pdfLinkContainer');
     if (oldLinkContainer) {
-        // Revoga a URL do Blob anterior para liberar memória
         const oldLink = oldLinkContainer.querySelector('a');
-        if (oldLink && oldLink.href.startsWith('blob:')) {
-            URL.revokeObjectURL(oldLink.href);
-        }
+        if (oldLink && oldLink.href.startsWith('blob:')) { URL.revokeObjectURL(oldLink.href); }
         oldLinkContainer.remove();
     }
-
 
     loadingText.textContent = 'Coletando dados do formulário...';
     loadingOverlay.classList.add('visible');
     
     try {
-        // Coleta os dados de forma assíncrona para não travar a UI
         const formDataForFunction = await getFullFormData(false);
-
         loadingText.textContent = 'Calculando e gerando PDF no servidor...';
-        console.log("Enviando para Edge Function 'gerar-relatorio' (esperando blob)...");
 
-        // Pede a resposta como Blob
         const { data: pdfBlob, error: functionError } = await supabase.functions.invoke('gerar-relatorio', {
             body: { formData: formDataForFunction },
             responseType: 'blob'
         });
 
-        if (functionError) {
-             let errMsg = functionError.message;
-             try {
-                 const errorText = await functionError.context.blob.text();
-                 const errorJson = JSON.parse(errorText);
-                 if (errorJson.error) errMsg = errorJson.error;
-                 else errMsg = errorText;
-             } catch(e) { /* falha ao ler erro */ }
-            throw new Error(`Erro na Edge Function (${functionError.context?.status || 'N/A'}): ${errMsg}`);
-        }
-        if (!pdfBlob) {
-            throw new Error("A função de cálculo não retornou um arquivo (blob).");
-        }
+        if (functionError) { throw new Error(`Erro na Edge Function: ${functionError.message}`); }
+        if (!pdfBlob) { throw new Error("A função não retornou um arquivo."); }
 
-        console.log(`Blob de PDF recebido: ${(pdfBlob.size / 1024 / 1024).toFixed(2)} MB`);
         loadingText.textContent = 'PDF recebido, criando link...';
-        await new Promise(resolve => setTimeout(resolve, 50));
-
-        // --- CORREÇÃO: Troca de FileReader (Base64) para URL.createObjectURL ---
-        // Isso é muito mais rápido e não trava o navegador
         const pdfUrl = URL.createObjectURL(pdfBlob);
-        
         const nomeObra = document.getElementById('obra')?.value || 'Projeto';
         const linkContainer = document.createElement('div');
         linkContainer.id = 'pdfLinkContainer';
@@ -538,60 +479,29 @@ async function handleCalculateAndPdf() {
         linkContainer.style.textAlign = 'center';
 
         const a = document.createElement('a');
-        a.href = pdfUrl; // Usa a URL do Blob
+        a.href = pdfUrl;
         a.textContent = "Clique aqui para ver/baixar o PDF";
-        a.target = "_blank"; // Abre em nova aba
-        a.download = `Relatorio_${nomeObra.replace(/[^a-z0-9]/gi, '_')}.pdf`; // Nome do arquivo
-        
-        // Estilos para o link parecer um botão
-        a.style.display = 'inline-block';
-        a.style.padding = '10px 15px';
-        a.style.backgroundColor = 'var(--btn-green)';
-        a.style.color = 'white';
-        a.style.textDecoration = 'none';
-        a.style.borderRadius = '5px';
-        a.style.fontWeight = 'bold';
+        a.target = "_blank";
+        a.download = `Relatorio_${nomeObra.replace(/[^a-z0-9]/gi, '_')}.pdf`;
+        a.className = "btn-green"; 
 
-        // O navegador gerencia a limpeza do ObjectURL, mas podemos limpar
-        // o *link* da UI após o clique.
         a.addEventListener('click', () => {
-             console.log("Link (ObjectURL) clicado.");
-             // Esconde o link após o clique para evitar confusão
-             setTimeout(() => {
-                if(linkContainer) linkContainer.style.display = 'none';
-                // A URL do blob será revogada quando o link antigo for limpo na próxima geração
-             }, 500);
+             setTimeout(() => { if(linkContainer) linkContainer.style.display = 'none'; }, 500);
         });
 
         linkContainer.appendChild(a);
-
-        // Adiciona o link abaixo do botão "Gerar PDF"
         const buttonContainer = document.querySelector('.button-container');
-        if (buttonContainer) {
-            buttonContainer.parentNode.insertBefore(linkContainer, buttonContainer.nextSibling);
-        } else {
-            document.getElementById('appContainer').appendChild(linkContainer);
-        }
-
-        console.log("Link (ObjectURL) para PDF criado. Aguardando clique do usuário.");
+        if (buttonContainer) { buttonContainer.parentNode.insertBefore(linkContainer, buttonContainer.nextSibling); }
         loadingOverlay.classList.remove('visible');
-        
-        // --- FIM DA CORREÇÃO ---
-
     } catch (error) {
-        console.error("Erro durante coleta de dados, cálculo ou PDF:", error);
-        alert("Ocorreu um erro: " + error.message + "\nVerifique o console.");
-         loadingOverlay.classList.remove('visible');
-    } finally {
-        // Garante que o texto de loading seja resetado caso a função falhe antes de mudar
-        loadingText.textContent = 'Calculando, por favor aguarde...';
-    }
+        console.error("Erro PDF:", error);
+        alert("Ocorreu um erro: " + error.message);
+        loadingOverlay.classList.remove('visible');
+    } finally { loadingText.textContent = 'Calculando, por favor aguarde...'; }
 }
-
 
 // --- setupEventListeners ---
 function setupEventListeners() {
-    // Adiciona listeners para todos os elementos interativos
     document.getElementById('loginBtn').addEventListener('click', handleLogin);
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
     document.getElementById('registerBtn').addEventListener('click', () => ui.openModal('registerModalOverlay'));
@@ -604,24 +514,58 @@ function setupEventListeners() {
     document.getElementById('loadBtn').addEventListener('click', handleLoadProject);
     document.getElementById('deleteBtn').addEventListener('click', handleDeleteProject);
     document.getElementById('newBtn').addEventListener('click', () => handleNewProject(true));
+    
     const debouncedSearch = utils.debounce((e) => handleSearch(e.target.value), 300);
     document.getElementById('searchInput').addEventListener('input', debouncedSearch);
+    
     const debouncedUpdateQdcDropdowns = utils.debounce(ui.updateQdcParentDropdowns, 400);
     document.getElementById('addQdcBtn').addEventListener('click', () => ui.addQdcBlock());
     document.getElementById('manageQdcsBtn').addEventListener('click', () => ui.openModal('qdcManagerModalOverlay'));
+    
+    // --- LÓGICA DE CONFIRMAÇÃO DO POPUP DE CIRCUITO (v8.4) ---
+    document.getElementById('confirmAddCircuitBtn').addEventListener('click', () => {
+        const qdcId = document.getElementById('targetQdcId').value;
+        const nome = document.getElementById('modalNomeCircuito').value;
+        const tipo = document.getElementById('modalTipoCircuito').value;
+        const potencia = document.getElementById('modalPotenciaW').value;
+
+        // Recupera o contador atual de circuitos para gerar o próximo ID
+        // Note: circuitCount é exportado/gerenciado dentro do ui.js, mas 
+        // a lógica de addCircuit cuida da criação.
+        const fakeCircuitData = {
+            id: null, // Deixa o addCircuit gerar o ID incremental
+            [`nomeCircuito-pending`]: nome, 
+            [`tipoCircuito-pending`]: tipo,
+            [`potenciaW-pending`]: potencia,
+            [`fatorDemanda-pending`]: 100
+        };
+
+        // Adiciona o circuito de fato ao QDC via UI
+        ui.addCircuit(qdcId, fakeCircuitData);
+        
+        // Fecha o modal e limpa
+        ui.closeModal('addCircuitModalOverlay');
+        
+        // Garante que o QDC expanda para mostrar o novo circuito
+        const qdcBlock = document.getElementById(`qdc-${qdcId}`);
+        if (qdcBlock && qdcBlock.classList.contains('collapsed')) {
+            const toggleBtn = qdcBlock.querySelector('.toggle-circuits-btn');
+            if (toggleBtn) toggleBtn.click();
+        }
+    });
+
     const appContainer = document.getElementById('appContainer');
     if(appContainer) {
-        // Usa delegação de evento para interações dentro do container principal
         appContainer.addEventListener('change', ui.handleMainContainerInteraction);
         appContainer.addEventListener('click', ui.handleMainContainerInteraction);
-        // Listener 'input' separado para atualizações em tempo real (potência, nomes)
         appContainer.addEventListener('input', (event) => { const target = event.target; if (target.id.startsWith('potenciaW-') || target.id.startsWith('fatorDemanda-') || target.id.startsWith('qdcFatorDemanda-') || target.id === 'feederFatorDemanda') { ui.updateFeederPowerDisplay(); } if (target.classList.contains('qdc-name-input')) { debouncedUpdateQdcDropdowns(); } if (target.id.startsWith('nomeCircuito-')) { const circuitId = target.closest('.circuit-block')?.dataset.id; if (circuitId) { const labelElement = document.getElementById(`nomeCircuitoLabel-${circuitId}`); if(labelElement) labelElement.textContent = target.value || `Circuito ${circuitId}`; } } });
     }
+    
     document.getElementById('calculateAndPdfBtn').addEventListener('click', handleCalculateAndPdf);
     document.getElementById('manageProjectsBtn').addEventListener('click', showManageProjectsPanel);
     const projectsTableBody = document.getElementById('adminProjectsTableBody'); if(projectsTableBody) projectsTableBody.addEventListener('click', handleProjectPanelClick);
     document.getElementById('adminPanelBtn').addEventListener('click', showAdminPanel);
-    const adminUserList = document.getElementById('adminUserList'); if(adminUserList) { adminUserList.addEventListener('click', handleAdminUserActions); } else { console.error("Elemento adminUserList não encontrado!"); }
+    const adminUserList = document.getElementById('adminUserList'); if(adminUserList) { adminUserList.addEventListener('click', handleAdminUserActions); }
     const editUserForm = document.getElementById('editUserForm'); if(editUserForm) editUserForm.addEventListener('submit', handleUpdateUser);
     document.getElementById('manageClientsBtn').addEventListener('click', handleOpenClientManagement);
     const clientForm = document.getElementById('clientForm'); if(clientForm) clientForm.addEventListener('submit', handleClientFormSubmit);
@@ -631,66 +575,42 @@ function setupEventListeners() {
     document.getElementById('changeClientBtn').addEventListener('click', async () => { try { allClients = await api.fetchClients(); ui.populateSelectClientModal(allClients, true);} catch(e){ alert("Erro ao carregar clientes.")} });
     document.getElementById('continueWithoutClientBtn').addEventListener('click', handleContinueWithoutClient);
     document.getElementById('addNewClientFromSelectModalBtn').addEventListener('click', () => { ui.closeModal('selectClientModalOverlay'); handleOpenClientManagement(); });
-    // --- Máscaras ---
-    document.getElementById('regCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('regTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('editCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('editTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientCelular')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientTelefone')?.addEventListener('input', utils.mascaraTelefone); const clientDocInput = document.getElementById('clientDocumentoValor'); if(clientDocInput) { clientDocInput.addEventListener('input', (event) => { const tipo = document.getElementById('clientDocumentoTipo')?.value; if(tipo) utils.aplicarMascara(event, tipo); }); } const clientDocTypeSelect = document.getElementById('clientDocumentoTipo'); if(clientDocTypeSelect) { clientDocTypeSelect.addEventListener('change', () => { const docValueInput = document.getElementById('documentoValor'); if(docValueInput) docValueInput.value = ''; }); }
+    
+    // Máscaras
+    document.getElementById('regCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('regTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('editCpf')?.addEventListener('input', utils.mascaraCPF); document.getElementById('editTelefone')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientCelular')?.addEventListener('input', utils.mascaraCelular); document.getElementById('clientTelefone')?.addEventListener('input', utils.mascaraTelefone); const clientDocInput = document.getElementById('clientDocumentoValor'); if(clientDocInput) { clientDocInput.addEventListener('input', (event) => { const tipo = document.getElementById('clientDocumentoTipo')?.value; if(tipo) utils.aplicarMascara(event, tipo); }); }
 }
 
 
 // --- onAuthStateChange ---
 function main() {
     setupEventListeners();
-
     supabase.auth.onAuthStateChange(async (event, session) => {
         const hash = window.location.hash;
-
         if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
             if (session) {
                 const userProfile = await auth.getSession();
                 if (userProfile && userProfile.is_approved && !userProfile.is_blocked) {
                     currentUserProfile = userProfile;
                     if (!uiData) {
-                        console.log("Carregando dados técnicos...");
                         uiData = await api.fetchUiData();
-                        if (uiData) {
-                            ui.setupDynamicData(uiData);
-                            console.log("Dados técnicos carregados.");
-                        } else {
-                            console.error("Falha CRÍTICA ao carregar dados técnicos!"); alert("Erro CRÍTICO ao carregar dados técnicos."); ui.showLoginView(); currentUserProfile = null; await auth.signOutUser(); return;
-                        }
+                        if (uiData) { ui.setupDynamicData(uiData); } 
+                        else { alert("Erro ao carregar dados técnicos."); ui.showLoginView(); await auth.signOutUser(); return; }
                     }
                     ui.showAppView(currentUserProfile);
-                    try { allClients = await api.fetchClients(); } catch (e) { console.error("Erro ao carregar clientes:", e); }
-
-                    if (hash.includes('type=recovery') && event === 'SIGNED_IN') {
-                         ui.showResetPasswordView();
-                    } else if (!hash.includes('type=recovery')) {
-                        ui.resetForm();
-                        await handleSearch();
-                    }
-
+                    try { allClients = await api.fetchClients(); } catch (e) { console.error(e); }
+                    if (hash.includes('type=recovery')) { ui.showResetPasswordView(); } 
+                    else { ui.resetForm(); await handleSearch(); }
                 } else if (userProfile && !userProfile.is_approved) {
                     alert("Seu cadastro ainda não foi aprovado."); await auth.signOutUser(); ui.showLoginView();
                 } else if (userProfile && userProfile.is_blocked) {
                     alert("Seu usuário está bloqueado."); await auth.signOutUser(); ui.showLoginView();
-                } else {
-                    console.warn("Sessão encontrada, mas perfil inválido/não encontrado ou não aprovado/bloqueado."); await auth.signOutUser(); ui.showLoginView();
-                }
-            } else {
-                 if (!hash.includes('type=recovery')) { ui.showLoginView(); }
-                 else { /* Sem sessão */ }
-            }
+                } else { await auth.signOutUser(); ui.showLoginView(); }
+            } else { if (!hash.includes('type=recovery')) ui.showLoginView(); }
         } else if (event === 'SIGNED_OUT') {
-            console.log("Usuário deslogado.");
             currentUserProfile = null; allClients = []; uiData = null;
             ui.showLoginView(); window.location.hash = '';
-        } else if (event === 'PASSWORD_RECOVERY') {
-              ui.showResetPasswordView();
-        }
+        } else if (event === 'PASSWORD_RECOVERY') { ui.showResetPasswordView(); }
     });
 }
 
-// --- Ponto de Entrada ---
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("--- main.js: DOM Content Loaded ---");
-    main(); // Inicia a aplicação
-});
+document.addEventListener('DOMContentLoaded', () => { main(); });

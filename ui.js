@@ -534,22 +534,23 @@ export function handleMainContainerInteraction(event) {
         const qdcId = qdcBlock.dataset.id;
         if (!qdcId) return;
 
-        if (eventType === 'click') {
-            const addCircuitButton = target.closest('.add-circuit-to-qdc-btn');
-            if (addCircuitButton) {
-                event.stopPropagation(); // Impede que o clique no botão expanda/colapse o QDC
-                // Garante que os circuitos sejam carregados antes de adicionar um novo
-                ensureCircuitsLoaded(qdcBlock, qdcId).then(() => {
-                   addCircuit(qdcId); // Adiciona um novo circuito
-                   // Força a expansão se não estiver expandido ao adicionar circuito
-                   if (qdcBlock.classList.contains('collapsed')) {
-                       qdcBlock.classList.remove('collapsed');
-                       const toggleBtn = qdcBlock.querySelector('.toggle-circuits-btn');
-                       if(toggleBtn) toggleBtn.textContent = 'Ocultar Circuitos';
-                   }
-                });
-                return; // Finaliza o handler aqui
-            }
+if (eventType === 'click') {
+    const addCircuitButton = target.closest('.add-circuit-to-qdc-btn');
+    if (addCircuitButton) {
+        event.stopPropagation();
+        
+        // Identifica o QDC e prepara o modal
+        const qdcName = qdcBlock.querySelector('.qdc-name-input')?.value || `QDC ${qdcId}`;
+        document.getElementById('targetQdcId').value = qdcId;
+        document.getElementById('targetQdcName').textContent = qdcName;
+        
+        // Sugere o nome do próximo circuito usando o contador global circuitCount
+        document.getElementById('modalNomeCircuito').value = `Circuito ${circuitCount + 1}`;
+        
+        // Abre o novo modal
+        openModal('addCircuitModalOverlay');
+        return; 
+    }
             const removeQdcButton = target.closest('.remove-qdc-btn');
             if (removeQdcButton) {
                 event.stopPropagation(); // Impede que o clique no botão expanda/colapse o QDC
